@@ -1,3 +1,9 @@
+## Live Demo
+
+[Launch VeilForge](https://veilforge-web.vercel.app)
+
+
+
 <p align="center">
   <img src="assets/social-preview.png" alt="VeilForge — pre-APS privacy readiness for Solidity" width="100%" />
 </p>
@@ -13,7 +19,6 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/CryptoDombili/veilforge/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/CryptoDombili/veilforge/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-63f6c7.svg"></a>
   <img alt="Solidity" src="https://img.shields.io/badge/Solidity-0.8.24-363636?logo=solidity">
   <img alt="Arc Testnet" src="https://img.shields.io/badge/Arc-Testnet-66f4c6">
