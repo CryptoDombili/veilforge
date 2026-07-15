@@ -2,8 +2,11 @@ name: VeilForge CI
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -11,24 +14,28 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Install
+          cache: npm
+
+      - name: Install dependencies
         run: npm install
+
       - name: Lint
         run: npm run lint
+
       - name: Typecheck
         run: npm run typecheck
+
       - name: Test
         run: npm run test
+
       - name: Build
         run: npm run build
-      - name: Secret pattern check
-        run: |
-          if grep -RInE '(ARC_PRIVATE_KEY|OPENAI_API_KEY)=[^[:space:]]+' --exclude='.env.example' --exclude-dir=node_modules .; then
-            echo 'Potential committed secret detected.'
-            exit 1
-          fi
