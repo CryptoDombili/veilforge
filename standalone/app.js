@@ -107,6 +107,70 @@ let report = null;
 let activeFile = 'Payroll.sol';
 
 const $ = (id) => document.getElementById(id);
+
+const ARC_CHAIN_ID = 5042002;
+const ARC_CHAIN_HEX = '0x4cef52';
+const ARC_RPC_URL = 'https://rpc.drpc.testnet.arc.network';
+const ARC_EXPLORER = 'https://testnet.arcscan.app';
+const REGISTRY_ADDRESS = '0xf8b1D03931f2c11B642259d9aB19cfA3351C0Bbc';
+const REGISTRY_ABI = [
+  'function publishReport(bytes32 projectId, bytes32 sourceHash, bytes32 reportHash, uint16 score, string scannerVersion, string reportURI) external returns (bytes32 reportId)'
+];
+
+function setPublishState(text, state=''){
+  const status=$('publishStatus');
+  const button=$('publishBtn');
+  status.className=`publishStatus ${state}`.trim();
+  status.innerHTML=text;
+  button.disabled=state==='pending';
+}
+
+async function ensureArcNetwork(){
+  if(!window.ethereum) throw new Error('MetaMask or another browser wallet was not detected.');
+  const current=await window.ethereum.request({method:'eth_chainId'});
+  if(current.toLowerCase()===ARC_CHAIN_HEX) return;
+  try{
+    await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:ARC_CHAIN_HEX}]});
+  }catch(error){
+    if(error && error.code===4902){
+      await window.ethereum.request({method:'wallet_addEthereumChain',params:[{
+        chainId:ARC_CHAIN_HEX,
+        chainName:'Arc Network Testnet',
+        nativeCurrency:{name:'USDC',symbol:'USDC',decimals:18},
+        rpcUrls:[ARC_RPC_URL],
+        blockExplorerUrls:[ARC_EXPLORER]
+      }]});
+    }else throw error;
+  }
+}
+
+async function publishCurrentReport(){
+  if(!report) return;
+  try{
+    setPublishState('Connecting wallet and preparing the Arc transaction…','pending');
+    await ensureArcNetwork();
+    if(!window.ethers) throw new Error('Wallet library failed to load. Refresh the page and try again.');
+    const provider=new ethers.BrowserProvider(window.ethereum);
+    await provider.send('eth_requestAccounts',[]);
+    const network=await provider.getNetwork();
+    if(Number(network.chainId)!==ARC_CHAIN_ID) throw new Error('Please switch your wallet to Arc Network Testnet.');
+    const signer=await provider.getSigner();
+    const contract=new ethers.Contract(REGISTRY_ADDRESS,REGISTRY_ABI,signer);
+    const projectName=($('projectName').value||'untitled-project').trim();
+    const projectId=ethers.keccak256(ethers.toUtf8Bytes(projectName));
+    const reportURI=($('reportUri').value||window.location.href).trim();
+    const tx=await contract.publishReport(projectId,report.sourceHash,report.reportHash,report.score,'veilforge-0.1.0',reportURI);
+    setPublishState(`Transaction submitted: <a href="${ARC_EXPLORER}/tx/${tx.hash}" target="_blank" rel="noreferrer">${tx.hash.slice(0,10)}…${tx.hash.slice(-8)}</a>. Waiting for confirmation…`,'pending');
+    const receipt=await tx.wait();
+    if(!receipt || receipt.status!==1) throw new Error('The transaction was not confirmed successfully.');
+    setPublishState(`Published on Arc Testnet. <a href="${ARC_EXPLORER}/tx/${tx.hash}" target="_blank" rel="noreferrer">View transaction on ArcScan ↗</a>`,'success');
+    $('publishBtn').textContent='Publish another report';
+  }catch(error){
+    const message=error?.shortMessage||error?.reason||error?.message||'Transaction cancelled or failed.';
+    setPublishState(`Could not publish: ${escapeHtml(message)}`,'error');
+  }
+}
+
 const hasSensitive = (value) => sensitiveTerms.some((term) => splitWords(value).includes(term) || splitWords(value).join(' ').includes(term));
 const splitWords = (value) => value.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[^a-zA-Z0-9]+/g, ' ').toLowerCase().split(/\s+/).filter(Boolean);
 const escapeHtml = (value) => value.replace(/[&<>"']/g, (char) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[char]));
@@ -210,6 +274,7 @@ function wire(){
   $('fileSelect').onchange=e=>{activeFile=e.target.value;renderCode()};
   $('projectName').oninput=e=>$('proofProject').textContent=e.target.value||'Untitled project';
   $('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify(report,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`veilforge-report-${report.reportHash.slice(2,10)}.json`;a.click();URL.revokeObjectURL(url)};
+  $('publishBtn').onclick=publishCurrentReport;
 }
 
 async function scanStandalone(inputFiles){
