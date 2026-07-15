@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#07090f" />
+  <title>VeilForge — Pre-APS Privacy Readiness</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="ambient a1"></div><div class="ambient a2"></div>
+  <nav>
+    <div class="brand"><span class="logo">◈</span><span><b>VeilForge</b><small>PRE-APS TOOLKIT</small></span></div>
+    <div class="navlinks"><a href="#scanner">Scanner</a><a href="#why">Architecture</a><a href="https://docs.arc.network/arc/concepts/opt-in-privacy" target="_blank">APS docs</a></div>
+    <a class="ghost" href="../README.md">Open source</a>
+  </nav>
+
+  <main>
+    <section class="hero">
+      <div>
+        <p class="chip"><i></i> Built for Arc Privacy Sector before it goes live →</p>
+        <h1>Find what your Solidity contract will <em>leak</em> before privacy becomes production.</h1>
+        <p class="lead">Deterministic privacy findings, APS-aligned exposure policies and a verifiable report fingerprint — all without sending source code to an AI API.</p>
+        <div class="actions"><button id="heroDemo" class="primary">Scan the payroll demo</button><button id="heroUpload" class="secondary">Upload .sol files</button></div>
+        <div class="trust"><span>✓ No AI API</span><span>✓ Runs locally</span><span>✓ Exact source lines</span><span>✓ Arc-ready proof model</span></div>
+      </div>
+      <div class="heroVisual">
+        <div class="grid"></div><div class="scanline"></div>
+        <div class="rings"><div><div><span>⌾</span></div></div></div>
+        <article class="signal s1"><b>VF008</b><span>public mapping</span><em>critical</em></article>
+        <article class="signal s2"><b>POLICY</b><span>getSalary()</span><em>restricted</em></article>
+        <article class="signal s3"><b>ARC PROOF</b><span>deterministic</span><em>ready</em></article>
+      </div>
+    </section>
+
+    <section class="features" id="why">
+      <article><span>⌘</span><div><b>Deterministic scan</b><p>Explainable rules, exact lines and stable output.</p></div></article>
+      <article><span>◉</span><div><b>APS exposure map</b><p>Open, Restricted or Locked for each selector.</p></div></article>
+      <article><span>◎</span><div><b>Proof, not source</b><p>Anchor hashes and metadata, never confidential code.</p></div></article>
+    </section>
+
+    <section class="scanner" id="scanner">
+      <header class="sectionHead"><div><small>LIVE LOCAL WORKSPACE</small><h2>Privacy readiness, from source to proof.</h2></div><div class="modes"><button data-mode="vulnerable" class="active">Vulnerable</button><button data-mode="hardened">Hardened</button><button data-mode="custom" hidden>Custom</button></div></header>
+      <div class="toolbar"><div class="tabs"><button data-tab="analysis" class="active">⌕ Analysis</button><button data-tab="policies">⌘ Exposure map</button><button data-tab="proof">◇ Arc proof</button></div><div class="tools"><select id="fileSelect"></select><button id="exportBtn">⇩ JSON</button><button id="uploadBtn">⇧ Upload</button><input id="fileInput" type="file" accept=".sol" multiple hidden /></div></div>
+      <div class="workspace">
+        <section id="analysisTab" class="tabPane active">
+          <div class="metrics">
+            <article class="scoreCard"><div id="scoreRing" class="scoreRing"><span><b id="scoreValue">0</b><small>/100</small></span></div><div><strong id="gradeValue">F</strong><b id="readinessLabel">Critical</b><small>Privacy readiness</small></div></article>
+            <article><small>CRITICAL</small><b id="criticalCount">0</b><span>Immediate review</span></article>
+            <article><small>HIGH</small><b id="highCount">0</b><span>Likely disclosure</span></article>
+            <article><small>POLICIES</small><b id="policyCount">0</b><span>Callable selectors</span></article>
+            <article class="delta"><small>HARDENING DEMO</small><b id="deltaValue">+0 points</b><span id="deltaText">Vulnerable → Hardened</span></article>
+          </div>
+          <div class="analysisGrid">
+            <section class="panel codePanel"><header><span class="dots">● ● ●</span><b id="activeFileName">Payroll.sol</b><small>SOLIDITY</small></header><div id="codeView" class="codeView"></div></section>
+            <section class="panel findingsPanel"><header><div><small>DETERMINISTIC ANALYSIS</small><b>Privacy leaks</b></div><span id="findingCount">0</span></header><div id="findingList" class="findingList"></div></section>
+          </div>
+        </section>
+
+        <section id="policiesTab" class="tabPane"><div class="panel policyPanel"><header><div><small>APS-ALIGNED RECOMMENDATIONS</small><b>Function exposure map</b></div><span>PRE-APS</span></header><div id="policyGrid" class="policyGrid"></div></div></section>
+
+        <section id="proofTab" class="tabPane"><div class="panel proofPanel"><header><div><small>VERIFIABLE BUILD ARTIFACT</small><b>Anchor a report proof on Arc</b></div><span>ARC TESTNET</span></header><div class="proofGrid"><div class="proofForm"><label>Project name<input id="projectName" value="veilforge-payroll-demo" /></label><label>Optional report URI<input id="reportUri" placeholder="ipfs://… or https://…" /></label><article><small>SOURCE HASH</small><code id="sourceHash">—</code></article><article><small>REPORT HASH</small><code id="reportHash">—</code></article><button id="publishBtn" class="primary" disabled>Registry deployment required</button><p>This standalone showcase prepares the payload. The monorepo includes the Arc Testnet registry contract and wallet integration.</p></div><div class="proofPreview"><div class="seal">◇</div><small>ONCHAIN PROOF PAYLOAD</small><h3 id="proofProject">veilforge-payroll-demo</h3><dl><div><dt>Readiness</dt><dd id="proofScore">—</dd></div><div><dt>Scanner</dt><dd>VeilForge v0.1.0</dd></div><div><dt>Findings</dt><dd id="proofFindings">—</dd></div><div><dt>Stored</dt><dd>Hashes + metadata only</dd></div></dl></div></div></div></section>
+      </div>
+      <p class="disclaimer">Pre-APS readiness analysis based on Arc's published design. Independent community tool; not an official Circle product or formal audit.</p>
+    </section>
+  </main>
+  <footer><div class="brand"><span class="logo">◈</span><span><b>VeilForge</b><small>PRE-APS TOOLKIT</small></span></div><p>Prepare today for private Solidity tomorrow.</p><span>Arc Testnet · Chain 5042002</span></footer>
+  <script src="./app.js"></script>
+</body>
+</html>
