@@ -4,6 +4,17 @@
 
 
 
+
+## Arc Testnet Deployment
+
+**Registry Contract:**  
+[`0xf8b1D03931f2c11B642259d9aB19cfA3351C0Bbc`](https://testnet.arcscan.app/address/0xf8b1D03931f2c11B642259d9aB19cfA3351C0Bbc)
+
+
+
+
+
+
 <p align="center">
   <img src="assets/social-preview.png" alt="VeilForge — pre-APS privacy readiness for Solidity" width="100%" />
 </p>
