@@ -21,6 +21,13 @@
 
 
 
+**Live App Transaction:**  
+[View live app publication on ArcScan](https://testnet.arcscan.app/tx/0xa3585453549b60d71819df0e4c32d341687e7cf50836cce26e7add7830f5e1a1)
+
+
+
+
+
 
 <p align="center">
   <img src="assets/social-preview.png" alt="VeilForge — pre-APS privacy readiness for Solidity" width="100%" />
