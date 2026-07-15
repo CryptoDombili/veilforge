@@ -28,6 +28,14 @@
 
 
 
+## Demo Video
+
+[Watch the VeilForge demo](https://youtu.be/URAFCuYUQy0)
+
+
+
+
+
 
 <p align="center">
   <img src="assets/social-preview.png" alt="VeilForge — pre-APS privacy readiness for Solidity" width="100%" />
