@@ -14,6 +14,13 @@
 
 
 
+**First On-chain Report:**  
+[View transaction on ArcScan](https://testnet.arcscan.app/tx/0x3270d43b814d4083aee3f97377495ff2866d58a43b792d41c5b04beb8d693d4d)
+
+
+
+
+
 
 <p align="center">
   <img src="assets/social-preview.png" alt="VeilForge — pre-APS privacy readiness for Solidity" width="100%" />
