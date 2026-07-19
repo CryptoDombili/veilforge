@@ -221,7 +221,14 @@ export function App(): React.JSX.Element {
                   <ScoreRing score={report.score} grade={report.grade} />
                   <div className="metric"><span>Critical</span><strong>{report.summary.critical}</strong><small>Immediate review</small></div>
                   <div className="metric"><span>High</span><strong>{report.summary.high}</strong><small>Likely disclosure</small></div>
-                  <div className="metric"><span>Sensitive selectors</span><strong>{report.exposure.sensitiveSelectors}</strong><small>{report.exposure.restrictedSelectors} restricted · {report.exposure.lockedSelectors} locked</small></div>
+                  <div className="metric">
+  <span>Sensitive selectors</span>
+  <strong>{report.exposure.sensitiveSelectors}</strong>
+  <small>
+    {report.exposure.restrictedSelectors} restricted selectors ·{" "}
+    {report.exposure.lockedSelectors} locked selectors
+  </small>
+</div>
                   <div className="improvement-card">
                     <span>HARDENING DEMO</span>
                     <strong>+{scoreDelta} points</strong>
