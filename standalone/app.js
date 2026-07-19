@@ -527,6 +527,7 @@ function scanFile(file) {
   });
 
   functions.forEach((fn)=>{
+    if (fn.generatedGetter) return;
     if (!['public','external'].includes(fn.visibility)) return;
     const context=`${fn.name} ${fn.params} ${fn.source}`;
     if (['view','pure'].includes(fn.mutability) && hasSensitive(context) && !hasGuard(fn.source) && !(/msg\.sender/.test(fn.source) && /(?:my|self)/i.test(fn.name))) addFinding(findings,'VF004','Sensitive read has no visible authorization','A publicly callable read appears to disclose sensitive information.','high',file.path,fn.startLine,lines[fn.startLine-1],'Add explicit authorization and recommend Restricted.');
