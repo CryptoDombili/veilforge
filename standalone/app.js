@@ -230,6 +230,9 @@ const ARC_CHAIN_HEX = '0x4cef52';
 const ARC_RPC_URL = 'https://rpc.drpc.testnet.arc.network';
 const ARC_EXPLORER = 'https://testnet.arcscan.app';
 const REGISTRY_ADDRESS = '0xf8b1D03931f2c11B642259d9aB19cfA3351C0Bbc';
+const WALLET_SESSION_KEY = 'veilforge-wallet-disconnected';
+let headerWalletAddress = '';
+
 const REGISTRY_ABI = [
   'function publishReport(bytes32 projectId, bytes32 sourceHash, bytes32 reportHash, uint16 score, string scannerVersion, string reportURI) external returns (bytes32 reportId)'
 ];
@@ -270,18 +273,60 @@ function setHeaderWallet(address='', connected=false){
   const button=$('headerWalletBtn');
   const label=$('headerWalletLabel');
   if(!button || !label) return;
+  headerWalletAddress=connected ? address : '';
   button.classList.toggle('connected',connected);
+  button.setAttribute('aria-expanded','false');
   label.textContent=connected ? shortAddress(address) : 'Connect wallet';
-  button.title=connected ? `Connected to Arc Testnet as ${address}` : 'Connect a browser wallet';
+  button.title=connected ? `Connected to Arc Testnet as ${address}. Click to manage.` : 'Connect a browser wallet';
+  const menuAddress=$('walletMenuAddress');
+  const explorer=$('walletViewExplorer');
+  if(menuAddress) menuAddress.textContent=connected ? address : '—';
+  if(explorer) explorer.href=connected ? `${ARC_EXPLORER}/address/${address}` : '#';
+}
+
+function openWalletMenu(){
+  if(!headerWalletAddress) return;
+  const menu=$('walletMenu');
+  const backdrop=$('walletMenuBackdrop');
+  if(!menu || !backdrop) return;
+  menu.hidden=false; backdrop.hidden=false;
+  menu.setAttribute('aria-hidden','false');
+  $('headerWalletBtn')?.setAttribute('aria-expanded','true');
+  requestAnimationFrame(()=>{menu.classList.add('open');backdrop.classList.add('open')});
+}
+function closeWalletMenu(){
+  const menu=$('walletMenu');
+  const backdrop=$('walletMenuBackdrop');
+  if(!menu || !backdrop) return;
+  menu.classList.remove('open');backdrop.classList.remove('open');
+  menu.setAttribute('aria-hidden','true');
+  $('headerWalletBtn')?.setAttribute('aria-expanded','false');
+  setTimeout(()=>{menu.hidden=true;backdrop.hidden=true},160);
+}
+function disconnectHeaderWallet(){
+  localStorage.setItem(WALLET_SESSION_KEY,'1');
+  setHeaderWallet('',false);
+  closeWalletMenu();
+  setPublishState('Wallet disconnected from VeilForge. Reconnect when you are ready to publish.','');
+  const publish=$('publishBtn');
+  if(publish) publish.textContent='Connect wallet & publish on Arc';
+}
+async function copyWalletAddress(){
+  if(!headerWalletAddress) return;
+  try{await navigator.clipboard.writeText(headerWalletAddress);
+    const button=$('walletCopyAddress'); if(button){const old=button.textContent;button.textContent='Copied';setTimeout(()=>button.textContent=old,1200)}
+  }catch{}
 }
 
 async function connectHeaderWallet(){
+  if(headerWalletAddress){openWalletMenu();return;}
   const button=$('headerWalletBtn');
   try{
     if(button) button.disabled=true;
     await ensureArcNetwork();
     const accounts=await window.ethereum.request({method:'eth_requestAccounts'});
     const address=accounts?.[0]||'';
+    if(address) localStorage.removeItem(WALLET_SESSION_KEY);
     setHeaderWallet(address,Boolean(address));
     setPublishState(address ? `Wallet connected: ${escapeHtml(shortAddress(address))} on Arc Testnet.` : 'Wallet connection was not completed.',address?'success':'');
   }catch(error){
@@ -294,7 +339,7 @@ async function connectHeaderWallet(){
 }
 
 async function hydrateWalletState(){
-  if(!window.ethereum) return;
+  if(!window.ethereum || localStorage.getItem(WALLET_SESSION_KEY)==='1'){setHeaderWallet('',false);return;}
   try{
     const accounts=await window.ethereum.request({method:'eth_accounts'});
     setHeaderWallet(accounts?.[0]||'',Boolean(accounts?.[0]));
@@ -313,6 +358,7 @@ async function publishCurrentReport(){
     if(Number(network.chainId)!==ARC_CHAIN_ID) throw new Error('Please switch your wallet to Arc Network Testnet.');
     const signer=await provider.getSigner();
     const signerAddress=await signer.getAddress();
+    localStorage.removeItem(WALLET_SESSION_KEY);
     setHeaderWallet(signerAddress,true);
     const contract=new ethers.Contract(REGISTRY_ADDRESS,REGISTRY_ABI,signer);
     const projectName=($('projectName').value||'untitled-project').trim();
@@ -750,8 +796,16 @@ function wire(){
   $('packBtn').onclick=()=>downloadRemediationPack(report);
   $('publishBtn').onclick=publishCurrentReport;
   if($('headerWalletBtn')) $('headerWalletBtn').onclick=connectHeaderWallet;
+  if($('walletMenuClose')) $('walletMenuClose').onclick=closeWalletMenu;
+  if($('walletMenuBackdrop')) $('walletMenuBackdrop').onclick=closeWalletMenu;
+  if($('walletDisconnect')) $('walletDisconnect').onclick=disconnectHeaderWallet;
+  if($('walletCopyAddress')) $('walletCopyAddress').onclick=copyWalletAddress;
+  document.addEventListener('keydown',event=>{if(event.key==='Escape') closeWalletMenu()});
   if(window.ethereum){
-    window.ethereum.on?.('accountsChanged',(accounts)=>setHeaderWallet(accounts?.[0]||'',Boolean(accounts?.[0])));
+    window.ethereum.on?.('accountsChanged',(accounts)=>{
+      if(!accounts?.length){localStorage.setItem(WALLET_SESSION_KEY,'1');setHeaderWallet('',false);closeWalletMenu();return;}
+      if(localStorage.getItem(WALLET_SESSION_KEY)!=='1') setHeaderWallet(accounts[0],true);
+    });
     window.ethereum.on?.('chainChanged',()=>hydrateWalletState());
   }
 }
