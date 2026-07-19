@@ -220,6 +220,8 @@ contract PayrollPrivateReady {
 let files = [{ path: 'Payroll.sol', content: vulnerableSource }];
 let report = null;
 let activeFile = 'Payroll.sol';
+let baselineReports = { vulnerable: null, hardened: null };
+let findingFilters = { severity: 'all', policy: 'all', query: '' };
 
 const $ = (id) => document.getElementById(id);
 
@@ -387,7 +389,24 @@ async function scanAll(){
 
 function severityAtLine(line,findings){const items=findings.filter(f=>line>=f.startLine&&line<=f.endLine);return items.some(f=>f.severity==='critical')?'critical':items.some(f=>f.severity==='high')?'high':items.length?'medium':''}
 function renderCode(){const file=files.find(f=>f.path===activeFile)||files[0];if(!file)return; $('activeFileName').textContent=file.path; const relevant=report.findings.filter(f=>f.file===file.path); $('codeView').innerHTML=file.content.replace(/\r\n?/g,'\n').split('\n').map((line,i)=>{const n=i+1;const count=relevant.filter(f=>n>=f.startLine&&n<=f.endLine).length;return `<div class="codeLine ${severityAtLine(n,relevant)}"><span class="lineNo">${n}</span><code>${escapeHtml(line)||' '}</code>${count?`<span class="marker">${count}</span>`:''}</div>`}).join('')}
-function renderFindings(){const list=$('findingList');$('findingCount').textContent=report.findings.length; if(!report.findings.length){list.innerHTML='<div style="height:100%;display:grid;place-content:center;text-align:center;color:#75f7c8"><b>No current rule matched</b><small style="color:#738095;margin-top:6px">Continue manual review.</small></div>';return} list.innerHTML=report.findings.map(f=>`<article class="finding ${f.severity}" data-file="${escapeHtml(f.file)}" data-line="${f.startLine}"><span class="findingIcon">!</span><div><div class="findingMeta"><b>${f.ruleId}</b><em>${f.severity}</em><small>${escapeHtml(f.file)}:${f.startLine}</small></div><h3>${escapeHtml(f.title)}</h3><p>${escapeHtml(f.description)}</p></div></article>`).join(''); list.querySelectorAll('.finding').forEach(el=>el.addEventListener('click',()=>{activeFile=el.dataset.file;$('fileSelect').value=activeFile;renderCode();const line=$('codeView').children[Number(el.dataset.line)-1];if(line)line.scrollIntoView({behavior:'smooth',block:'center'})}))}
+function getFilteredFindings(){
+  const query=findingFilters.query.trim().toLowerCase();
+  return report.findings.filter(f=>{
+    const severityMatch=findingFilters.severity==='all'||f.severity===findingFilters.severity;
+    const policyMatch=findingFilters.policy==='all'||f.suggestedPolicy===findingFilters.policy;
+    const haystack=`${f.ruleId} ${f.title} ${f.description} ${f.file} ${f.category} ${f.suggestedPolicy}`.toLowerCase();
+    return severityMatch&&policyMatch&&(!query||haystack.includes(query));
+  });
+}
+function renderFindings(){
+  const list=$('findingList');
+  const filtered=getFilteredFindings();
+  $('findingCount').textContent=filtered.length===report.findings.length?report.findings.length:`${filtered.length}/${report.findings.length}`;
+  if(!report.findings.length){list.innerHTML='<div class="finding-empty"><b>No current rule matched</b><small>Continue manual review.</small></div>';return}
+  if(!filtered.length){list.innerHTML='<div class="finding-empty"><b>No findings match these filters</b><small>Clear the search or select another severity.</small></div>';return}
+  list.innerHTML=filtered.map(f=>`<article class="finding ${f.severity}" data-file="${escapeHtml(f.file)}" data-line="${f.startLine}"><span class="findingIcon">!</span><div><div class="findingMeta"><b>${f.ruleId}</b><em>${f.severity}</em><small>${escapeHtml(f.file)}:${f.startLine}</small></div><h3>${escapeHtml(f.title)}</h3><p>${escapeHtml(f.description)}</p><span class="finding-policy policy-${f.suggestedPolicy.toLowerCase()}">${f.suggestedPolicy}</span></div></article>`).join('');
+  list.querySelectorAll('.finding').forEach(el=>el.addEventListener('click',()=>{activeFile=el.dataset.file;$('fileSelect').value=activeFile;renderCode();const line=$('codeView').children[Number(el.dataset.line)-1];if(line)line.scrollIntoView({behavior:'smooth',block:'center'})}));
+}
 
 let selectedRemediationKey = null;
 
@@ -530,9 +549,44 @@ function downloadBlob(content,type,filename){
   URL.revokeObjectURL(url);
 }
 
+
+function topFinding(){
+  const ranks={critical:0,high:1,medium:2,low:3};
+  return [...report.findings].sort((a,b)=>ranks[a.severity]-ranks[b.severity]||a.startLine-b.startLine)[0]||null;
+}
+function renderExecutiveSummary(){
+  const root=$('executiveSummary');
+  if(!root||!report)return;
+  const top=topFinding();
+  const locked=report.policies.filter(p=>p.policy==='Locked').length;
+  const restricted=report.policies.filter(p=>p.policy==='Restricted').length;
+  const ranks={critical:0,high:1,medium:2,low:3};
+  const actions=[...report.findings].sort((a,b)=>ranks[a.severity]-ranks[b.severity]).slice(0,3);
+  const exposure=report.score>=90?'Low':report.score>=75?'Moderate':report.score>=55?'High':'Critical';
+  root.innerHTML=`<div class="executive-main"><div><span class="executive-kicker">EXECUTIVE SCAN SUMMARY</span><h3>${report.score}/100 · ${exposure} exposure</h3><p>${report.findings.length} deterministic findings across ${report.policies.length} callable selectors. ${top?`Top risk: <strong>${escapeHtml(top.title)}</strong>.`:'No deterministic privacy risk matched.'}</p></div><div class="executive-badge grade-${report.grade.toLowerCase()}"><small>GRADE</small><b>${report.grade}</b></div></div><div class="executive-stats"><span><b>${report.summary.critical}</b> Critical</span><span><b>${report.summary.high}</b> High</span><span><b>${locked}</b> Locked</span><span><b>${restricted}</b> Restricted</span></div><div class="top-actions"><small>TOP ACTIONS BEFORE DEPLOYMENT</small>${actions.length?actions.map((f,i)=>`<button type="button" data-key="${escapeHtml(f.key)}"><i>${i+1}</i><span><b>${escapeHtml(f.title)}</b><em>${escapeHtml(f.remediation)}</em></span><strong>${f.suggestedPolicy}</strong></button>`).join(''):'<p>No deterministic action required. Continue manual review.</p>'}</div>`;
+  root.querySelectorAll('.top-actions button').forEach(button=>button.addEventListener('click',()=>{selectedRemediationKey=button.dataset.key;document.querySelector('[data-tab="remediation"]').click();renderRemediation();}));
+}
+function renderComparison(){
+  const root=$('comparisonContent');
+  const before=baselineReports.vulnerable, after=baselineReports.hardened;
+  if(!root||!before||!after)return;
+  const policyCounts=r=>({open:r.policies.filter(p=>p.policy==='Open').length,restricted:r.policies.filter(p=>p.policy==='Restricted').length,locked:r.policies.filter(p=>p.policy==='Locked').length});
+  const bp=policyCounts(before), ap=policyCounts(after);
+  const resolved=Math.max(0,before.findings.length-after.findings.length);
+  root.innerHTML=`<section class="compare-hero"><div><small>HARDENING IMPACT</small><h3>See exactly what remediation changes.</h3><p>The same payroll workflow, measured before and after privacy hardening.</p></div><div class="compare-gain"><span>READINESS GAIN</span><b>+${after.score-before.score}</b><small>points</small></div></section><section class="compare-grid"><article class="compare-card before"><header><span>BEFORE</span><b>Vulnerable Payroll</b></header><div class="compare-score"><strong>${before.score}</strong><small>/100 · Grade ${before.grade}</small></div><dl><div><dt>Findings</dt><dd>${before.findings.length}</dd></div><div><dt>Critical</dt><dd>${before.summary.critical}</dd></div><div><dt>High</dt><dd>${before.summary.high}</dd></div><div><dt>Restricted</dt><dd>${bp.restricted}</dd></div><div><dt>Locked</dt><dd>${bp.locked}</dd></div></dl></article><div class="compare-flow"><span>→</span><b>${resolved} risks resolved</b><small>Deterministic before / after delta</small></div><article class="compare-card after"><header><span>AFTER</span><b>Hardened Payroll</b></header><div class="compare-score"><strong>${after.score}</strong><small>/100 · Grade ${after.grade}</small></div><dl><div><dt>Findings</dt><dd>${after.findings.length}</dd></div><div><dt>Critical</dt><dd>${after.summary.critical}</dd></div><div><dt>High</dt><dd>${after.summary.high}</dd></div><div><dt>Restricted</dt><dd>${ap.restricted}</dd></div><div><dt>Locked</dt><dd>${ap.locked}</dd></div></dl></article></section><section class="compare-outcomes"><article><span>01</span><div><b>Public indexed records removed</b><p>Automatic getters no longer expose payroll and identity-linked storage.</p></div></article><article><span>02</span><div><b>Authorization boundaries added</b><p>Sensitive reads and writes move behind explicit caller controls.</p></div></article><article><span>03</span><div><b>Raw disclosures replaced</b><p>Events and cross-contract payloads use minimal or committed data.</p></div></article></section>`;
+}
+
 function renderPolicies(){const groups=['Open','Restricted','Locked'];$('policyGrid').innerHTML=groups.map(policy=>{const items=report.policies.filter(p=>p.policy===policy);return `<section class="policyCol"><header><div><strong>${policy}</strong><small>${policy==='Open'?'Broadly callable selector':policy==='Restricted'?'Explicit grant required':'Selector unavailable'}</small></div><span>${items.length}</span></header><div class="policyItems">${items.length?items.map(p=>`<article><code>${escapeHtml(p.signature)}</code><p>${escapeHtml(p.reason)}</p><small>${escapeHtml(p.file)} · line ${p.startLine}</small></article>`).join(''):'<p style="text-align:center;color:#596477;font-size:9px">No selectors</p>'}</div></section>`}).join('')}
 function renderMetrics(){const score=report.score;$('scoreValue').textContent=score;$('gradeValue').textContent=report.grade;$('readinessLabel').textContent=score>=90?'Ready':score>=75?'Review':score>=55?'Exposed':'Critical';$('scoreRing').style.setProperty('--score',`${score*3.6}deg`);$('criticalCount').textContent=report.summary.critical;$('highCount').textContent=report.summary.high;$('policyCount').textContent=report.policies.length;$('sourceHash').textContent=report.sourceHash;$('reportHash').textContent=report.reportHash;$('proofScore').textContent=`${report.score}/100 · Grade ${report.grade}`;$('proofFindings').textContent=`${report.findings.length} deterministic checks`}
-async function refresh(){report=await scanAll();renderMetrics();renderCode();renderFindings();renderRemediation();renderPolicies();const vuln=await (async()=>{const old=files;files=[{path:'Payroll.sol',content:vulnerableSource}];const x=await scanAll();files=old;return x})();const hard=await (async()=>{const old=files;files=[{path:'PayrollPrivateReady.sol',content:hardenedSource}];const x=await scanAll();files=old;return x})();$('deltaValue').textContent=`+${hard.score-vuln.score} points`;$('deltaText').textContent=`Vulnerable ${vuln.score} → Hardened ${hard.score}`}
+async function refresh(){
+  report=await scanAll();
+  const vuln=await (async()=>{const old=files;files=[{path:'Payroll.sol',content:vulnerableSource}];const x=await scanAll();files=old;return x})();
+  const hard=await (async()=>{const old=files;files=[{path:'PayrollPrivateReady.sol',content:hardenedSource}];const x=await scanAll();files=old;return x})();
+  baselineReports={vulnerable:vuln,hardened:hard};
+  renderMetrics();renderExecutiveSummary();renderCode();renderFindings();renderRemediation();renderComparison();renderPolicies();
+  $('deltaValue').textContent=`+${hard.score-vuln.score} points`;
+  $('deltaText').textContent=`Vulnerable ${vuln.score} → Hardened ${hard.score}`;
+}
 function setFiles(next,mode){files=next;activeFile=files[0].path;document.querySelectorAll('.modes button').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));const custom=document.querySelector('[data-mode="custom"]');custom.hidden=mode!=='custom';$('fileSelect').innerHTML=files.map(f=>`<option value="${escapeHtml(f.path)}">${escapeHtml(f.path)}</option>`).join('');$('projectName').value=mode==='hardened'?'veilforge-payroll-hardened':mode==='custom'?files[0].path.replace(/\.sol$/i,'').toLowerCase():'veilforge-payroll-demo';$('proofProject').textContent=$('projectName').value;refresh()}
 
 function wire(){
@@ -542,6 +596,9 @@ function wire(){
   document.querySelectorAll('.modes button').forEach(button=>button.addEventListener('click',()=>{if(button.dataset.mode==='vulnerable')setFiles([{path:'Payroll.sol',content:vulnerableSource}],'vulnerable');if(button.dataset.mode==='hardened')setFiles([{path:'PayrollPrivateReady.sol',content:hardenedSource}],'hardened')}));
   document.querySelectorAll('.tabs button').forEach(button=>button.addEventListener('click',()=>{document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('active'));button.classList.add('active');document.querySelectorAll('.tabPane').forEach(p=>p.classList.remove('active'));$(`${button.dataset.tab}Tab`).classList.add('active')}));
   $('fileSelect').onchange=e=>{activeFile=e.target.value;renderCode()};
+  $('findingSearch').oninput=e=>{findingFilters.query=e.target.value;renderFindings()};
+  $('policyFilter').onchange=e=>{findingFilters.policy=e.target.value;renderFindings()};
+  document.querySelectorAll('.severity-filters button').forEach(button=>button.addEventListener('click',()=>{document.querySelectorAll('.severity-filters button').forEach(b=>b.classList.remove('active'));button.classList.add('active');findingFilters.severity=button.dataset.severity;renderFindings()}));
   $('projectName').oninput=e=>$('proofProject').textContent=e.target.value||'Untitled project';
   $('exportBtn').onclick=()=>downloadBlob(JSON.stringify(report,null,2),'application/json',`veilforge-report-${report.reportHash.slice(2,10)}.json`);
   $('markdownBtn').onclick=()=>downloadBlob(reportToMarkdown(report),'text/markdown',`veilforge-report-${report.reportHash.slice(2,10)}.md`);

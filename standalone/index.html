@@ -42,9 +42,10 @@
 
     <section class="scanner" id="scanner">
       <header class="sectionHead"><div><small>LIVE LOCAL WORKSPACE</small><h2>Privacy readiness, from source to proof.</h2></div><div class="modes"><button data-mode="vulnerable" class="active">Vulnerable</button><button data-mode="hardened">Hardened</button><button data-mode="custom" hidden>Custom</button></div></header>
-      <div class="toolbar"><div class="tabs"><button data-tab="analysis" class="active">⌕ Analysis</button><button data-tab="remediation">⚡ Remediation</button><button data-tab="policies">⌘ Exposure map</button><button data-tab="proof">◇ Arc proof</button></div><div class="tools"><select id="fileSelect"></select><button id="markdownBtn">⇩ Markdown</button><button id="exportBtn">⇩ JSON</button><button id="uploadBtn">⇧ Upload</button><input id="fileInput" type="file" accept=".sol" multiple hidden /></div></div>
+      <div class="toolbar"><div class="tabs"><button data-tab="analysis" class="active">⌕ Analysis</button><button data-tab="remediation">⚡ Remediation</button><button data-tab="compare">⇄ Before / After</button><button data-tab="policies">⌘ Exposure map</button><button data-tab="proof">◇ Arc proof</button></div><div class="tools"><select id="fileSelect"></select><button id="markdownBtn">⇩ Markdown</button><button id="exportBtn">⇩ JSON</button><button id="uploadBtn">⇧ Upload</button><input id="fileInput" type="file" accept=".sol" multiple hidden /></div></div>
       <div class="workspace">
         <section id="analysisTab" class="tabPane active">
+          <section id="executiveSummary" class="executive-summary"></section>
           <div class="metrics">
             <article class="scoreCard"><div id="scoreRing" class="scoreRing"><span><b id="scoreValue">0</b><small>/100</small></span></div><div><strong id="gradeValue">F</strong><b id="readinessLabel">Critical</b><small>Privacy readiness</small></div></article>
             <article><small>CRITICAL</small><b id="criticalCount">0</b><span>Immediate review</span></article>
@@ -54,7 +55,18 @@
           </div>
           <div class="analysisGrid">
             <section class="panel codePanel"><header><span class="dots">● ● ●</span><b id="activeFileName">Payroll.sol</b><small>SOLIDITY</small></header><div id="codeView" class="codeView"></div></section>
-            <section class="panel findingsPanel"><header><div><small>DETERMINISTIC ANALYSIS</small><b>Privacy leaks</b></div><span id="findingCount">0</span></header><div id="findingList" class="findingList"></div></section>
+            <section class="panel findingsPanel"><header><div><small>DETERMINISTIC ANALYSIS</small><b>Privacy leaks</b></div><span id="findingCount">0</span></header>
+              <div class="finding-controls">
+                <label class="finding-search"><span>⌕</span><input id="findingSearch" type="search" placeholder="Search rule, risk or file…" /></label>
+                <div class="severity-filters" aria-label="Finding severity filters">
+                  <button type="button" data-severity="all" class="active">All</button>
+                  <button type="button" data-severity="critical">Critical</button>
+                  <button type="button" data-severity="high">High</button>
+                  <button type="button" data-severity="medium">Medium</button>
+                </div>
+                <select id="policyFilter" aria-label="Policy filter"><option value="all">All policies</option><option value="Locked">Locked only</option><option value="Restricted">Restricted only</option><option value="Open">Open only</option></select>
+              </div>
+              <div id="findingList" class="findingList"></div></section>
           </div>
         </section>
 
@@ -67,6 +79,10 @@
             </header>
             <div id="remediationContent"></div>
           </div>
+        </section>
+
+        <section id="compareTab" class="tabPane">
+          <div id="comparisonContent" class="comparison-content"></div>
         </section>
 
         <section id="policiesTab" class="tabPane"><div class="panel policyPanel"><header><div><small>APS-ALIGNED RECOMMENDATIONS</small><b>Function exposure map</b></div><span>PRE-APS</span></header><div id="policyGrid" class="policyGrid"></div></div></section>
