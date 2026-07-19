@@ -261,6 +261,46 @@ async function ensureArcNetwork(){
   }
 }
 
+
+function shortAddress(address){
+  return address ? `${address.slice(0,6)}…${address.slice(-4)}` : 'Connect wallet';
+}
+
+function setHeaderWallet(address='', connected=false){
+  const button=$('headerWalletBtn');
+  const label=$('headerWalletLabel');
+  if(!button || !label) return;
+  button.classList.toggle('connected',connected);
+  label.textContent=connected ? shortAddress(address) : 'Connect wallet';
+  button.title=connected ? `Connected to Arc Testnet as ${address}` : 'Connect a browser wallet';
+}
+
+async function connectHeaderWallet(){
+  const button=$('headerWalletBtn');
+  try{
+    if(button) button.disabled=true;
+    await ensureArcNetwork();
+    const accounts=await window.ethereum.request({method:'eth_requestAccounts'});
+    const address=accounts?.[0]||'';
+    setHeaderWallet(address,Boolean(address));
+    setPublishState(address ? `Wallet connected: ${escapeHtml(shortAddress(address))} on Arc Testnet.` : 'Wallet connection was not completed.',address?'success':'');
+  }catch(error){
+    const message=error?.shortMessage||error?.reason||error?.message||'Wallet connection failed.';
+    setHeaderWallet('',false);
+    setPublishState(`Could not connect wallet: ${escapeHtml(message)}`,'error');
+  }finally{
+    if(button) button.disabled=false;
+  }
+}
+
+async function hydrateWalletState(){
+  if(!window.ethereum) return;
+  try{
+    const accounts=await window.ethereum.request({method:'eth_accounts'});
+    setHeaderWallet(accounts?.[0]||'',Boolean(accounts?.[0]));
+  }catch{}
+}
+
 async function publishCurrentReport(){
   if(!report) return;
   try{
@@ -272,6 +312,8 @@ async function publishCurrentReport(){
     const network=await provider.getNetwork();
     if(Number(network.chainId)!==ARC_CHAIN_ID) throw new Error('Please switch your wallet to Arc Network Testnet.');
     const signer=await provider.getSigner();
+    const signerAddress=await signer.getAddress();
+    setHeaderWallet(signerAddress,true);
     const contract=new ethers.Contract(REGISTRY_ADDRESS,REGISTRY_ABI,signer);
     const projectName=($('projectName').value||'untitled-project').trim();
     const projectId=ethers.keccak256(ethers.toUtf8Bytes(projectName));
@@ -707,6 +749,11 @@ function wire(){
   $('policyBtn').onclick=()=>downloadBlob(JSON.stringify(buildPolicyManifest(report),null,2),'application/json',`veilforge-policy-${report.reportHash.slice(2,10)}.json`);
   $('packBtn').onclick=()=>downloadRemediationPack(report);
   $('publishBtn').onclick=publishCurrentReport;
+  if($('headerWalletBtn')) $('headerWalletBtn').onclick=connectHeaderWallet;
+  if(window.ethereum){
+    window.ethereum.on?.('accountsChanged',(accounts)=>setHeaderWallet(accounts?.[0]||'',Boolean(accounts?.[0])));
+    window.ethereum.on?.('chainChanged',()=>hydrateWalletState());
+  }
 }
 
 async function scanStandalone(inputFiles){
@@ -718,6 +765,7 @@ async function scanStandalone(inputFiles){
 
 if (typeof document !== 'undefined') {
   wire();
+  hydrateWalletState();
   setFiles([{path:'Payroll.sol',content:vulnerableSource}],'vulnerable');
 }
 

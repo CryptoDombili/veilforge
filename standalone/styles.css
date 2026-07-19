@@ -119,3 +119,26 @@
 .copy-mini{border:1px solid #253044;background:#101722;color:#92a0b7;border-radius:8px;padding:6px 9px;font-size:8px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
 .copy-mini:hover{border-color:#4b6a78;color:#dffcf2;background:#132127}
 @media(max-width:900px){.tools{flex-wrap:wrap}.tools button,.tools select{flex:1 1 auto}.section-heading-row{align-items:flex-start}.copy-mini{white-space:nowrap}}
+
+
+/* v1.1 usability and typography polish */
+.navActions{display:flex;align-items:center;gap:9px}
+.walletBtn{min-height:39px;display:inline-flex;align-items:center;gap:8px;padding:9px 13px;border:1px solid rgba(117,247,200,.24);border-radius:10px;background:rgba(117,247,200,.055);color:#bfffe8;font-size:13px;font-weight:750;cursor:pointer;transition:.18s ease;white-space:nowrap}
+.walletBtn:hover{transform:translateY(-1px);border-color:rgba(117,247,200,.46);background:rgba(117,247,200,.09);box-shadow:0 8px 25px rgba(80,235,184,.08)}
+.walletBtn:disabled{opacity:.58;cursor:wait;transform:none}
+.walletBtn.connected{border-color:rgba(117,247,200,.42);background:rgba(117,247,200,.1);color:#e4fff5}
+.walletDot{width:7px;height:7px;border-radius:50%;background:#7b8799;box-shadow:0 0 0 3px rgba(123,135,153,.09)}
+.walletBtn.connected .walletDot{background:var(--mint);box-shadow:0 0 12px rgba(117,247,200,.65)}
+.brand{gap:12px}.logo{width:43px;height:43px;border-radius:13px;font-size:19px}.brand b{font-size:18px;letter-spacing:-.02em}.brand small{font-size:8.5px}
+.features b{font-size:14px}.features p{font-size:12px;line-height:1.62;color:#8995a8}
+.tabs button,.tools button{font-size:12px;padding:10px 13px}.tools select{font-size:12px;height:39px}
+.executive-kicker,.top-actions>small{font-size:9px}.executive-main p{font-size:12px;line-height:1.65}.executive-stats span{font-size:10.5px}.executive-stats b{font-size:15px}
+.top-actions span b{font-size:11px}.top-actions span em{font-size:10px;line-height:1.45}.top-actions button>strong{font-size:9px}
+.metrics article small{font-size:9px}.metrics article>span{font-size:9.5px;line-height:1.45}
+.finding-search input{font-size:10px}.severity-filters button,.finding-controls select{font-size:9px}.finding-policy{font-size:8.5px}
+.findingsPanel header small,.panel header small,.sectionHead small{font-size:10px}.findingCard b,.finding-card b{font-size:11px}.findingCard p,.finding-card p{font-size:10.5px;line-height:1.55}
+.fix-copy strong{font-size:10.5px}.fix-copy small{font-size:9px;line-height:1.45}.finding-kicker{font-size:9px}.remediation-heading p{font-size:11.5px}.policy-chip{font-size:9px}
+.remediation-meta-grid span{font-size:8px}.remediation-meta-grid strong{font-size:10.5px}.section-label{font-size:9px}.remediation-section p{font-size:11.5px}.remediation-section code{font-size:10px}.safer-pattern small{font-size:9.5px}
+.compare-hero p{font-size:11.5px}.compare-card dl div{font-size:10.5px}.compare-outcomes b{font-size:11px}.compare-outcomes p{font-size:10px}.copy-mini{font-size:9px}
+@media(max-width:860px){nav{height:auto;min-height:76px;padding:12px 0;gap:12px;flex-wrap:wrap}.navlinks{order:3;width:100%;justify-content:center;padding-top:10px;border-top:1px solid var(--line)}.navActions{margin-left:auto}.walletBtn,.ghost{font-size:12px}.toolbar{align-items:flex-start;gap:9px;flex-direction:column}.tabs,.tools{width:100%;overflow-x:auto;padding-bottom:2px}.tabs button,.tools button{white-space:nowrap}}
+@media(max-width:540px){.brand b{font-size:16px}.logo{width:40px;height:40px}.navActions{gap:6px}.ghost{display:none}.walletBtn{padding:9px 10px}.features p{font-size:11.5px}.executive-main p{font-size:11px}}
