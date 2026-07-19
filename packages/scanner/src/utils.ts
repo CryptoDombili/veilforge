@@ -34,18 +34,26 @@ export function splitIdentifier(value: string): string[] {
 }
 
 export function hasAccessControl(source: string, modifiers: string[]): boolean {
-  const lowered = `${modifiers.join(' ')} ${source}`.toLowerCase();
+  const loweredSource = source.toLowerCase();
+  const normalizedModifiers = modifiers.map((modifier) => modifier.toLowerCase());
+  const guardedModifier = normalizedModifiers.some((modifier) =>
+    /^(only|requires?|when)/.test(modifier) ||
+    /(owner|admin|role|auth|guardian|operator|manager|approver|controller)/.test(modifier),
+  );
+
+  if (guardedModifier) return true;
+
   return [
-    'onlyowner',
-    'onlyrole',
-    'onlyadmin',
-    'requiresauth',
-    'whenallowed',
     'msg.sender == owner',
     'msg.sender==owner',
+    'msg.sender != owner',
+    'msg.sender!=owner',
     'hasrole(',
     '_checkrole(',
-  ].some((marker) => lowered.includes(marker));
+    '_authorize(',
+    'isauthorized(',
+    'authorized[msg.sender]',
+  ].some((marker) => loweredSource.includes(marker));
 }
 
 export function keccakHex(value: string): `0x${string}` {

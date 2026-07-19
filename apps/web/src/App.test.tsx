@@ -19,6 +19,16 @@ describe('VeilForge web app', () => {
     expect(screen.getByText(/HARDENING DEMO/i)).toBeInTheDocument();
   });
 
+
+  it('opens the v1.1 remediation intelligence workspace', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole('tab', { name: /Remediation/i }));
+    expect(screen.getByText('Privacy remediation lab')).toBeInTheDocument();
+    expect(screen.getByText(/Why it matters/i)).toBeInTheDocument();
+    expect(screen.getByText(/Safer Solidity pattern/i)).toBeInTheDocument();
+  });
+
   it('opens the exposure map tab', async () => {
     const user = userEvent.setup();
     render(<App />);

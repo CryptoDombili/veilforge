@@ -35,7 +35,7 @@ function registryAddress(): Address {
   if (!address || !/^0x[a-fA-F0-9]{40}$/.test(address)) {
     throw new Error('VITE_REGISTRY_ADDRESS is not configured with a deployed Arc Testnet registry.');
   }
-  return address;
+  return address as Address;
 }
 
 async function ensureArcNetwork(provider: EIP1193Provider): Promise<void> {

@@ -1,8 +1,9 @@
-import {
-  ADMIN_TERMS,
-} from './constants.js';
+import { ADMIN_TERMS } from './constants.js';
+import { playbookFor } from './playbook.js';
 import type {
+  AccessPolicy,
   Finding,
+  FindingCategory,
   ParsedFile,
   ParsedFunction,
   Severity,
@@ -28,13 +29,34 @@ interface FindingDraft {
   evidence: string;
   remediation: string;
   confidence: 'high' | 'medium' | 'low';
+  category?: FindingCategory;
+  impact?: string;
+  suggestedPolicy?: AccessPolicy;
+  saferPattern?: string;
 }
 
 function finding(draft: FindingDraft): Finding {
   const fingerprint = keccakHex(
     [draft.ruleId, draft.file, draft.startLine, compactWhitespace(draft.evidence)].join('|'),
   );
-  return { ...draft, fingerprint };
+  const playbook = playbookFor(draft.ruleId);
+  const {
+    category,
+    impact,
+    suggestedPolicy,
+    saferPattern,
+    ...base
+  } = draft;
+  const resolvedSaferPattern = saferPattern ?? playbook.saferPattern;
+
+  return {
+    ...base,
+    category: category ?? playbook.category,
+    impact: impact ?? playbook.impact,
+    suggestedPolicy: suggestedPolicy ?? playbook.suggestedPolicy,
+    ...(resolvedSaferPattern === undefined ? {} : { saferPattern: resolvedSaferPattern }),
+    fingerprint,
+  };
 }
 
 function linesOf(parsed: ParsedFile): string[] {
@@ -145,7 +167,7 @@ export function runRules(parsed: ParsedFile): Finding[] {
   for (const fn of parsed.functions) {
     if (!isPubliclyCallable(fn)) continue;
     const isRead = fn.stateMutability === 'view' || fn.stateMutability === 'pure';
-    const callerScoped = /msg\.sender/.test(fn.source) && /(my|self)/i.test(fn.functionName);
+    const callerScoped = /\bmsg\.sender\b/.test(fn.source) && /\b(my|self)\b/i.test(fn.functionName);
     if (
       !isRead ||
       !containsSensitiveTerm(sensitiveContext(fn)) ||
@@ -223,6 +245,7 @@ export function runRules(parsed: ParsedFile): Finding[] {
             ? 'Avoid delegatecall in privacy-sensitive paths or constrain the target to immutable, audited code with explicit trust assumptions.'
             : 'Use typed interfaces, validate target contracts, document trust domains and avoid passing secret-bearing calldata to public contracts.',
           confidence: 'high',
+          suggestedPolicy: dangerous ? 'Locked' : 'Restricted',
         });
       },
     ),

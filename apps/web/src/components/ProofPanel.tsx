@@ -1,7 +1,7 @@
 import type { ScanReport } from '@veilforge/scanner';
 import { ARC_TESTNET } from '@veilforge/shared';
 import { CheckCircle2, Copy, ExternalLink, Fingerprint, LoaderCircle, RadioTower, WalletCards } from 'lucide-react';
-import { useState } from 'react';
+import { type ChangeEvent, useState } from 'react';
 import { publishProof, type PublishResult } from '../lib/arc';
 
 interface ProofPanelProps {
@@ -57,11 +57,11 @@ export function ProofPanel({ report, projectName, onProjectNameChange }: ProofPa
         <div className="proof-form">
           <label>
             Project name
-            <input value={projectName} onChange={(event) => onProjectNameChange(event.target.value)} placeholder="veilforge-payroll-demo" />
+            <input value={projectName} onChange={(event: ChangeEvent<HTMLInputElement>) => onProjectNameChange(event.target.value)} placeholder="veilforge-payroll-demo" />
           </label>
           <label>
             Optional report URI
-            <input value={reportURI} onChange={(event) => setReportURI(event.target.value)} placeholder="ipfs://… or https://…" />
+            <input value={reportURI} onChange={(event: ChangeEvent<HTMLInputElement>) => setReportURI(event.target.value)} placeholder="ipfs://… or https://…" />
           </label>
           <div className="hash-card">
             <span><Fingerprint size={15} /> Source hash</span>

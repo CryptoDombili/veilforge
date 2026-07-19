@@ -1,6 +1,12 @@
 <!doctype html>
 <html lang="en">
 <head>
+
+<link rel="icon" type="image/png" href="./favicon.png">
+<link rel="apple-touch-icon" href="./favicon.png">
+
+
+  
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#07090f" />
@@ -9,16 +15,34 @@
 </head>
 <body>
   <div class="ambient a1"></div><div class="ambient a2"></div>
+  <div id="walletMenuBackdrop" class="walletMenuBackdrop" hidden></div>
+  <aside id="walletMenu" class="walletMenu" hidden aria-hidden="true" aria-labelledby="walletMenuTitle">
+    <div class="walletMenuHead">
+      <div><small>CONNECTED WALLET</small><b id="walletMenuTitle">Arc Testnet session</b></div>
+      <button id="walletMenuClose" class="walletMenuClose" type="button" aria-label="Close wallet menu">×</button>
+    </div>
+    <div class="walletIdentity">
+      <span class="walletIdentityDot"></span>
+      <div><b id="walletMenuAddress">—</b><small>Arc Network Testnet</small></div>
+    </div>
+    <div class="walletMenuActions">
+      <button id="walletCopyAddress" type="button">Copy address</button>
+      <a id="walletViewExplorer" href="#" target="_blank" rel="noopener noreferrer">View on ArcScan ↗</a>
+      <button id="walletDisconnect" class="danger" type="button">Disconnect wallet</button>
+    </div>
+    <p class="walletMenuNote">Disconnecting clears VeilForge's local wallet session. To revoke site permissions completely, remove VeilForge from MetaMask's connected sites.</p>
+  </aside>
+
   <nav>
-    <div class="brand"><span class="logo">◈</span><span><b>VeilForge</b><small>PRE-APS TOOLKIT</small></span></div>
-    <div class="navlinks"><a href="#scanner">Scanner</a><a href="#why">Architecture</a><a href="https://docs.arc.network/arc/concepts/opt-in-privacy" target="_blank">APS docs</a></div>
-    <a class="ghost" href="../README.md">Open source</a>
+    <div class="brand"><span class="logo">◈</span><span><b>VeilForge</b><small class="arcPowered">BUILT FOR ARC</small></span></div>
+    <div class="navlinks"><a href="#scanner">Scanner</a><a href="#why">Architecture</a><a href="https://docs.arc.network/arc/concepts/opt-in-privacy" target="_blank">Arc APS docs</a></div>
+    <div class="navActions"><a class="ghost" href="https://github.com/CryptoDombili/veilforge" target="_blank" rel="noopener noreferrer">Open source</a><button id="headerWalletBtn" class="walletBtn" type="button"><span class="walletDot"></span><span id="headerWalletLabel">Connect wallet</span></button></div>
   </nav>
 
   <main>
     <section class="hero">
       <div>
-        <p class="chip"><i></i> Built for Arc Privacy Sector before it goes live →</p>
+        <p class="chip"><i></i> VeilForge v1.1 · Remediation Intelligence →</p>
         <h1>Find what your Solidity contract will <em>leak</em> before privacy becomes production.</h1>
         <p class="lead">Deterministic privacy findings, APS-aligned exposure policies and a verifiable report fingerprint — all without sending source code to an AI API.</p>
         <div class="actions"><button id="heroDemo" class="primary">Scan the payroll demo</button><button id="heroUpload" class="secondary">Upload .sol files</button></div>
@@ -37,34 +61,62 @@
       <article><span>⌘</span><div><b>Deterministic scan</b><p>Explainable rules, exact lines and stable output.</p></div></article>
       <article><span>◉</span><div><b>APS exposure map</b><p>Open, Restricted or Locked for each selector.</p></div></article>
       <article><span>◎</span><div><b>Proof, not source</b><p>Anchor hashes and metadata, never confidential code.</p></div></article>
+      <article><span>⚡</span><div><b>Remediation intelligence</b><p>Impact, fix guidance and safer Solidity patterns for every finding.</p></div></article>
     </section>
 
     <section class="scanner" id="scanner">
       <header class="sectionHead"><div><small>LIVE LOCAL WORKSPACE</small><h2>Privacy readiness, from source to proof.</h2></div><div class="modes"><button data-mode="vulnerable" class="active">Vulnerable</button><button data-mode="hardened">Hardened</button><button data-mode="custom" hidden>Custom</button></div></header>
-      <div class="toolbar"><div class="tabs"><button data-tab="analysis" class="active">⌕ Analysis</button><button data-tab="policies">⌘ Exposure map</button><button data-tab="proof">◇ Arc proof</button></div><div class="tools"><select id="fileSelect"></select><button id="exportBtn">⇩ JSON</button><button id="uploadBtn">⇧ Upload</button><input id="fileInput" type="file" accept=".sol" multiple hidden /></div></div>
+      <div class="toolbar"><div class="tabs"><button data-tab="analysis" class="active">⌕ Analysis</button><button data-tab="remediation">⚡ Remediation</button><button data-tab="compare">⇄ Before / After</button><button data-tab="policies">⌘ Exposure map</button><button data-tab="proof">◇ Arc proof</button></div><div class="tools"><select id="fileSelect"></select><button id="policyBtn">⌘ Arc Policy</button><button id="packBtn" class="tool-accent">⇩ Remediation Pack</button><button id="markdownBtn">⇩ Markdown</button><button id="exportBtn">⇩ JSON</button><button id="uploadBtn">⇧ Upload</button><input id="fileInput" type="file" accept=".sol" multiple hidden /><p id="uploadStatus" class="uploadStatus" role="status" aria-live="polite"></p></div></div>
       <div class="workspace">
         <section id="analysisTab" class="tabPane active">
+          <section id="executiveSummary" class="executive-summary"></section>
           <div class="metrics">
             <article class="scoreCard"><div id="scoreRing" class="scoreRing"><span><b id="scoreValue">0</b><small>/100</small></span></div><div><strong id="gradeValue">F</strong><b id="readinessLabel">Critical</b><small>Privacy readiness</small></div></article>
             <article><small>CRITICAL</small><b id="criticalCount">0</b><span>Immediate review</span></article>
             <article><small>HIGH</small><b id="highCount">0</b><span>Likely disclosure</span></article>
-            <article><small>POLICIES</small><b id="policyCount">0</b><span>Callable selectors</span></article>
+            <article><small>POLICIES</small><b id="policyCount">0</b><span id="policyLabel">Callable selectors</span></article>
             <article class="delta"><small>HARDENING DEMO</small><b id="deltaValue">+0 points</b><span id="deltaText">Vulnerable → Hardened</span></article>
           </div>
           <div class="analysisGrid">
             <section class="panel codePanel"><header><span class="dots">● ● ●</span><b id="activeFileName">Payroll.sol</b><small>SOLIDITY</small></header><div id="codeView" class="codeView"></div></section>
-            <section class="panel findingsPanel"><header><div><small>DETERMINISTIC ANALYSIS</small><b>Privacy leaks</b></div><span id="findingCount">0</span></header><div id="findingList" class="findingList"></div></section>
+            <section class="panel findingsPanel"><header><div><small>DETERMINISTIC ANALYSIS</small><b>Privacy leaks</b></div><span id="findingCount">0</span></header>
+              <div class="finding-controls">
+                <label class="finding-search"><span>⌕</span><input id="findingSearch" type="search" placeholder="Search rule, risk or file…" /></label>
+                <div class="severity-filters" aria-label="Finding severity filters">
+                  <button type="button" data-severity="all" class="active">All</button>
+                  <button type="button" data-severity="critical">Critical</button>
+                  <button type="button" data-severity="high">High</button>
+                  <button type="button" data-severity="medium">Medium</button>
+                </div>
+                <select id="policyFilter" aria-label="Policy filter"><option value="all">All policies</option><option value="Locked">Locked only</option><option value="Restricted">Restricted only</option><option value="Open">Open only</option></select>
+              </div>
+              <div id="findingList" class="findingList"></div></section>
           </div>
+        </section>
+
+
+        <section id="remediationTab" class="tabPane">
+          <div class="panel remediation-panel">
+            <header class="remediation-panel-header">
+              <div><small>FROM DETECTION TO REMEDIATION</small><b>Privacy remediation lab</b></div>
+              <span class="intelligence-pill">⚡ DETERMINISTIC PLAYBOOK</span>
+            </header>
+            <div id="remediationContent"></div>
+          </div>
+        </section>
+
+        <section id="compareTab" class="tabPane">
+          <div id="comparisonContent" class="comparison-content"></div>
         </section>
 
         <section id="policiesTab" class="tabPane"><div class="panel policyPanel"><header><div><small>APS-ALIGNED RECOMMENDATIONS</small><b>Function exposure map</b></div><span>PRE-APS</span></header><div id="policyGrid" class="policyGrid"></div></div></section>
 
-        <section id="proofTab" class="tabPane"><div class="panel proofPanel"><header><div><small>VERIFIABLE BUILD ARTIFACT</small><b>Anchor a report proof on Arc</b></div><span>ARC TESTNET</span></header><div class="proofGrid"><div class="proofForm"><label>Project name<input id="projectName" value="veilforge-payroll-demo" /></label><label>Optional report URI<input id="reportUri" value="https://veilforge-web.vercel.app" placeholder="ipfs://… or https://…" /></label><article><small>SOURCE HASH</small><code id="sourceHash">—</code></article><article><small>REPORT HASH</small><code id="reportHash">—</code></article><button id="publishBtn" class="primary">Connect wallet &amp; publish on Arc</button><p id="publishStatus" class="publishStatus">Registry: <a href="https://testnet.arcscan.app/address/0xf8b1D03931f2c11B642259d9aB19cfA3351C0Bbc" target="_blank" rel="noreferrer">0xf8b1…0Bbc</a> · Hashes and metadata only.</p></div><div class="proofPreview"><div class="seal">◇</div><small>ONCHAIN PROOF PAYLOAD</small><h3 id="proofProject">veilforge-payroll-demo</h3><dl><div><dt>Readiness</dt><dd id="proofScore">—</dd></div><div><dt>Scanner</dt><dd>VeilForge v0.1.0</dd></div><div><dt>Findings</dt><dd id="proofFindings">—</dd></div><div><dt>Stored</dt><dd>Hashes + metadata only</dd></div></dl></div></div></div></section>
+        <section id="proofTab" class="tabPane"><div class="panel proofPanel"><header><div><small>VERIFIABLE BUILD ARTIFACT</small><b>Anchor a report proof on Arc</b></div><span>ARC TESTNET</span></header><div class="proofGrid"><div class="proofForm"><label>Project name<input id="projectName" value="veilforge-payroll" /></label><label>Optional report URI<input id="reportUri" value="https://veilforge-web.vercel.app" placeholder="ipfs://… or https://…" /></label><article><small>SOURCE HASH</small><code id="sourceHash">—</code></article><article><small>REPORT HASH</small><code id="reportHash">—</code></article><button id="publishBtn" class="primary">Connect wallet &amp; publish on Arc</button><p id="publishStatus" class="publishStatus">Registry: <a href="https://testnet.arcscan.app/address/0xf8b1D03931f2c11B642259d9aB19cfA3351C0Bbc" target="_blank" rel="noreferrer">0xf8b1…0Bbc</a> · Hashes and metadata only.</p></div><div class="proofPreview"><div class="seal">◇</div><small>ONCHAIN PROOF PAYLOAD</small><h3 id="proofProject">veilforge-payroll</h3><dl><div><dt>Readiness</dt><dd id="proofScore">—</dd></div><div><dt>Scanner</dt><dd>VeilForge v1.1.0</dd></div><div><dt>Findings</dt><dd id="proofFindings">—</dd></div><div><dt>Stored</dt><dd>Hashes + metadata only</dd></div></dl></div></div></div></section>
       </div>
       <p class="disclaimer">Pre-APS readiness analysis based on Arc's published design. Independent community tool; not an official Circle product or formal audit.</p>
     </section>
   </main>
-  <footer><div class="brand"><span class="logo">◈</span><span><b>VeilForge</b><small>PRE-APS TOOLKIT</small></span></div><p>Prepare today for private Solidity tomorrow.</p><span>Arc Testnet · Chain 5042002</span></footer>
+  <footer><div class="brand"><span class="logo">◈</span><span><b>VeilForge</b><small class="arcPowered">BUILT FOR ARC</small></span></div><p>Prepare today for private Solidity tomorrow.</p><span>Arc Testnet · Chain 5042002</span></footer>
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.5/dist/ethers.umd.min.js"></script>
   <script src="./app.js"></script>
 </body>

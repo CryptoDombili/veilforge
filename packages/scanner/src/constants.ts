@@ -1,6 +1,6 @@
 import type { Severity } from './types.js';
 
-export const SCANNER_VERSION = '0.1.0';
+export const SCANNER_VERSION = '1.1.0';
 
 export const SENSITIVE_TERMS = [
   'salary',

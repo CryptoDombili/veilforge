@@ -1,4 +1,4 @@
-import { scanSources, type Finding, type SourceFile } from '@veilforge/scanner';
+import { formatMarkdownReport, scanSources, type Finding, type SourceFile } from '@veilforge/scanner';
 import { ARC_TESTNET } from '@veilforge/shared';
 import {
   ArrowRight,
@@ -16,27 +16,46 @@ import {
   UploadCloud,
   Zap,
 } from 'lucide-react';
-import { useMemo, useRef, useState } from 'react';
+import { type ChangeEvent, type DragEvent, useMemo, useRef, useState } from 'react';
 import { Brand } from './components/Brand';
 import { CodeViewer } from './components/CodeViewer';
 import { Findings } from './components/Findings';
 import { PolicyGraph } from './components/PolicyGraph';
 import { ProofPanel } from './components/ProofPanel';
+import { RemediationLab } from './components/RemediationLab';
 import { ScoreRing } from './components/ScoreRing';
 import { demoFiles, remediatedFiles } from './lib/demo';
 
-type WorkspaceTab = 'analysis' | 'policies' | 'proof';
+type WorkspaceTab = 'analysis' | 'remediation' | 'policies' | 'proof';
 
 type DemoMode = 'vulnerable' | 'remediated' | 'custom';
 
-function downloadReport(report: ReturnType<typeof scanSources>): void {
-  const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+function downloadArtifact(content: string, type: string, fileName: string): void {
+  const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
-  anchor.download = `veilforge-report-${report.reportHash.slice(2, 10)}.json`;
+  anchor.download = fileName;
+  document.body.append(anchor);
   anchor.click();
-  URL.revokeObjectURL(url);
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+function downloadJsonReport(report: ReturnType<typeof scanSources>): void {
+  downloadArtifact(
+    JSON.stringify(report, null, 2),
+    'application/json',
+    `veilforge-report-${report.reportHash.slice(2, 10)}.json`,
+  );
+}
+
+function downloadMarkdownReport(report: ReturnType<typeof scanSources>, projectName: string): void {
+  downloadArtifact(
+    formatMarkdownReport(report, projectName || 'VeilForge scan'),
+    'text/markdown',
+    `veilforge-report-${report.reportHash.slice(2, 10)}.md`,
+  );
 }
 
 function fileLabel(path: string): string {
@@ -49,7 +68,9 @@ export function App(): React.JSX.Element {
   const [tab, setTab] = useState<WorkspaceTab>('analysis');
   const [activeFile, setActiveFile] = useState(demoFiles[0]?.path ?? '');
   const [activeLine, setActiveLine] = useState<number | null>(10);
-  const [selectedFinding, setSelectedFinding] = useState<string | null>(null);
+  const [selectedFinding, setSelectedFinding] = useState<string | null>(
+    () => scanSources(demoFiles).findings[0]?.fingerprint ?? null,
+  );
   const [dragging, setDragging] = useState(false);
   const [projectName, setProjectName] = useState('veilforge-payroll-demo');
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -59,6 +80,8 @@ export function App(): React.JSX.Element {
   const remediatedReport = useMemo(() => scanSources(remediatedFiles), []);
   const activeSource = sources.find((file) => file.path === activeFile) ?? sources[0];
   const activeFindings = report.findings.filter((finding) => finding.file === activeSource?.path);
+  const selectedFindingItem =
+    report.findings.find((finding) => finding.fingerprint === selectedFinding) ?? report.findings[0] ?? null;
 
   function useDemo(nextMode: Exclude<DemoMode, 'custom'>): void {
     const nextFiles = nextMode === 'vulnerable' ? demoFiles : remediatedFiles;
@@ -66,7 +89,7 @@ export function App(): React.JSX.Element {
     setMode(nextMode);
     setActiveFile(nextFiles[0]?.path ?? '');
     setActiveLine(nextMode === 'vulnerable' ? 10 : 23);
-    setSelectedFinding(null);
+    setSelectedFinding(scanSources(nextFiles).findings[0]?.fingerprint ?? null);
     setProjectName(nextMode === 'vulnerable' ? 'veilforge-payroll-demo' : 'veilforge-payroll-hardened');
   }
 
@@ -80,7 +103,7 @@ export function App(): React.JSX.Element {
     setMode('custom');
     setActiveFile(loaded[0]?.path ?? '');
     setActiveLine(null);
-    setSelectedFinding(null);
+    setSelectedFinding(scanSources(loaded).findings[0]?.fingerprint ?? null);
     setProjectName(fileLabel(loaded[0]?.path ?? 'solidity-project').replace(/\.sol$/i, '').toLowerCase());
   }
 
@@ -112,10 +135,10 @@ export function App(): React.JSX.Element {
       <main>
         <section className="hero">
           <div className="hero-copy">
-            <div className="announcement"><span /> Built for Arc Privacy Sector before it goes live <ArrowRight size={14} /></div>
+            <div className="announcement"><span /> VeilForge v1.1 · Built for Arc Privacy Sector before it goes live <ArrowRight size={14} /></div>
             <h1>Find what your Solidity contract will <em>leak</em> before privacy becomes production.</h1>
             <p>
-              VeilForge turns source code into deterministic privacy findings, APS-aligned exposure policies and a verifiable Arc Testnet report proof.
+              VeilForge turns source code into deterministic privacy findings, prioritized remediation playbooks, APS-aligned exposure policies and a verifiable Arc Testnet report proof.
             </p>
             <div className="hero-actions">
               <button type="button" className="primary-button" onClick={() => document.getElementById('workspace')?.scrollIntoView({ behavior: 'smooth' })}>
@@ -145,7 +168,7 @@ export function App(): React.JSX.Element {
 
         <section className="feature-strip" id="architecture">
           <article><span><Code2 /></span><div><strong>AST analysis</strong><p>Explainable rules, exact source lines and deterministic output.</p></div></article>
-          <article><span><LockKeyhole /></span><div><strong>APS exposure map</strong><p>Open, Restricted or Locked recommendations for every selector.</p></div></article>
+          <article><span><Zap /></span><div><strong>Remediation intelligence</strong><p>Impact, fix guidance and safer Solidity patterns for every finding.</p></div></article>
           <article><span><CircleDotDashed /></span><div><strong>Proof, not source</strong><p>Anchor hashes and score on Arc without publishing confidential code.</p></div></article>
         </section>
 
@@ -165,28 +188,30 @@ export function App(): React.JSX.Element {
           <div className="workspace-toolbar">
             <div className="workspace-tabs" role="tablist">
               <button type="button" role="tab" aria-selected={tab === 'analysis'} className={tab === 'analysis' ? 'active' : ''} onClick={() => setTab('analysis')}><ScanSearch size={16} /> Analysis</button>
+              <button type="button" role="tab" aria-selected={tab === 'remediation'} className={tab === 'remediation' ? 'active' : ''} onClick={() => setTab('remediation')}><ShieldCheck size={16} /> Remediation</button>
               <button type="button" role="tab" aria-selected={tab === 'policies'} className={tab === 'policies' ? 'active' : ''} onClick={() => setTab('policies')}><Network size={16} /> Exposure map</button>
               <button type="button" role="tab" aria-selected={tab === 'proof'} className={tab === 'proof' ? 'active' : ''} onClick={() => setTab('proof')}><FingerprintIcon /> Arc proof</button>
             </div>
             <div className="toolbar-actions">
               <div className="file-picker">
-                <select value={activeFile} onChange={(event) => { setActiveFile(event.target.value); setActiveLine(null); }}>
+                <select value={activeFile} onChange={(event: ChangeEvent<HTMLSelectElement>) => { setActiveFile(event.target.value); setActiveLine(null); }}>
                   {sources.map((file) => <option value={file.path} key={file.path}>{fileLabel(file.path)}</option>)}
                 </select>
                 <ChevronDown size={14} />
               </div>
-              <button type="button" className="icon-button" onClick={() => downloadReport(report)} title="Export JSON"><Download size={17} /></button>
+              <button type="button" className="icon-button export-button" onClick={() => downloadJsonReport(report)} title="Export deterministic JSON"><Braces size={17} /></button>
+              <button type="button" className="icon-button export-button" onClick={() => downloadMarkdownReport(report, projectName)} title="Export remediation report"><Download size={17} /></button>
               <button type="button" className="secondary-button compact" onClick={() => inputRef.current?.click()}><UploadCloud size={16} /> Upload</button>
-              <input ref={inputRef} type="file" accept=".sol" multiple hidden onChange={(event) => event.target.files && void acceptFiles(event.target.files)} />
+              <input ref={inputRef} type="file" accept=".sol" multiple hidden onChange={(event: ChangeEvent<HTMLInputElement>) => event.target.files && void acceptFiles(event.target.files)} />
             </div>
           </div>
 
           <div
             className={`drop-overlay ${dragging ? 'visible' : ''}`}
-            onDragEnter={(event) => { event.preventDefault(); setDragging(true); }}
-            onDragOver={(event) => event.preventDefault()}
-            onDragLeave={(event) => { if (event.currentTarget === event.target) setDragging(false); }}
-            onDrop={(event) => { event.preventDefault(); setDragging(false); void acceptFiles(event.dataTransfer.files); }}
+            onDragEnter={(event: DragEvent<HTMLDivElement>) => { event.preventDefault(); setDragging(true); }}
+            onDragOver={(event: DragEvent<HTMLDivElement>) => event.preventDefault()}
+            onDragLeave={(event: DragEvent<HTMLDivElement>) => { if (event.currentTarget === event.target) setDragging(false); }}
+            onDrop={(event: DragEvent<HTMLDivElement>) => { event.preventDefault(); setDragging(false); void acceptFiles(event.dataTransfer.files); }}
           >
             {dragging && <div><UploadCloud size={32} /><strong>Drop Solidity files to scan locally</strong><span>No source leaves your browser.</span></div>}
 
@@ -196,7 +221,14 @@ export function App(): React.JSX.Element {
                   <ScoreRing score={report.score} grade={report.grade} />
                   <div className="metric"><span>Critical</span><strong>{report.summary.critical}</strong><small>Immediate review</small></div>
                   <div className="metric"><span>High</span><strong>{report.summary.high}</strong><small>Likely disclosure</small></div>
-                  <div className="metric"><span>Policies</span><strong>{report.policies.length}</strong><small>Callable selectors</small></div>
+                  <div className="metric">
+  <span>Sensitive selectors</span>
+  <strong>{report.exposure.sensitiveSelectors}</strong>
+  <small>
+    {report.exposure.restrictedSelectors} restricted selectors ·{" "}
+    {report.exposure.lockedSelectors} locked selectors
+  </small>
+</div>
                   <div className="improvement-card">
                     <span>HARDENING DEMO</span>
                     <strong>+{scoreDelta} points</strong>
@@ -216,6 +248,9 @@ export function App(): React.JSX.Element {
               </>
             )}
 
+            {tab === 'remediation' && (
+              <RemediationLab report={report} selectedFinding={selectedFindingItem} onSelect={selectFinding} />
+            )}
             {tab === 'policies' && <PolicyGraph policies={report.policies} />}
             {tab === 'proof' && <ProofPanel report={report} projectName={projectName} onProjectNameChange={setProjectName} />}
           </div>
@@ -227,7 +262,7 @@ export function App(): React.JSX.Element {
           <div>
             <span className="eyebrow">FORWARD-LOOKING DEVELOPER TOOLING</span>
             <h2>Prepare today for private Solidity tomorrow.</h2>
-            <p>APS is not live yet. That is the point: VeilForge gives Arc builders a migration runway before confidential execution reaches production.</p>
+            <p>APS is not live yet. That is the point: VeilForge gives Arc builders a migration runway with deterministic findings, remediation playbooks and verifiable report proofs before confidential execution reaches production.</p>
           </div>
           <button type="button" className="primary-button" onClick={() => document.getElementById('workspace')?.scrollIntoView({ behavior: 'smooth' })}>
             Run the demo <ArrowRight size={18} />

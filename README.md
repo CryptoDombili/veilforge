@@ -61,6 +61,20 @@
 > [!IMPORTANT]
 > **Arc Privacy Sector (APS) is not live yet.** VeilForge is independent, community-built **pre-APS readiness tooling** based on Arc's published privacy design. It does not execute private transactions, is not an official Circle product, and is not a formal security audit.
 
+## VeilForge v1.1 — Remediation Intelligence
+
+v1.1 moves VeilForge from detection-only output to an actionable privacy engineering workflow:
+
+- prioritized remediation queue ordered by severity
+- deterministic impact explanations for every rule
+- APS-aligned `Open` / `Restricted` / `Locked` guidance per finding
+- safer Solidity patterns that developers can adapt
+- exposure-surface metrics for public state, mappings, selectors, events and cross-contract flows
+- exportable Markdown remediation reports alongside canonical JSON
+- improved recognition of project-specific authorization modifiers such as `onlyPayrollAdmin`
+
+The analysis still runs locally and does not send source code to an AI service.
+
 <p align="center">
   <img src="assets/veilforge-demo.png" alt="VeilForge live scanner interface" width="92%" />
 </p>
@@ -108,7 +122,7 @@ cd standalone
 python -m http.server 4173
 ```
 
-Open `http://localhost:4173/scanner`.
+Open `http://localhost:4173/`.
 
 ## Core capabilities
 
@@ -116,6 +130,7 @@ Open `http://localhost:4173/scanner`.
 |---|---|
 | **Deterministic scanner** | Produces stable findings without an AI API or opaque model call |
 | **Source-line evidence** | Reports the exact file and line range behind every finding |
+| **Remediation intelligence** | Explains impact, prioritizes fixes and provides adaptable safer Solidity patterns |
 | **Privacy readiness score** | Applies a transparent severity-based 0–100 scoring model |
 | **Selector policy model** | Recommends `Open`, `Restricted`, or `Locked` with a human-readable reason |
 | **Exposure map** | Visualizes sensitive selectors and their proposed policy boundaries |
@@ -126,22 +141,22 @@ Open `http://localhost:4173/scanner`.
 
 ## Detection rules
 
-VeilForge v0.1 ships with twelve explainable rules:
+VeilForge v1.1 ships with twelve explainable rules and a deterministic remediation playbook:
 
 | Rule | Severity focus | Detects |
 |---|---|---|
-| `VF001` | High | Sensitive public state with automatic getters |
+| `VF001` | Critical | Sensitive public state with automatic getters |
 | `VF002` | High | Sensitive event schemas |
 | `VF003` | Medium | Secret-bearing revert text |
-| `VF004` | Critical | Unguarded sensitive read selectors |
-| `VF005` | Critical | Unguarded sensitive state-changing selectors |
-| `VF006` | High | Low-level and delegate-style calls |
-| `VF007` | High | Sensitive values crossing contract boundaries |
-| `VF008` | Critical | Public mappings and indexed-record exposure |
+| `VF004` | High | Unguarded sensitive read selectors |
+| `VF005` | High / Medium | Unguarded sensitive state-changing selectors |
+| `VF006` | Critical / Medium | Low-level and delegate-style calls |
+| `VF007` | Medium | Sensitive values crossing contract boundaries |
+| `VF008` | Critical / High | Public mappings and indexed-record exposure |
 | `VF009` | Critical | Unrestricted administrative mutation |
 | `VF010` | Critical | `tx.origin` authorization |
 | `VF011` | High | Sensitive runtime values emitted in events |
-| `VF012` | Medium | Sensitive plaintext in dynamic calldata |
+| `VF012` | High | Sensitive plaintext in dynamic calldata |
 
 Semantic-name rules are intentionally identified as heuristics and include confidence metadata. The objective is explainable migration guidance, not pretend certainty.
 
@@ -270,20 +285,20 @@ contracts/                Arc Testnet proof registry + tests
 examples/                 Vulnerable and hardened payroll contracts
 standalone/               Zero-install interactive showcase
 docs/                     Architecture, threat model, roadmap, demo script
-artifacts/                Example deterministic reports
-.github/                  CI, issue templates, PR template, Dependabot
+RELEASE_NOTES_v1.1.md     Release summary and reviewer walkthrough
+DEPLOY_v1.1.md            Safe GitHub and Vercel deployment checklist
 ```
 
-## Validation snapshot
+## Release validation
 
-The included fixtures currently produce:
+Before publishing, run the complete local quality gate:
 
-| Fixture | Score | Findings |
-|---|---:|---:|
-| Vulnerable payroll | `0 / 100` | 23 |
-| Hardened payroll | `100 / 100` | 0 |
+```bash
+npm install
+npm run check
+```
 
-See [`VALIDATION.md`](VALIDATION.md) for the exact local checks recorded with this release.
+Then test both demo fixtures, JSON and Markdown export, wallet connection, and an Arc Testnet proof publication from a disposable testnet wallet.
 
 ## Project principles
 
