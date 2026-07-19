@@ -277,6 +277,10 @@ function setHeaderWallet(address='', connected=false){
   button.classList.toggle('connected',connected);
   button.setAttribute('aria-expanded','false');
   label.textContent=connected ? shortAddress(address) : 'Connect wallet';
+  const publishButton=$('publishBtn');
+  if(publishButton && !/Publish another report/i.test(publishButton.textContent||'')) {
+    publishButton.textContent=connected ? 'Publish report on Arc' : 'Connect wallet & publish on Arc';
+  }
   button.title=connected ? `Connected to Arc Testnet as ${address}. Click to manage.` : 'Connect a browser wallet';
   const menuAddress=$('walletMenuAddress');
   const explorer=$('walletViewExplorer');
@@ -777,7 +781,7 @@ async function refresh(){
   $('deltaValue').textContent=`+${hard.score-vuln.score} points`;
   $('deltaText').textContent=`Vulnerable ${vuln.score} → Hardened ${hard.score}`;
 }
-function setFiles(next,mode){files=next;activeFile=files[0].path;document.querySelectorAll('.modes button').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));const custom=document.querySelector('[data-mode="custom"]');custom.hidden=mode!=='custom';$('fileSelect').innerHTML=files.map(f=>`<option value="${escapeHtml(f.path)}">${escapeHtml(f.path)}</option>`).join('');$('projectName').value=mode==='hardened'?'veilforge-payroll-hardened':mode==='custom'?files[0].path.replace(/\.sol$/i,'').toLowerCase():'veilforge-payroll-demo';$('proofProject').textContent=$('projectName').value;refresh()}
+function setFiles(next,mode){files=next;activeFile=files[0].path;document.querySelectorAll('.modes button').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));const custom=document.querySelector('[data-mode="custom"]');custom.hidden=mode!=='custom';$('fileSelect').innerHTML=files.map(f=>`<option value="${escapeHtml(f.path)}">${escapeHtml(f.path)}</option>`).join('');$('projectName').value=mode==='hardened'?'veilforge-payroll-hardened':mode==='custom'?files[0].path.replace(/\.sol$/i,'').toLowerCase():'veilforge-payroll';$('proofProject').textContent=$('projectName').value;refresh()}
 
 function wire(){
   $('heroDemo').onclick=()=>{$('scanner').scrollIntoView({behavior:'smooth'});setFiles([{path:'Payroll.sol',content:vulnerableSource}],'vulnerable')};
