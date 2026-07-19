@@ -111,3 +111,11 @@
 .compare-outcomes{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);border-radius:14px;overflow:hidden}.compare-outcomes article{display:flex;gap:12px;padding:16px;border-right:1px solid var(--line)}.compare-outcomes article:last-child{border-right:0}.compare-outcomes span{font-size:8px;color:#75f7c8;font-weight:800}.compare-outcomes b{font-size:10px}.compare-outcomes p{margin:6px 0 0;color:#6f7d91;font-size:8px;line-height:1.55}
 @media(max-width:1000px){.executive-stats{grid-template-columns:repeat(2,1fr)}.finding-controls{grid-template-columns:1fr}.compare-grid{grid-template-columns:1fr}.compare-flow{min-height:100px}.compare-outcomes{grid-template-columns:1fr}.compare-outcomes article{border-right:0;border-bottom:1px solid var(--line)}.compare-outcomes article:last-child{border-bottom:0}}
 @media(max-width:700px){.executive-main,.compare-hero{align-items:flex-start;flex-direction:column}.executive-stats{grid-template-columns:1fr}.executive-stats span{border-right:0;border-bottom:1px solid var(--line)}.severity-filters{overflow-x:auto}.top-actions button{grid-template-columns:28px minmax(0,1fr)}.top-actions button>strong{display:none}}
+
+
+/* v1.1 policy artifact and remediation pack */
+.tools .tool-accent{border-color:rgba(91,237,188,.38);background:rgba(42,155,120,.12);color:#89f4cf}
+.section-heading-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.copy-mini{border:1px solid #253044;background:#101722;color:#92a0b7;border-radius:8px;padding:6px 9px;font-size:8px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+.copy-mini:hover{border-color:#4b6a78;color:#dffcf2;background:#132127}
+@media(max-width:900px){.tools{flex-wrap:wrap}.tools button,.tools select{flex:1 1 auto}.section-heading-row{align-items:flex-start}.copy-mini{white-space:nowrap}}
