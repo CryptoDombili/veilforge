@@ -227,3 +227,38 @@ nav .brand b{font-size:20px}
 .uploadStatus.error {
   color: #ff8e9d;
 }
+
+
+
+
+
+/* Keep both analysis panels equal and fill their inner scroll areas */
+.analysisGrid {
+  align-items: stretch;
+}
+
+.codePanel,
+.findingsPanel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.codePanel .codeView,
+.findingsPanel .findingList {
+  flex: 1;
+  min-height: 0;
+  height: 100% !important;
+  overflow-y: auto;
+}
+
+
+
+
+
+
+
+
+
+
+
