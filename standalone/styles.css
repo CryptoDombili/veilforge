@@ -175,3 +175,15 @@
 nav .brand .logo{width:47px;height:47px;border-radius:14px;font-size:21px}
 nav .brand b{font-size:20px}
 @media(max-width:540px){nav .brand .logo{width:44px;height:44px}nav .brand b{font-size:17px}}
+
+/* Keep the policy dropdown fully visible inside the findings panel */
+.finding-controls {
+  overflow: visible;
+}
+
+#policyFilter {
+  min-width: 132px;
+  max-width: 100%;
+}
+
+
