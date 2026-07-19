@@ -241,14 +241,17 @@ nav .brand b{font-size:20px}
 .findingsPanel {
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  height: 515px;
+  min-height: 515px;
+  max-height: 515px;
+  overflow: hidden;
 }
+
 
 .codePanel .codeView,
 .findingsPanel .findingList {
   flex: 1;
   min-height: 0;
-  height: 100% !important;
   overflow-y: auto;
 }
 
