@@ -170,3 +170,8 @@
 
 /* Safe brand simplification */
 .brand{gap:12px}.logo{width:43px;height:43px;border-radius:13px;font-size:19px}.brand b{font-size:18px;letter-spacing:-.02em}.brand>span:last-child{gap:3px}.arcPowered{font-size:8px!important;letter-spacing:.12em!important;color:#65d9b3!important;margin-top:1px;white-space:nowrap}@media(max-width:540px){.brand b{font-size:16px}.logo{width:40px;height:40px}.arcPowered{font-size:7px!important;letter-spacing:.09em!important}}
+
+/* Final header polish: slightly stronger brand presence */
+nav .brand .logo{width:47px;height:47px;border-radius:14px;font-size:21px}
+nav .brand b{font-size:20px}
+@media(max-width:540px){nav .brand .logo{width:44px;height:44px}nav .brand b{font-size:17px}}
