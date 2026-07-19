@@ -207,3 +207,23 @@ nav .brand b{font-size:20px}
   margin-left: 0;
 }
 
+
+.uploadStatus {
+  min-height: 18px;
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.uploadStatus.pending {
+  color: #aebbd0;
+}
+
+.uploadStatus.success {
+  color: #75f7c8;
+}
+
+.uploadStatus.error {
+  color: #ff8e9d;
+}
