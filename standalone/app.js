@@ -428,11 +428,90 @@ function extractFunctions(source, file) {
   return functions;
 }
 
+function extractPublicGetters(source, file) {
+  const lines = source.replace(/\r\n?/g, '\n').split('\n');
+  const getters = [];
+
+  lines.forEach((line, index) => {
+    const trimmed = line.trim();
+
+    if (
+      !trimmed ||
+      trimmed.startsWith('//') ||
+      !trimmed.endsWith(';') ||
+      !/\bpublic\b/.test(trimmed) ||
+      /\b(function|event|error|struct|enum|modifier)\b/.test(trimmed)
+    ) {
+      return;
+    }
+
+    const mappingMatch = trimmed.match(
+      /^mapping\s*\(\s*([^=]+?)\s*=>\s*([^)]+?)\s*\)\s+public\s+([A-Za-z_][A-Za-z0-9_]*)\s*;/
+    );
+
+    if (mappingMatch) {
+      const keyType = mappingMatch[1].trim();
+      const returnType = mappingMatch[2].trim();
+      const name = mappingMatch[3];
+
+      getters.push({
+        file,
+        name,
+        params: keyType,
+        tail: 'external view',
+        visibility: 'external',
+        mutability: 'view',
+        startLine: index + 1,
+        endLine: index + 1,
+        source: line,
+        signature: `${name}(${keyType})`,
+        generatedGetter: true,
+        returnType
+      });
+
+      return;
+    }
+
+    const variableMatch = trimmed.match(
+      /^(.+?)\s+public\s+([A-Za-z_][A-Za-z0-9_]*)\s*;/
+    );
+
+    if (!variableMatch) return;
+
+    const returnType = variableMatch[1].trim();
+    const name = variableMatch[2];
+
+    if (/^(mapping|function)\b/.test(returnType)) return;
+
+    getters.push({
+      file,
+      name,
+      params: '',
+      tail: 'external view',
+      visibility: 'external',
+      mutability: 'view',
+      startLine: index + 1,
+      endLine: index + 1,
+      source: line,
+      signature: `${name}()`,
+      generatedGetter: true,
+      returnType
+    });
+  });
+
+  return getters;
+}
+
+
+
 function scanFile(file) {
   const source = file.content.replace(/\r\n?/g,'\n');
   const lines = source.split('\n');
   const findings = [];
-  const functions = extractFunctions(source,file.path);
+  const functions = [
+  ...extractFunctions(source, file.path),
+  ...extractPublicGetters(source, file.path)
+];
 
   lines.forEach((line,index)=>{
     const n=index+1;
