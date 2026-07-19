@@ -866,7 +866,52 @@ function setFiles(next,mode){files=next;activeFile=files[0].path;document.queryS
 function wire(){
   $('heroDemo').onclick=()=>{$('scanner').scrollIntoView({behavior:'smooth'});setFiles([{path:'Payroll.sol',content:vulnerableSource}],'vulnerable')};
   const openPicker=()=>$('fileInput').click();$('heroUpload').onclick=openPicker;$('uploadBtn').onclick=openPicker;
-  $('fileInput').onchange=async(e)=>{const chosen=[...e.target.files].filter(f=>f.name.toLowerCase().endsWith('.sol'));if(!chosen.length)return;const loaded=await Promise.all(chosen.map(async f=>({path:f.name,content:await f.text()})));setFiles(loaded,'custom')};
+  $('fileInput').onchange=async(e)=>{
+  const uploadStatus=$('uploadStatus');
+  const chosen=[...e.target.files].filter(f=>f.name.toLowerCase().endsWith('.sol'));
+
+  if(!chosen.length){
+    if(uploadStatus){
+      uploadStatus.textContent='Upload failed. Please select a valid Solidity file.';
+      uploadStatus.className='uploadStatus error';
+    }
+    return;
+  }
+
+  try{
+    if(uploadStatus){
+      uploadStatus.textContent='Uploading and analyzing...';
+      uploadStatus.className='uploadStatus pending';
+    }
+
+    const loaded=await Promise.all(
+      chosen.map(async f=>({
+        path:f.name,
+        content:await f.text()
+      }))
+    );
+
+    setFiles(loaded,'custom');
+
+    if(uploadStatus){
+      const uploadedName=loaded.length===1
+        ? loaded[0].path
+        : `${loaded.length} Solidity files`;
+
+      uploadStatus.textContent=`${uploadedName} uploaded and analyzed successfully.`;
+      uploadStatus.className='uploadStatus success';
+    }
+
+    e.target.value='';
+  }catch(error){
+    console.error(error);
+
+    if(uploadStatus){
+      uploadStatus.textContent='Upload failed. Please select a valid Solidity file.';
+      uploadStatus.className='uploadStatus error';
+    }
+  }
+};
   document.querySelectorAll('.modes button').forEach(button=>button.addEventListener('click',()=>{if(button.dataset.mode==='vulnerable')setFiles([{path:'Payroll.sol',content:vulnerableSource}],'vulnerable');if(button.dataset.mode==='hardened')setFiles([{path:'PayrollPrivateReady.sol',content:hardenedSource}],'hardened')}));
   document.querySelectorAll('.tabs button').forEach(button=>button.addEventListener('click',()=>{document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('active'));button.classList.add('active');document.querySelectorAll('.tabPane').forEach(p=>p.classList.remove('active'));$(`${button.dataset.tab}Tab`).classList.add('active')}));
   $('fileSelect').onchange=e=>{activeFile=e.target.value;renderCode()};
