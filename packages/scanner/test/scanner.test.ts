@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canonicalReportHash, canonicalSourceHash, scanSources } from '../src/index.js';
+import { canonicalReportHash, canonicalSourceHash, formatMarkdownReport, scanSources } from '../src/index.js';
 import type { SourceFile } from '../src/types.js';
 
 const wrap = (body: string): SourceFile => ({
@@ -119,6 +119,39 @@ contract Fixture {
 
   it('detects VF012 sensitive dynamic calldata', () => {
     expect(rulesFor(wrap('function submitInvoice(string calldata invoice) external {}'))).toContain('VF012');
+  });
+
+
+  it('recognizes project-specific only* authorization modifiers', () => {
+    expect(
+      rulesFor(
+        wrap('mapping(address => uint256) private salary; modifier onlyPayrollAdmin(){_;} function setSalary(address user, uint256 amount) external onlyPayrollAdmin { salary[user] = amount; }'),
+      ),
+    ).not.toContain('VF005');
+  });
+
+  it('adds deterministic remediation intelligence to findings', () => {
+    const finding = scanSources([wrap('mapping(address => uint256) public salary;')]).findings[0];
+    expect(finding?.impact).toBeTruthy();
+    expect(finding?.suggestedPolicy).toBe('Restricted');
+    expect(finding?.saferPattern).toContain('private');
+  });
+
+  it('summarizes the public exposure surface', () => {
+    const report = scanSources([
+      wrap('mapping(address => uint256) public salary; function getSalary(address user) external view returns (uint256) { return salary[user]; }'),
+    ]);
+    expect(report.exposure.publicMappings).toBe(1);
+    expect(report.exposure.externallyCallableFunctions).toBe(1);
+    expect(report.exposure.sensitiveSelectors).toBeGreaterThan(0);
+  });
+
+  it('exports an actionable Markdown remediation report', () => {
+    const report = scanSources([wrap('mapping(address => uint256) public salary;')]);
+    const markdown = formatMarkdownReport(report, 'Payroll');
+    expect(markdown).toContain('VeilForge Privacy Readiness Report');
+    expect(markdown).toContain('Recommended remediation');
+    expect(markdown).toContain(report.reportHash);
   });
 
   it('produces higher readiness for a remediated design', () => {

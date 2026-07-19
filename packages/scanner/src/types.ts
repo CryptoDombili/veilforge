@@ -1,6 +1,16 @@
 export type Severity = 'critical' | 'high' | 'medium' | 'low';
 export type Confidence = 'high' | 'medium' | 'low';
 export type AccessPolicy = 'Open' | 'Restricted' | 'Locked';
+export type FindingCategory =
+  | 'analysis-integrity'
+  | 'state-exposure'
+  | 'event-disclosure'
+  | 'error-disclosure'
+  | 'access-control'
+  | 'trust-boundary'
+  | 'privileged-operation'
+  | 'authorization'
+  | 'calldata-disclosure';
 
 export interface SourceFile {
   path: string;
@@ -24,6 +34,10 @@ export interface Finding extends SourceLocation {
   remediation: string;
   confidence: Confidence;
   fingerprint: string;
+  category: FindingCategory;
+  impact: string;
+  suggestedPolicy: AccessPolicy;
+  saferPattern?: string;
 }
 
 export interface PolicyRecommendation extends SourceLocation {
@@ -43,12 +57,24 @@ export interface SeverityTotals {
   low: number;
 }
 
+export interface ExposureSurface {
+  publicStateVariables: number;
+  publicMappings: number;
+  externallyCallableFunctions: number;
+  sensitiveSelectors: number;
+  sensitiveEvents: number;
+  crossContractFindings: number;
+  restrictedSelectors: number;
+  lockedSelectors: number;
+}
+
 export interface ScanReport {
-  schemaVersion: '1.0';
+  schemaVersion: '1.1';
   scannerVersion: string;
   score: number;
   grade: 'A' | 'B' | 'C' | 'D' | 'F';
   summary: SeverityTotals;
+  exposure: ExposureSurface;
   findings: Finding[];
   policies: PolicyRecommendation[];
   files: Array<{ path: string; lines: number }>;
