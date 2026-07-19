@@ -861,7 +861,11 @@ async function refresh(){
   $('deltaValue').textContent=`+${hard.score-vuln.score} points`;
   $('deltaText').textContent=`Vulnerable ${vuln.score} → Hardened ${hard.score}`;
 }
-function setFiles(next,mode){files=next;activeFile=files[0].path;document.querySelectorAll('.modes button').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));const custom=document.querySelector('[data-mode="custom"]');custom.hidden=mode!=='custom';$('fileSelect').innerHTML=files.map(f=>`<option value="${escapeHtml(f.path)}">${escapeHtml(f.path)}</option>`).join('');$('projectName').value=mode==='hardened'?'veilforge-payroll-hardened':mode==='custom'?files[0].path.replace(/\.sol$/i,'').toLowerCase():'veilforge-payroll';$('proofProject').textContent=$('projectName').value;refresh()}
+function setFiles(next,mode)const uploadStatus = $('uploadStatus');
+if (uploadStatus && mode !== 'custom') {
+  uploadStatus.textContent = '';
+  uploadStatus.className = 'uploadStatus';
+}{files=next;activeFile=files[0].path;document.querySelectorAll('.modes button').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));const custom=document.querySelector('[data-mode="custom"]');custom.hidden=mode!=='custom';$('fileSelect').innerHTML=files.map(f=>`<option value="${escapeHtml(f.path)}">${escapeHtml(f.path)}</option>`).join('');$('projectName').value=mode==='hardened'?'veilforge-payroll-hardened':mode==='custom'?files[0].path.replace(/\.sol$/i,'').toLowerCase():'veilforge-payroll';$('proofProject').textContent=$('projectName').value;refresh()}
 
 function wire(){
   $('heroDemo').onclick=()=>{$('scanner').scrollIntoView({behavior:'smooth'});setFiles([{path:'Payroll.sol',content:vulnerableSource}],'vulnerable')};
