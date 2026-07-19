@@ -3,6 +3,121 @@
 const sensitiveTerms = ['salary','payroll','employee','customer','invoice','balance','credit','debt','bid','position','kyc','tax','identity','secret','private','amount','recipient','beneficiary','account','limit','risk','score','memo','medical','whitelist','allowlist'];
 const penalties = { critical: 25, high: 15, medium: 8, low: 3 };
 
+const remediationPlaybook = {
+  VF001: {
+    category: 'public-state',
+    impact: 'Anyone can call the compiler-generated getter and correlate the returned value with an account, business process or identity.',
+    saferPattern: `mapping(address => uint256) private salaryByEmployee;
+
+function viewSalary(address employee)
+    external
+    view
+    onlyAuthorized
+    returns (uint256)
+{
+    return salaryByEmployee[employee];
+}`
+  },
+  VF002: {
+    category: 'event-disclosure',
+    impact: 'Log data is durable and indexable. Once emitted, sensitive values can be copied and correlated outside the application forever.',
+    saferPattern: `event PaymentCommitted(
+    bytes32 indexed commitment,
+    uint64 indexed batchId
+);`
+  },
+  VF003: {
+    category: 'revert-disclosure',
+    impact: 'State-specific error text can reveal account status, limits or private workflow details to callers and monitoring infrastructure.',
+    saferPattern: `error Unauthorized();
+error MissingRecord();
+
+if (!authorized) revert Unauthorized();`
+  },
+  VF004: {
+    category: 'unprotected-read',
+    impact: 'An arbitrary caller may retrieve sensitive financial or identity-linked information without a visible authorization boundary.',
+    saferPattern: `function viewMySalary()
+    external
+    view
+    returns (uint256)
+{
+    return salaryByEmployee[msg.sender];
+}`
+  },
+  VF005: {
+    category: 'unprotected-write',
+    impact: 'An untrusted caller may change sensitive state, corrupt records or trigger financial actions outside the intended workflow.',
+    saferPattern: `function setSalary(address employee, uint256 amount)
+    external
+    onlyPayrollAdmin
+{
+    salaryByEmployee[employee] = amount;
+}`
+  },
+  VF006: {
+    category: 'trust-boundary',
+    impact: 'Low-level execution hides interface guarantees and can move control or confidential values across an unintended trust boundary.',
+    saferPattern: `interface ISettlementTarget {
+    function settle(bytes32 commitment) external;
+}
+
+ISettlementTarget(target).settle(commitment);`
+  },
+  VF007: {
+    category: 'cross-contract-flow',
+    impact: 'Sensitive values may leave the current contract and become observable or usable by a destination with different privacy guarantees.',
+    saferPattern: `bytes32 commitment = keccak256(
+    abi.encode(employee, salary, nonce)
+);
+settlement.submitCommitment(commitment);`
+  },
+  VF008: {
+    category: 'public-mapping',
+    impact: 'Automatic mapping getters let observers query known keys and gradually reconstruct sensitive indexed records.',
+    saferPattern: `mapping(address => uint256) private salaryByEmployee;
+
+function viewMySalary() external view returns (uint256) {
+    return salaryByEmployee[msg.sender];
+}`
+  },
+  VF009: {
+    category: 'administrative-access',
+    impact: 'A public administrative selector can alter roles, configuration or critical state without proving the caller is authorized.',
+    saferPattern: `function setOperator(address next)
+    external
+    onlyAdmin
+{
+    operator = next;
+}`
+  },
+  VF010: {
+    category: 'authorization',
+    impact: 'tx.origin can authorize a malicious intermediary contract and breaks clear caller boundaries required by financial applications.',
+    saferPattern: `if (msg.sender != owner) {
+    revert Unauthorized();
+}`
+  },
+  VF011: {
+    category: 'runtime-event-disclosure',
+    impact: 'Runtime values placed in an event become permanent public metadata even when the surrounding contract flow is intended to be private.',
+    saferPattern: `bytes32 paymentCommitment = keccak256(
+    abi.encode(employee, amount, nonce)
+);
+emit PaymentCommitted(paymentCommitment);`
+  },
+  VF012: {
+    category: 'public-calldata',
+    impact: 'Plaintext string and bytes arguments remain visible in transaction calldata and can expose documents, identities, memos or KYC data.',
+    saferPattern: `function submitDocument(bytes32 documentHash) external {
+    documentHashByAccount[msg.sender] = documentHash;
+}`
+  }
+};
+
+const severityRank = { critical: 0, high: 1, medium: 2, low: 3 };
+
+
 const vulnerableSource = `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
@@ -159,7 +274,7 @@ async function publishCurrentReport(){
     const projectName=($('projectName').value||'untitled-project').trim();
     const projectId=ethers.keccak256(ethers.toUtf8Bytes(projectName));
     const reportURI=($('reportUri').value||window.location.href).trim();
-    const tx=await contract.publishReport(projectId,report.sourceHash,report.reportHash,report.score,'veilforge-0.1.0',reportURI);
+    const tx=await contract.publishReport(projectId,report.sourceHash,report.reportHash,report.score,'veilforge-1.1.0',reportURI);
     setPublishState(`Transaction submitted: <a href="${ARC_EXPLORER}/tx/${tx.hash}" target="_blank" rel="noreferrer">${tx.hash.slice(0,10)}…${tx.hash.slice(-8)}</a>. Waiting for confirmation…`,'pending');
     const receipt=await tx.wait();
     if(!receipt || receipt.status!==1) throw new Error('The transaction was not confirmed successfully.');
@@ -179,7 +294,20 @@ const hasGuard = (source) => /onlyOwner|onlyRole|onlyAdmin|onlyPayrollAdmin|hasR
 function addFinding(findings, ruleId, title, description, severity, file, line, evidence, remediation, confidence='high') {
   const key = `${ruleId}|${file}|${line}|${evidence.trim()}`;
   if (findings.some((finding) => finding.key === key)) return;
-  findings.push({ key, ruleId, title, description, severity, file, startLine: line, endLine: line, evidence: evidence.trim(), remediation, confidence });
+  const playbook = remediationPlaybook[ruleId] || {
+    category: 'privacy-review',
+    impact: description,
+    saferPattern: ''
+  };
+  const suggestedPolicy = severity === 'critical' ? 'Locked' : severity === 'high' || severity === 'medium' ? 'Restricted' : 'Open';
+  findings.push({
+    key, ruleId, title, description, severity, file, startLine: line, endLine: line,
+    evidence: evidence.trim(), remediation, confidence,
+    category: playbook.category,
+    impact: playbook.impact,
+    saferPattern: playbook.saferPattern,
+    suggestedPolicy
+  });
 }
 
 function extractFunctions(source, file) {
@@ -253,16 +381,158 @@ async function scanAll(){
   const penalty=findings.reduce((sum,f)=>sum+penalties[f.severity],0); const score=Math.max(0,100-penalty); const grade=score>=90?'A':score>=80?'B':score>=70?'C':score>=55?'D':'F';
   const summary={critical:0,high:0,medium:0,low:0}; findings.forEach(f=>summary[f.severity]++);
   const sourcePayload=[...files].sort((a,b)=>a.path.localeCompare(b.path)).map(f=>`${f.path}\0${f.content.replace(/\r\n?/g,'\n')}\u001e`).join('');
-  const sourceHash=await sha256(sourcePayload); const stable={schemaVersion:'1.0',scannerVersion:'0.1.0',score,grade,summary,findings:findings.map(({key,...f})=>f),policies:policies.map(p=>({file:p.file,name:p.name,signature:p.signature,startLine:p.startLine,policy:p.policy,reason:p.reason})),sourceHash}; const reportHash=await sha256(canonical(stable));
+  const sourceHash=await sha256(sourcePayload); const stable={schemaVersion:'1.1',scannerVersion:'1.1.0',score,grade,summary,findings:findings.map(({key,...f})=>f),policies:policies.map(p=>({file:p.file,name:p.name,signature:p.signature,startLine:p.startLine,policy:p.policy,reason:p.reason})),sourceHash}; const reportHash=await sha256(canonical(stable));
   return {...stable,findings,policies,sourceHash,reportHash,disclaimer:"Pre-APS readiness analysis based on Arc's published design. Independent community tool; not an official Circle product or formal audit."};
 }
 
 function severityAtLine(line,findings){const items=findings.filter(f=>line>=f.startLine&&line<=f.endLine);return items.some(f=>f.severity==='critical')?'critical':items.some(f=>f.severity==='high')?'high':items.length?'medium':''}
 function renderCode(){const file=files.find(f=>f.path===activeFile)||files[0];if(!file)return; $('activeFileName').textContent=file.path; const relevant=report.findings.filter(f=>f.file===file.path); $('codeView').innerHTML=file.content.replace(/\r\n?/g,'\n').split('\n').map((line,i)=>{const n=i+1;const count=relevant.filter(f=>n>=f.startLine&&n<=f.endLine).length;return `<div class="codeLine ${severityAtLine(n,relevant)}"><span class="lineNo">${n}</span><code>${escapeHtml(line)||' '}</code>${count?`<span class="marker">${count}</span>`:''}</div>`}).join('')}
 function renderFindings(){const list=$('findingList');$('findingCount').textContent=report.findings.length; if(!report.findings.length){list.innerHTML='<div style="height:100%;display:grid;place-content:center;text-align:center;color:#75f7c8"><b>No current rule matched</b><small style="color:#738095;margin-top:6px">Continue manual review.</small></div>';return} list.innerHTML=report.findings.map(f=>`<article class="finding ${f.severity}" data-file="${escapeHtml(f.file)}" data-line="${f.startLine}"><span class="findingIcon">!</span><div><div class="findingMeta"><b>${f.ruleId}</b><em>${f.severity}</em><small>${escapeHtml(f.file)}:${f.startLine}</small></div><h3>${escapeHtml(f.title)}</h3><p>${escapeHtml(f.description)}</p></div></article>`).join(''); list.querySelectorAll('.finding').forEach(el=>el.addEventListener('click',()=>{activeFile=el.dataset.file;$('fileSelect').value=activeFile;renderCode();const line=$('codeView').children[Number(el.dataset.line)-1];if(line)line.scrollIntoView({behavior:'smooth',block:'center'})}))}
+
+let selectedRemediationKey = null;
+
+function renderRemediation(){
+  const root = $('remediationContent');
+  if(!root || !report) return;
+  const prioritized = [...report.findings].sort((a,b)=>
+    severityRank[a.severity]-severityRank[b.severity] ||
+    a.file.localeCompare(b.file) ||
+    a.startLine-b.startLine
+  ).slice(0,12);
+
+  if(!prioritized.length){
+    root.innerHTML = `<div class="remediation-empty">
+      <div class="remediation-empty-icon">✓</div>
+      <strong>No deterministic rule matched this source bundle.</strong>
+      <p>Continue manual review. VeilForge is a privacy-readiness assistant, not a formal security audit.</p>
+    </div>`;
+    return;
+  }
+
+  if(!prioritized.some(f=>f.key===selectedRemediationKey)) selectedRemediationKey=prioritized[0].key;
+  const selected=prioritized.find(f=>f.key===selectedRemediationKey)||prioritized[0];
+
+  root.innerHTML = `<div class="remediation-layout">
+    <aside class="fix-queue">
+      <div class="fix-queue-title"><div><span>PRIORITIZED FIX PLAN</span><strong>${report.findings.length} actions</strong></div><b>✓</b></div>
+      <div class="fix-queue-list">
+        ${prioritized.map((f,index)=>`<button type="button" class="fix-queue-item fix-${f.severity} ${f.key===selected.key?'active':''}" data-key="${escapeHtml(f.key)}">
+          <span class="fix-rank">${String(index+1).padStart(2,'0')}</span>
+          <span class="fix-copy"><span><b>${f.ruleId}</b><em>${f.severity}</em></span><strong>${escapeHtml(f.title)}</strong><small>${escapeHtml(f.file)}:${f.startLine}</small></span>
+          <span class="fix-arrow">→</span>
+        </button>`).join('')}
+      </div>
+    </aside>
+    <article class="remediation-detail detail-${selected.severity}">
+      <div class="remediation-heading">
+        <div>
+          <span class="finding-kicker">⚠ ${selected.ruleId} · ${selected.severity}</span>
+          <h3>${escapeHtml(selected.title)}</h3>
+          <p>${escapeHtml(selected.description)}</p>
+        </div>
+        <span class="policy-chip policy-${selected.suggestedPolicy.toLowerCase()}">${selected.suggestedPolicy}</span>
+      </div>
+      <div class="remediation-meta-grid">
+        <div><span>Category</span><strong>${escapeHtml((selected.category||'privacy-review').replaceAll('-',' '))}</strong></div>
+        <div><span>Confidence</span><strong>${escapeHtml(selected.confidence)}</strong></div>
+        <div><span>Source</span><strong>${escapeHtml(selected.file)}:${selected.startLine}</strong></div>
+      </div>
+      <section class="remediation-section">
+        <span class="section-label">◈ Why it matters</span>
+        <p>${escapeHtml(selected.impact||selected.description)}</p>
+      </section>
+      <section class="remediation-section">
+        <span class="section-label">⌘ Evidence</span>
+        <pre><code>${escapeHtml(selected.evidence)}</code></pre>
+      </section>
+      <section class="remediation-section recommended-fix">
+        <span class="section-label">⚡ Recommended remediation</span>
+        <p>${escapeHtml(selected.remediation)}</p>
+      </section>
+      ${selected.saferPattern?`<section class="remediation-section safer-pattern">
+        <span class="section-label">✓ Safer Solidity pattern</span>
+        <pre><code>${escapeHtml(selected.saferPattern)}</code></pre>
+        <small>Illustrative pattern only. Adapt authorization and data design to the application.</small>
+      </section>`:''}
+    </article>
+  </div>`;
+
+  root.querySelectorAll('.fix-queue-item').forEach(button=>button.addEventListener('click',()=>{
+    selectedRemediationKey=button.dataset.key;
+    renderRemediation();
+  }));
+}
+
+function reportToMarkdown(currentReport){
+  const lines = [
+    '# VeilForge Privacy Readiness Report',
+    '',
+    `- Scanner: VeilForge v${currentReport.scannerVersion}`,
+    `- Schema: ${currentReport.schemaVersion}`,
+    `- Score: ${currentReport.score}/100 (Grade ${currentReport.grade})`,
+    `- Source hash: \`${currentReport.sourceHash}\``,
+    `- Report hash: \`${currentReport.reportHash}\``,
+    '',
+    '## Summary',
+    '',
+    `- Critical: ${currentReport.summary.critical}`,
+    `- High: ${currentReport.summary.high}`,
+    `- Medium: ${currentReport.summary.medium}`,
+    `- Low: ${currentReport.summary.low}`,
+    '',
+    '## Findings',
+    ''
+  ];
+  if(!currentReport.findings.length) lines.push('No deterministic rule matched this source bundle.', '');
+  currentReport.findings.forEach((f,index)=>{
+    lines.push(
+      `### ${index+1}. ${f.ruleId} — ${f.title}`,
+      '',
+      `- Severity: **${f.severity.toUpperCase()}**`,
+      `- Policy: **${f.suggestedPolicy}**`,
+      `- Source: \`${f.file}:${f.startLine}\``,
+      `- Confidence: ${f.confidence}`,
+      '',
+      f.description,
+      '',
+      '#### Why it matters',
+      '',
+      f.impact || f.description,
+      '',
+      '#### Evidence',
+      '',
+      '```solidity',
+      f.evidence,
+      '```',
+      '',
+      '#### Recommended remediation',
+      '',
+      f.remediation,
+      ''
+    );
+    if(f.saferPattern){
+      lines.push('#### Safer pattern','','```solidity',f.saferPattern,'```','');
+    }
+  });
+  lines.push('## APS-aligned policy recommendations','');
+  currentReport.policies.forEach(p=>lines.push(`- **${p.policy}** \`${p.signature}\` — ${p.reason} (${p.file}:${p.startLine})`));
+  lines.push('', '---', '', currentReport.disclaimer);
+  return lines.join('\n');
+}
+
+function downloadBlob(content,type,filename){
+  const blob=new Blob([content],{type});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function renderPolicies(){const groups=['Open','Restricted','Locked'];$('policyGrid').innerHTML=groups.map(policy=>{const items=report.policies.filter(p=>p.policy===policy);return `<section class="policyCol"><header><div><strong>${policy}</strong><small>${policy==='Open'?'Broadly callable selector':policy==='Restricted'?'Explicit grant required':'Selector unavailable'}</small></div><span>${items.length}</span></header><div class="policyItems">${items.length?items.map(p=>`<article><code>${escapeHtml(p.signature)}</code><p>${escapeHtml(p.reason)}</p><small>${escapeHtml(p.file)} · line ${p.startLine}</small></article>`).join(''):'<p style="text-align:center;color:#596477;font-size:9px">No selectors</p>'}</div></section>`}).join('')}
 function renderMetrics(){const score=report.score;$('scoreValue').textContent=score;$('gradeValue').textContent=report.grade;$('readinessLabel').textContent=score>=90?'Ready':score>=75?'Review':score>=55?'Exposed':'Critical';$('scoreRing').style.setProperty('--score',`${score*3.6}deg`);$('criticalCount').textContent=report.summary.critical;$('highCount').textContent=report.summary.high;$('policyCount').textContent=report.policies.length;$('sourceHash').textContent=report.sourceHash;$('reportHash').textContent=report.reportHash;$('proofScore').textContent=`${report.score}/100 · Grade ${report.grade}`;$('proofFindings').textContent=`${report.findings.length} deterministic checks`}
-async function refresh(){report=await scanAll();renderMetrics();renderCode();renderFindings();renderPolicies();const vuln=await (async()=>{const old=files;files=[{path:'Payroll.sol',content:vulnerableSource}];const x=await scanAll();files=old;return x})();const hard=await (async()=>{const old=files;files=[{path:'PayrollPrivateReady.sol',content:hardenedSource}];const x=await scanAll();files=old;return x})();$('deltaValue').textContent=`+${hard.score-vuln.score} points`;$('deltaText').textContent=`Vulnerable ${vuln.score} → Hardened ${hard.score}`}
+async function refresh(){report=await scanAll();renderMetrics();renderCode();renderFindings();renderRemediation();renderPolicies();const vuln=await (async()=>{const old=files;files=[{path:'Payroll.sol',content:vulnerableSource}];const x=await scanAll();files=old;return x})();const hard=await (async()=>{const old=files;files=[{path:'PayrollPrivateReady.sol',content:hardenedSource}];const x=await scanAll();files=old;return x})();$('deltaValue').textContent=`+${hard.score-vuln.score} points`;$('deltaText').textContent=`Vulnerable ${vuln.score} → Hardened ${hard.score}`}
 function setFiles(next,mode){files=next;activeFile=files[0].path;document.querySelectorAll('.modes button').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));const custom=document.querySelector('[data-mode="custom"]');custom.hidden=mode!=='custom';$('fileSelect').innerHTML=files.map(f=>`<option value="${escapeHtml(f.path)}">${escapeHtml(f.path)}</option>`).join('');$('projectName').value=mode==='hardened'?'veilforge-payroll-hardened':mode==='custom'?files[0].path.replace(/\.sol$/i,'').toLowerCase():'veilforge-payroll-demo';$('proofProject').textContent=$('projectName').value;refresh()}
 
 function wire(){
@@ -273,7 +543,8 @@ function wire(){
   document.querySelectorAll('.tabs button').forEach(button=>button.addEventListener('click',()=>{document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('active'));button.classList.add('active');document.querySelectorAll('.tabPane').forEach(p=>p.classList.remove('active'));$(`${button.dataset.tab}Tab`).classList.add('active')}));
   $('fileSelect').onchange=e=>{activeFile=e.target.value;renderCode()};
   $('projectName').oninput=e=>$('proofProject').textContent=e.target.value||'Untitled project';
-  $('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify(report,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`veilforge-report-${report.reportHash.slice(2,10)}.json`;a.click();URL.revokeObjectURL(url)};
+  $('exportBtn').onclick=()=>downloadBlob(JSON.stringify(report,null,2),'application/json',`veilforge-report-${report.reportHash.slice(2,10)}.json`);
+  $('markdownBtn').onclick=()=>downloadBlob(reportToMarkdown(report),'text/markdown',`veilforge-report-${report.reportHash.slice(2,10)}.md`);
   $('publishBtn').onclick=publishCurrentReport;
 }
 
