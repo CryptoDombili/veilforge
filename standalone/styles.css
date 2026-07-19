@@ -142,3 +142,5 @@
 .compare-hero p{font-size:11.5px}.compare-card dl div{font-size:10.5px}.compare-outcomes b{font-size:11px}.compare-outcomes p{font-size:10px}.copy-mini{font-size:9px}
 @media(max-width:860px){nav{height:auto;min-height:76px;padding:12px 0;gap:12px;flex-wrap:wrap}.navlinks{order:3;width:100%;justify-content:center;padding-top:10px;border-top:1px solid var(--line)}.navActions{margin-left:auto}.walletBtn,.ghost{font-size:12px}.toolbar{align-items:flex-start;gap:9px;flex-direction:column}.tabs,.tools{width:100%;overflow-x:auto;padding-bottom:2px}.tabs button,.tools button{white-space:nowrap}}
 @media(max-width:540px){.brand b{font-size:16px}.logo{width:40px;height:40px}.navActions{gap:6px}.ghost{display:none}.walletBtn{padding:9px 10px}.features p{font-size:11.5px}.executive-main p{font-size:11px}}
+
+.arcPowered{font-size:7.5px!important;letter-spacing:.11em!important;color:#65d9b3!important;margin-top:1px;white-space:nowrap}.brand>span:last-child{min-width:max-content}@media(max-width:700px){.arcPowered{font-size:6.8px!important;letter-spacing:.08em!important}}
