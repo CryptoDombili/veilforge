@@ -176,14 +176,34 @@ nav .brand .logo{width:47px;height:47px;border-radius:14px;font-size:21px}
 nav .brand b{font-size:20px}
 @media(max-width:540px){nav .brand .logo{width:44px;height:44px}nav .brand b{font-size:17px}}
 
-/* Keep the policy dropdown fully visible inside the findings panel */
+
+/* Keep findings filters inside the panel */
 .finding-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
   overflow: visible;
 }
 
-#policyFilter {
-  min-width: 132px;
-  max-width: 100%;
+.finding-search {
+  flex: 1 1 150px;
+  min-width: 0;
 }
 
+.severity-filters {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+#policyFilter {
+  display: block;
+  flex: 1 0 100%;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  margin-left: 0;
+}
 
