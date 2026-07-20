@@ -30,6 +30,21 @@
 
 ## Demo Video
 
+
+VeilForge v1.1 — Remediation Intelligence
+
+
+[Watch the VeilForge v1.1 demo](https://youtu.be/NMbUYhL427s)
+
+
+
+
+Bottom / second:
+
+
+VeilForge v1.0 — Original Scanner
+
+
 [Watch the VeilForge demo](https://youtu.be/URAFCuYUQy0)
 
 
