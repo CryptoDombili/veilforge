@@ -7,6 +7,7 @@ import {
   buildProofPayload,
   encodePublishReport,
   publishReport,
+  ensureArcTestnet,
 } from '../packages/proof/src/registry.js';
 
 const report = {
@@ -16,6 +17,53 @@ const report = {
   score: 85,
   scannerVersion: '1.8.0',
 };
+
+
+test('Arc Testnet wallet parameters match the published network definition', () => {
+  assert.equal(ARC_TESTNET.chainId, 5_042_002);
+  assert.equal(ARC_TESTNET.chainIdHex.toLowerCase(), '0x4cef52');
+  assert.equal(Number.parseInt(ARC_TESTNET.chainIdHex, 16), ARC_TESTNET.chainId);
+  assert.deepEqual(ARC_TESTNET.nativeCurrency, { name: 'USDC', symbol: 'USDC', decimals: 18 });
+  assert.deepEqual(ARC_TESTNET.rpcUrls, ['https://rpc.testnet.arc.network']);
+  assert.deepEqual(ARC_TESTNET.blockExplorerUrls, ['https://testnet.arcscan.app']);
+});
+
+test('unknown Arc network is added with correct values, selected, and verified', async () => {
+  const calls = [];
+  let chainId = '0x1';
+  let switchAttempts = 0;
+  const provider = {
+    async request(request) {
+      calls.push(request);
+      if (request.method === 'eth_chainId') return chainId;
+      if (request.method === 'wallet_switchEthereumChain') {
+        switchAttempts += 1;
+        if (switchAttempts === 1) {
+          const error = new Error('Unknown chain');
+          error.data = { originalError: { code: 4902 } };
+          throw error;
+        }
+        chainId = request.params[0].chainId;
+        return null;
+      }
+      if (request.method === 'wallet_addEthereumChain') return null;
+      throw new Error(`Unexpected method ${request.method}`);
+    },
+  };
+
+  await ensureArcTestnet(provider);
+  const addCall = calls.find((call) => call.method === 'wallet_addEthereumChain');
+  assert.ok(addCall);
+  assert.deepEqual(addCall.params[0], {
+    chainId: '0x4CEF52',
+    chainName: 'Arc Testnet',
+    nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
+    rpcUrls: ['https://rpc.testnet.arc.network'],
+    blockExplorerUrls: ['https://testnet.arcscan.app'],
+  });
+  assert.equal(switchAttempts, 2);
+  assert.equal(chainId.toLowerCase(), '0x4cef52');
+});
 
 test('proof encoder preserves contract argument order', () => {
   const data = encodePublishReport({ ...buildProofPayload(report, 'ipfs://report') });

@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.8.4 — Arc wallet network correction
+
+- Corrected Arc Testnet chain ID hex to `0x4cef52` (decimal `5042002`).
+- Corrected native USDC gas-token decimals to `18`.
+- Added nested MetaMask error-code handling for unknown networks.
+- Explicitly switches to Arc Testnet after adding the network and verifies the selected chain before opening the wallet session.
+
 ## 1.8.0 — Privacy Mission Control
 
 - replaced duplicate web/standalone analyzers with one canonical ES-module engine

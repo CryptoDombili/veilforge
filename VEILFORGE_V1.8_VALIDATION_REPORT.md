@@ -1,6 +1,6 @@
 # VeilForge v1.8 Validation Report
 
-**Release:** VeilForge v1.8.2 — Privacy Mission Control  
+**Release:** VeilForge v1.8.4 — Privacy Mission Control  
 **Validation date:** 2026-07-22  
 **Base:** clean `veilforge-v1.1` branch archive; the failed v1.8 monorepo was not patched or reused as the release base.
 
@@ -28,7 +28,7 @@ npm run smoke:browser
 |---|---|
 | npm install | completed; 1 package audited; 0 vulnerabilities |
 | static web build | completed; 25 files generated in `dist/` |
-| Node test suite | 20 passed, 0 failed |
+| Node test suite | 22 passed, 0 failed |
 | static syntax / JSON validation | 46 JavaScript modules and 6 JSON files passed |
 | Chromium runtime smoke | passed |
 | responsive runtime check | passed at 390 px; no root horizontal overflow |
@@ -82,8 +82,12 @@ The execution environment blocks navigation to local HTTP and file URLs through 
 - selector `publishReport(bytes32,bytes32,bytes32,uint16,string,string)` verified as `0x6133eb3a`
 - calldata offsets and dynamic strings decoded in the unit test
 - argument order verified as `reportURI` followed by `scannerVersion`
-- mocked EIP-1193 wallet flow verified in the exact order `eth_requestAccounts` → `eth_chainId`; the connected-session pop-up opens automatically; proof publication still verifies one `eth_sendTransaction`
+- mocked EIP-1193 wallet flow verified in the exact order `eth_requestAccounts` → `eth_chainId`; unknown-network handling adds Arc Testnet with chain ID `0x4cef52`, native USDC decimals `18`, switches to it, verifies it, and then opens the connected-session pop-up; proof publication still verifies one `eth_sendTransaction`
 - reference registry source checked for the same ABI order
+
+## Arc wallet root-cause correction
+
+The previous preview used `0x4cf4b2` as the Arc Testnet chain ID and `6` native-currency decimals. Those values do not describe Arc Testnet. The corrected wallet configuration uses decimal chain ID `5042002` (`0x4cef52`) and native USDC decimals `18`. The test suite now asserts the decimal/hex equivalence directly so this mismatch cannot silently pass again.
 
 ## Deliberate limits
 

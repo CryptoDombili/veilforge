@@ -152,12 +152,29 @@ try {
       const list = document.querySelector('.finding-list');
       globalThis.__walletMethods = [];
       try { delete globalThis.ethereum; } catch { globalThis.ethereum = undefined; }
+      let smokeChainId = '0x1';
+      let smokeSwitchAttempts = 0;
+      globalThis.__walletAddParams = null;
       const eip6963Provider = {
         isMetaMask: true,
-        request: async ({ method }) => {
+        request: async ({ method, params }) => {
           globalThis.__walletMethods.push(method);
-          if (method === 'eth_chainId') return '0x4cf4b2';
           if (method === 'eth_requestAccounts' || method === 'eth_accounts') return ['0x1111111111111111111111111111111111111111'];
+          if (method === 'eth_chainId') return smokeChainId;
+          if (method === 'wallet_switchEthereumChain') {
+            smokeSwitchAttempts += 1;
+            if (smokeSwitchAttempts === 1) {
+              const error = new Error('Unknown chain');
+              error.data = { originalError: { code: 4902 } };
+              throw error;
+            }
+            smokeChainId = params[0].chainId;
+            return null;
+          }
+          if (method === 'wallet_addEthereumChain') {
+            globalThis.__walletAddParams = params[0];
+            return null;
+          }
           return null;
         },
         on: () => {}
@@ -178,6 +195,8 @@ try {
         connectedLabel,
         walletMenuOpen: document.querySelector('#wallet-menu')?.classList.contains('open') || false,
         walletMethods: globalThis.__walletMethods,
+        walletAddParams: globalThis.__walletAddParams,
+        finalWalletChainId: smokeChainId,
         scanMessage: document.querySelector('#scan-message')?.textContent,
         heroPrimaryBackground: getComputedStyle(document.querySelector('#heroDemo')).backgroundImage,
         scanPrimaryBackground: getComputedStyle(document.querySelector('#scan-button')).backgroundImage,
@@ -201,6 +220,8 @@ try {
   if (uiFixes?.listOverflow !== 'auto' || (uiFixes?.listClientHeight ?? 0) > 630 || (uiFixes?.listScrollHeight ?? 0) <= (uiFixes?.listClientHeight ?? 0)) failures.push('bounded findings scroll area');
   if (!String(uiFixes?.connectedLabel).includes('0x1111') || !uiFixes?.walletMenuOpen) failures.push('direct MetaMask connection and automatic session popup');
   if (uiFixes?.walletMethods?.[0] !== 'eth_requestAccounts' || uiFixes?.walletMethods?.[1] !== 'eth_chainId') failures.push(`wallet request order (${JSON.stringify(uiFixes?.walletMethods)})`);
+  if (uiFixes?.walletAddParams?.chainId?.toLowerCase() !== '0x4cef52' || uiFixes?.walletAddParams?.nativeCurrency?.decimals !== 18) failures.push(`Arc network add parameters (${JSON.stringify(uiFixes?.walletAddParams)})`);
+  if (String(uiFixes?.finalWalletChainId).toLowerCase() !== '0x4cef52') failures.push(`Arc network selection (${uiFixes?.finalWalletChainId})`);
   if (!uiFixes?.scanHasPrimaryClass || uiFixes?.heroPrimaryBackground !== uiFixes?.scanPrimaryBackground) failures.push('exact primary gradient parity');
   if (String(uiFixes?.scanMessage).includes('[object Object]')) failures.push('object object scan message');
   if (cdp.exceptions.length) failures.push(`browser exceptions: ${cdp.exceptions.join('; ')}`);

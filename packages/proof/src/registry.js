@@ -2,9 +2,9 @@ import { functionSelector } from '../../analyzer/src/keccak.js';
 
 export const ARC_TESTNET = Object.freeze({
   chainId: 5_042_002,
-  chainIdHex: '0x4CF4B2',
+  chainIdHex: '0x4CEF52',
   chainName: 'Arc Testnet',
-  nativeCurrency: Object.freeze({ name: 'USDC', symbol: 'USDC', decimals: 6 }),
+  nativeCurrency: Object.freeze({ name: 'USDC', symbol: 'USDC', decimals: 18 }),
   rpcUrls: Object.freeze(['https://rpc.testnet.arc.network']),
   blockExplorerUrls: Object.freeze(['https://testnet.arcscan.app']),
 });
@@ -95,10 +95,25 @@ export async function connectWallet(provider = globalThis.ethereum) {
   return account;
 }
 
+function walletErrorCode(error) {
+  const candidates = [
+    error?.code,
+    error?.data?.code,
+    error?.data?.originalError?.code,
+    error?.cause?.code,
+  ];
+  for (const candidate of candidates) {
+    const numeric = Number(candidate);
+    if (Number.isFinite(numeric)) return numeric;
+  }
+  return null;
+}
+
 export async function ensureArcTestnet(provider = globalThis.ethereum) {
   if (!provider?.request) throw new Error('No EIP-1193 wallet was detected.');
-  const current = String(await provider.request({ method: 'eth_chainId' })).toLowerCase();
-  if (current === ARC_TESTNET.chainIdHex.toLowerCase()) return;
+  const targetChainId = ARC_TESTNET.chainIdHex.toLowerCase();
+  const readChainId = async () => String(await provider.request({ method: 'eth_chainId' })).toLowerCase();
+  if (await readChainId() === targetChainId) return;
 
   try {
     await provider.request({
@@ -106,7 +121,7 @@ export async function ensureArcTestnet(provider = globalThis.ethereum) {
       params: [{ chainId: ARC_TESTNET.chainIdHex }],
     });
   } catch (error) {
-    if (error?.code !== 4902) throw error;
+    if (walletErrorCode(error) !== 4902) throw error;
     await provider.request({
       method: 'wallet_addEthereumChain',
       params: [{
@@ -117,6 +132,16 @@ export async function ensureArcTestnet(provider = globalThis.ethereum) {
         blockExplorerUrls: [...ARC_TESTNET.blockExplorerUrls],
       }],
     });
+    // Some wallets add the network without selecting it. Explicitly switch after add.
+    await provider.request({
+      method: 'wallet_switchEthereumChain',
+      params: [{ chainId: ARC_TESTNET.chainIdHex }],
+    });
+  }
+
+  const selectedChainId = await readChainId();
+  if (selectedChainId !== targetChainId) {
+    throw new Error('MetaMask did not switch to Arc Testnet. Select Arc Testnet in MetaMask and try again.');
   }
 }
 
