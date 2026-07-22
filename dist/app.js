@@ -895,19 +895,29 @@ async function handleWorkspaceAction(button) {
   } else if (action === 'publish-proof') {
     const result = document.querySelector('#proof-result');
     try {
-      if (result) result.textContent = 'Waiting for wallet confirmation…';
+      if (result) result.textContent = 'Checking payload and waiting for wallet confirmation…';
       const response = await publishReport({
         provider: state.walletProvider,
         registryAddress: document.querySelector('#registry-address')?.value,
         account: state.walletAccount,
         report: state.report,
         reportURI: document.querySelector('#report-uri')?.value.trim() || '',
+        onTransactionHash: ({ transactionHash, explorerUrl }) => {
+          if (!result) return;
+          result.innerHTML = `Transaction submitted. Waiting for Arc confirmation… <a href="${esc(explorerUrl)}" target="_blank" rel="noreferrer">${esc(shortHash(transactionHash, 10, 8))}</a>`;
+        },
       });
       state.walletAccount = response.account;
       setWalletUi(response.account);
-      if (result) result.innerHTML = `Submitted: <a href="${esc(response.explorerUrl)}" target="_blank" rel="noreferrer">${esc(response.transactionHash)}</a>`;
+      if (result) result.innerHTML = `Confirmed on Arc Testnet: <a href="${esc(response.explorerUrl)}" target="_blank" rel="noreferrer">${esc(shortHash(response.transactionHash, 10, 8))}</a>`;
     } catch (error) {
-      if (result) result.textContent = error instanceof Error ? error.message : String(error);
+      if (!result) return;
+      const message = error instanceof Error ? error.message : String(error);
+      if (error?.explorerUrl) {
+        result.innerHTML = `${esc(message)} <a href="${esc(error.explorerUrl)}" target="_blank" rel="noreferrer">View transaction on ArcScan</a>`;
+      } else {
+        result.textContent = message;
+      }
     }
   } else if (action === 'copy-payload') {
     await navigator.clipboard.writeText(JSON.stringify(buildProofPayload(state.report, document.querySelector('#report-uri')?.value || ''), null, 2));

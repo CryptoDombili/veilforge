@@ -1,10 +1,10 @@
-## v1.8.13 — adaptive card density and readable content flow
+## v1.8.14 — confirmed Arc proofs and readable proof UI
 
-- Rebalanced Exposure Chains columns based on content type instead of equal-width cards.
-- Prevented short chain nodes from stretching to the height of long neighboring nodes.
-- Added controlled line wrapping and clamping for long titles, metadata, and descriptions.
-- Improved Triage finding row alignment with flexible titles and stable policy badges.
-- Preserved internal scrolling, wallet behavior, exports, and the deterministic analyzer engine.
+- Aligned proof calldata with the deployed registry order: `scannerVersion`, then `reportURI`.
+- Added preflight `eth_call` simulation before sending a proof transaction.
+- Wait for the Arc transaction receipt and show success only after `status = 1`.
+- Failed or timed-out transactions now show an explicit ArcScan link instead of a false Submitted success state.
+- Increased comparison and Proof Center microcopy sizes for comfortable reading.
 
 ## v1.8.10 — version badge pulse + filter dropdown polish
 
@@ -55,7 +55,7 @@
 - added Treatment Plan 2.0 with P0–P3 priorities
 - added report comparison and local scan history
 - added Proof Center 2.0 with dependency-free ABI encoding
-- corrected registry argument order to `reportURI`, then `scannerVersion`
+- legacy note superseded in v1.8.14: live registry order verified as `scannerVersion`, then `reportURI`
 - added Arc Policy Manifest and remediation ZIP exports
 - added custom-rule API, CLI, schemas, examples, and showcase documentation
 - replaced the fragile Vite/Vitest dependency graph with a zero-dependency static build

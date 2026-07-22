@@ -2,7 +2,7 @@
 
 ## Registry contract
 
-VeilForge v1.8 keeps compatibility with the deployed `VeilForgeReportRegistry` interface.
+VeilForge uses the deployed `VeilForgeReportRegistry` interface on Arc Testnet.
 
 ```solidity
 function publishReport(
@@ -10,48 +10,43 @@ function publishReport(
     bytes32 sourceHash,
     bytes32 reportHash,
     uint16 score,
-    string calldata reportURI,
-    string calldata scannerVersion
+    string calldata scannerVersion,
+    string calldata reportURI
 ) external;
 ```
 
-Argument order is tested explicitly. `reportURI` precedes `scannerVersion`.
+The two dynamic string arguments use the deployed order: **`scannerVersion` first, then `reportURI`**. Their Solidity types are identical, so the function selector is unchanged; the ABI tail order must still match exactly.
 
 ## Stored data
 
 - source hash
 - report hash
 - score
-- optional report URI
-- submitter
-- timestamp
 - scanner version
+- optional report URI
+- publisher
+- timestamp
 
 The registry does not store Solidity source or the finding payload.
 
 ## Browser flow
 
 1. Run a deterministic local scan.
-2. Review project ID, hashes, score, version, registry, and optional URI.
-3. Discover installed EVM browser wallets through EIP-6963, with legacy EIP-1193 fallback, and connect the selected provider.
-4. Switch or add Arc Testnet through wallet methods.
-5. Encode calldata locally.
-6. Submit `eth_sendTransaction`.
-7. Confirm the transaction in the selected wallet.
-8. Open the ArcScan transaction link.
+2. Review project ID, hashes, score, scanner version, registry, and optional URI.
+3. Connect an installed EIP-1193/EIP-6963 browser wallet.
+4. Switch or add Arc Testnet.
+5. Encode calldata locally using the deployed string order.
+6. Simulate the contract call with `eth_call` to catch known reverts before gas is spent.
+7. Submit `eth_sendTransaction` after simulation passes.
+8. Poll the transaction receipt.
+9. Show **Confirmed** only when the receipt status is successful; otherwise show the ArcScan failure link.
 
 ## Arc Testnet configuration
 
 ```text
 Chain ID: 5042002
-Hex chain ID: 0x4CF4B2
+Hex chain ID: 0x4CEF52
 RPC: https://rpc.testnet.arc.network
 Explorer: https://testnet.arcscan.app
 Currency: USDC
 ```
-
-Verify these values against current Arc documentation before production use.
-
-## Registry ownership behavior
-
-The reference contract lets the original submitter update a project ID. Another address cannot overwrite it. A new source bundle creates a new deterministic project ID in v1.8, so project lineage should be tracked through report history or an external URI when needed.

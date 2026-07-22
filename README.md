@@ -206,7 +206,7 @@ Default registry:
 Arc Testnet:
 
 ```text
-Chain ID: 5042002 (0x4CF4B2)
+Chain ID: 5042002 (0x4CEF52)
 RPC: https://rpc.testnet.arc.network
 Explorer: https://testnet.arcscan.app
 Gas token: USDC
@@ -220,12 +220,12 @@ publishReport(
     bytes32 sourceHash,
     bytes32 reportHash,
     uint16 score,
-    string reportURI,
-    string scannerVersion
+    string scannerVersion,
+    string reportURI
 )
 ```
 
-The selected wallet always presents the final transaction for user approval. Connecting does not automatically open the session panel; the connected address button opens it on demand. No private key is requested or stored by the app.
+VeilForge first simulates the proof call, then the selected wallet presents the transaction for user approval. The UI waits for the receipt and only reports success after the transaction is confirmed. Connecting does not automatically open the session panel; the connected address button opens it on demand. No private key is requested or stored by the app.
 
 To override the registry during Vercel build:
 

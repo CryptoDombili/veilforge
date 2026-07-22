@@ -3,13 +3,14 @@ pragma solidity ^0.8.24;
 
 /// @title VeilForgeReportRegistry
 /// @notice Anchors deterministic VeilForge report metadata without storing source code.
+/// @dev The deployed Arc Testnet registry expects scannerVersion before reportURI.
 contract VeilForgeReportRegistry {
     struct ReportRecord {
         bytes32 sourceHash;
         bytes32 reportHash;
         uint16 score;
-        string reportURI;
         string scannerVersion;
+        string reportURI;
         address publisher;
         uint64 publishedAt;
     }
@@ -21,36 +22,38 @@ contract VeilForgeReportRegistry {
         bytes32 indexed sourceHash,
         bytes32 indexed reportHash,
         uint16 score,
-        string reportURI,
         string scannerVersion,
+        string reportURI,
         address publisher
     );
 
     error InvalidScore(uint16 score);
     error EmptyHash();
+    error EmptyScannerVersion();
 
     function publishReport(
         bytes32 projectId,
         bytes32 sourceHash,
         bytes32 reportHash,
         uint16 score,
-        string calldata reportURI,
-        string calldata scannerVersion
+        string calldata scannerVersion,
+        string calldata reportURI
     ) external {
         if (projectId == bytes32(0) || sourceHash == bytes32(0) || reportHash == bytes32(0)) revert EmptyHash();
         if (score > 100) revert InvalidScore(score);
+        if (bytes(scannerVersion).length == 0) revert EmptyScannerVersion();
 
         reports[projectId] = ReportRecord({
             sourceHash: sourceHash,
             reportHash: reportHash,
             score: score,
-            reportURI: reportURI,
             scannerVersion: scannerVersion,
+            reportURI: reportURI,
             publisher: msg.sender,
             publishedAt: uint64(block.timestamp)
         });
 
-        emit ReportPublished(projectId, sourceHash, reportHash, score, reportURI, scannerVersion, msg.sender);
+        emit ReportPublished(projectId, sourceHash, reportHash, score, scannerVersion, reportURI, msg.sender);
     }
 
     function getLatestReport(bytes32 projectId) external view returns (ReportRecord memory) {

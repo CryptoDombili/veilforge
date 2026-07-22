@@ -927,3 +927,159 @@ body{font-size:16px}
     -webkit-line-clamp:unset;
   }
 }
+
+/* v1.8.14 readable proof and comparison status */
+.workspace-header .eyebrow{
+  font-size:11px;
+  line-height:1.4;
+}
+
+.workspace-header p{
+  font-size:13px;
+  line-height:1.65;
+}
+
+.compare-card{
+  min-height:86px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+
+.compare-card span{
+  font-size:11px;
+  line-height:1.4;
+}
+
+.compare-card strong{
+  font-size:30px;
+  line-height:1.1;
+}
+
+.compare-column h4{
+  font-size:15px;
+  line-height:1.35;
+}
+
+.mini-finding strong{
+  font-size:12px;
+  line-height:1.45;
+}
+
+.mini-finding small{
+  margin-top:4px;
+  font-size:10.5px;
+  line-height:1.5;
+  color:#8996a9;
+}
+
+.proof-layout{
+  align-items:stretch;
+}
+
+.proof-card{
+  padding:20px;
+}
+
+.proof-card h4{
+  margin-bottom:10px;
+  font-size:18px;
+  line-height:1.35;
+}
+
+.proof-card p{
+  margin:0 0 16px;
+  font-size:13px;
+  line-height:1.65;
+  color:#929fb2;
+}
+
+.proof-card .field-label{
+  margin-bottom:8px;
+  font-size:10.5px;
+  line-height:1.4;
+}
+
+.proof-card .text-input{
+  min-height:45px;
+  padding:0 14px;
+  font-size:14px;
+}
+
+.proof-actions{
+  align-items:stretch;
+  margin-top:14px;
+}
+
+.proof-actions .action-button{
+  min-height:44px;
+  padding:11px 14px;
+  font-size:13px;
+}
+
+.proof-result{
+  min-height:24px;
+  margin-top:13px;
+  font-size:12.5px;
+  line-height:1.6;
+  overflow-wrap:anywhere;
+}
+
+.proof-result a{
+  color:var(--mint);
+  font-weight:750;
+  text-decoration:none;
+}
+
+.proof-result a:hover{
+  text-decoration:underline;
+}
+
+.info-list{
+  gap:0;
+}
+
+.info-row{
+  min-height:46px;
+  align-items:center;
+  padding:11px 8px;
+  font-size:12px;
+  line-height:1.45;
+}
+
+.info-row span{
+  font-size:12px;
+  color:#8b98ab;
+}
+
+.info-row code{
+  max-width:68%;
+  font-size:12px;
+  line-height:1.5;
+  text-align:right;
+  overflow-wrap:anywhere;
+  color:#b1bdcc;
+}
+
+.hash-line span{
+  font-size:10px;
+}
+
+.hash-line code{
+  font-size:10.5px;
+  line-height:1.5;
+}
+
+@media(max-width:700px){
+  .workspace-header .eyebrow{font-size:10px}
+  .workspace-header p{font-size:12px}
+  .compare-card span{font-size:10px}
+  .compare-card strong{font-size:27px}
+  .mini-finding strong{font-size:11px}
+  .mini-finding small{font-size:10px}
+  .proof-card{padding:16px}
+  .proof-card h4{font-size:17px}
+  .proof-card p{font-size:12px}
+  .info-row{align-items:flex-start;gap:12px}
+  .info-row code{max-width:62%;font-size:11px}
+}

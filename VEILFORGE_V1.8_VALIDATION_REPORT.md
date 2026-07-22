@@ -1,22 +1,21 @@
-# VeilForge v1.8.13 Validation Report
+# VeilForge v1.8.10 Validation Report
 
 ## Scope
-- Adaptive content density for **Triage** and **Exposure chains**.
-- Wider columns for long Function and Policy content.
-- Narrower columns for short Selector content.
-- Short chain nodes no longer stretch to the full height of long neighboring nodes.
-- Controlled wrapping and line limits prevent cramped or overflowing text.
-- Responsive single-column behavior remains available on small screens.
+- Soft pulse animation for the hero badge dot next to “VeilForge v1.8 · Privacy Mission Control”.
+- Visual refinement for the Triage filter dropdowns: **All severities** and **All policies**.
+
+## Files Updated
+- `apps/web/styles.css`
+- `scripts/build-web.mjs`
+- `package.json`
+- `package-lock.json`
+- `dist/*` (rebuilt)
 
 ## Validation
 - `npm run build:web` ✅
-- `npm test` ✅ — 22/22 passing
+- `npm test` ✅ (22/22 passing)
 - `npm run typecheck` ✅
-- `npm run smoke:browser` ✅ — Chromium runtime and 390 px responsive check
 
-## Important behavior preserved
-- Deterministic local analysis
-- EIP-6963 multi-wallet connection
-- Arc Testnet proof configuration
-- Internal scroll areas
-- Comparison and export behavior
+## Notes
+- The version badge dot now uses a subtle pulse designed to avoid eye strain.
+- Dropdown controls now have a more polished control surface, stronger readability, improved hover/focus treatment, and a custom chevron while keeping the existing dark VeilForge visual language.

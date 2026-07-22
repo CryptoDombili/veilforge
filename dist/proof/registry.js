@@ -51,39 +51,74 @@ function requireAddress(value, field = 'Address') {
   return address;
 }
 
-export function encodePublishReport({ projectId, sourceHash, reportHash, score, reportURI = '', scannerVersion }) {
+function requireScannerVersion(value) {
+  const version = String(value ?? '').trim();
+  if (!version) throw new Error('scannerVersion is required. Run a fresh scan before publishing.');
+  return version;
+}
+
+function receiptSucceeded(status) {
+  if (status === true || status === 1 || status === '1') return true;
+  if (typeof status === 'string') return Number.parseInt(status, 16) === 1;
+  return false;
+}
+
+function readableWalletError(error) {
+  const candidates = [
+    error?.shortMessage,
+    error?.message,
+    error?.data?.message,
+    error?.data?.originalError?.message,
+    error?.cause?.message,
+  ];
+  const message = candidates.find((candidate) => typeof candidate === 'string' && candidate.trim());
+  return message ? message.replace(/^Error:\s*/i, '').trim() : 'The wallet rejected or could not complete the request.';
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Encode the live Arc registry ABI.
+ * The deployed registry expects scannerVersion before reportURI.
+ * Both parameters are strings, so changing their semantic order does not
+ * change the function selector; it only changes the dynamic ABI offsets.
+ */
+export function encodePublishReport({ projectId, sourceHash, reportHash, score, scannerVersion, reportURI = '' }) {
   const numericScore = Number(score);
   if (!Number.isInteger(numericScore) || numericScore < 0 || numericScore > 100) {
     throw new Error('Score must be an integer between 0 and 100.');
   }
-  if (!scannerVersion) throw new Error('scannerVersion is required.');
 
+  const version = requireScannerVersion(scannerVersion);
+  const versionTail = encodeDynamicString(version);
   const uriTail = encodeDynamicString(reportURI);
-  const versionTail = encodeDynamicString(scannerVersion);
   const headSizeBytes = 6 * 32;
-  const uriOffset = headSizeBytes;
-  const versionOffset = headSizeBytes + uriTail.length / 2;
+  const versionOffset = headSizeBytes;
+  const uriOffset = headSizeBytes + versionTail.length / 2;
 
   const head = [
     requireBytes32(projectId, 'projectId'),
     requireBytes32(sourceHash, 'sourceHash'),
     requireBytes32(reportHash, 'reportHash'),
     padWord(numericScore.toString(16)),
-    padWord(uriOffset.toString(16)),
     padWord(versionOffset.toString(16)),
+    padWord(uriOffset.toString(16)),
   ].join('');
 
-  return `${PUBLISH_REPORT_SELECTOR}${head}${uriTail}${versionTail}`;
+  return `${PUBLISH_REPORT_SELECTOR}${head}${versionTail}${uriTail}`;
 }
 
 export function buildProofPayload(report, reportURI = '') {
+  if (!report) throw new Error('Run a scan before building a proof payload.');
   return {
     projectId: report.projectId,
     sourceHash: report.sourceHash,
     reportHash: report.reportHash,
     score: report.score,
+    scannerVersion: requireScannerVersion(report.scannerVersion),
     reportURI,
-    scannerVersion: report.scannerVersion,
   };
 }
 
@@ -132,7 +167,6 @@ export async function ensureArcTestnet(provider = globalThis.ethereum) {
         blockExplorerUrls: [...ARC_TESTNET.blockExplorerUrls],
       }],
     });
-    // Some wallets add the network without selecting it. Explicitly switch after add.
     await provider.request({
       method: 'wallet_switchEthereumChain',
       params: [{ chainId: ARC_TESTNET.chainIdHex }],
@@ -145,20 +179,80 @@ export async function ensureArcTestnet(provider = globalThis.ethereum) {
   }
 }
 
-export async function publishReport({ provider = globalThis.ethereum, registryAddress, account, report, reportURI = '' }) {
+export async function waitForTransactionReceipt(
+  provider,
+  transactionHash,
+  { pollIntervalMs = 1_000, timeoutMs = 120_000 } = {},
+) {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt <= timeoutMs) {
+    const receipt = await provider.request({
+      method: 'eth_getTransactionReceipt',
+      params: [transactionHash],
+    });
+    if (receipt) return receipt;
+    await delay(pollIntervalMs);
+  }
+  const error = new Error('The proof transaction was submitted but confirmation timed out. Check ArcScan for its final status.');
+  error.transactionHash = transactionHash;
+  error.explorerUrl = `${ARC_TESTNET.blockExplorerUrls[0]}/tx/${transactionHash}`;
+  throw error;
+}
+
+export async function publishReport({
+  provider = globalThis.ethereum,
+  registryAddress,
+  account,
+  report,
+  reportURI = '',
+  onTransactionHash,
+  pollIntervalMs = 1_000,
+  receiptTimeoutMs = 120_000,
+}) {
   if (!report) throw new Error('Run a scan before publishing a proof.');
+  if (!provider?.request) throw new Error('No EIP-1193 wallet was detected.');
+
   const to = requireAddress(registryAddress, 'Registry address');
   const from = account ?? await connectWallet(provider);
   await ensureArcTestnet(provider);
-  const data = encodePublishReport(buildProofPayload(report, reportURI));
+
+  const payload = buildProofPayload(report, reportURI);
+  const data = encodePublishReport(payload);
+  const transaction = { from, to, data, value: '0x0' };
+
+  // Simulate first so known contract reverts are caught before the wallet spends gas.
+  try {
+    await provider.request({ method: 'eth_call', params: [transaction, 'latest'] });
+  } catch (error) {
+    throw new Error(`Proof simulation failed: ${readableWalletError(error)}`);
+  }
+
   const transactionHash = await provider.request({
     method: 'eth_sendTransaction',
-    params: [{ from, to, data, value: '0x0' }],
+    params: [transaction],
   });
+  const explorerUrl = `${ARC_TESTNET.blockExplorerUrls[0]}/tx/${transactionHash}`;
+  if (typeof onTransactionHash === 'function') onTransactionHash({ transactionHash, explorerUrl });
+
+  const receipt = await waitForTransactionReceipt(provider, transactionHash, {
+    pollIntervalMs,
+    timeoutMs: receiptTimeoutMs,
+  });
+
+  if (!receiptSucceeded(receipt.status)) {
+    const error = new Error('The proof transaction was mined but reverted on Arc Testnet.');
+    error.transactionHash = transactionHash;
+    error.explorerUrl = explorerUrl;
+    error.receipt = receipt;
+    throw error;
+  }
+
   return {
     account: from,
     transactionHash,
-    explorerUrl: `${ARC_TESTNET.blockExplorerUrls[0]}/tx/${transactionHash}`,
-    payload: buildProofPayload(report, reportURI),
+    explorerUrl,
+    receipt,
+    confirmed: true,
+    payload,
   };
 }
