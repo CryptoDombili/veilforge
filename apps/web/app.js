@@ -681,7 +681,7 @@ function renderTreatment() {
 
 function miniFindings(findings) {
   if (!findings.length) return '<div class="mini-finding"><small>None</small></div>';
-  return findings.slice(0, 20).map((finding) => `<div class="mini-finding"><strong>${esc(finding.ruleId)} · ${esc(finding.title)}</strong><small>${esc(finding.contractName)} · ${esc(finding.file)}:${finding.startLine}</small></div>`).join('');
+  return `<div class="mini-finding-list">${findings.map((finding) => `<div class=\"mini-finding\"><strong>${esc(finding.ruleId)} · ${esc(finding.title)}</strong><small>${esc(finding.contractName)} · ${esc(finding.file)}:${finding.startLine}</small></div>`).join('')}</div>`;
 }
 
 function renderCompare() {
