@@ -1,3 +1,11 @@
+## v1.8.13 — adaptive card density and readable content flow
+
+- Rebalanced Exposure Chains columns based on content type instead of equal-width cards.
+- Prevented short chain nodes from stretching to the height of long neighboring nodes.
+- Added controlled line wrapping and clamping for long titles, metadata, and descriptions.
+- Improved Triage finding row alignment with flexible titles and stable policy badges.
+- Preserved internal scrolling, wallet behavior, exports, and the deterministic analyzer engine.
+
 ## v1.8.10 — version badge pulse + filter dropdown polish
 
 - Added a soft, eye-friendly pulse animation to the mint dot in the hero version badge.
