@@ -167,10 +167,7 @@ try {
       }));
       globalThis.addEventListener('eip6963:requestProvider', announceProvider, { once: true });
       document.querySelector('#header-wallet-button')?.click();
-      await new Promise((resolve) => setTimeout(resolve, 80));
-      const connectorOpened = document.querySelector('#wallet-connect-modal')?.classList.contains('open') || false;
-      document.querySelector('#wallet-connect-metamask')?.click();
-      await new Promise((resolve) => setTimeout(resolve, 1180));
+      await new Promise((resolve) => setTimeout(resolve, 300));
       const connectedLabel = document.querySelector('#header-wallet-label')?.textContent;
       return {
         starOpacity: Number(star.opacity),
@@ -179,7 +176,6 @@ try {
         listScrollHeight: list?.scrollHeight || 0,
         listOverflow: list ? getComputedStyle(list).overflowY : '',
         connectedLabel,
-        connectorOpened,
         walletMenuOpen: document.querySelector('#wallet-menu')?.classList.contains('open') || false,
         walletMethods: globalThis.__walletMethods,
         scanMessage: document.querySelector('#scan-message')?.textContent,
@@ -203,7 +199,7 @@ try {
   if (snapshot?.runtimeError) failures.push(`runtime error: ${snapshot.runtimeError}`);
   if ((uiFixes?.starOpacity ?? 0) < 0.5 || (uiFixes?.starZ ?? -1) < 0) failures.push('visible starfield layer');
   if (uiFixes?.listOverflow !== 'auto' || (uiFixes?.listClientHeight ?? 0) > 630 || (uiFixes?.listScrollHeight ?? 0) <= (uiFixes?.listClientHeight ?? 0)) failures.push('bounded findings scroll area');
-  if (!uiFixes?.connectorOpened || !String(uiFixes?.connectedLabel).includes('0x1111') || !uiFixes?.walletMenuOpen) failures.push('wallet connector, MetaMask connection and automatic session popup');
+  if (!String(uiFixes?.connectedLabel).includes('0x1111') || !uiFixes?.walletMenuOpen) failures.push('direct MetaMask connection and automatic session popup');
   if (uiFixes?.walletMethods?.[0] !== 'eth_requestAccounts' || uiFixes?.walletMethods?.[1] !== 'eth_chainId') failures.push(`wallet request order (${JSON.stringify(uiFixes?.walletMethods)})`);
   if (!uiFixes?.scanHasPrimaryClass || uiFixes?.heroPrimaryBackground !== uiFixes?.scanPrimaryBackground) failures.push('exact primary gradient parity');
   if (String(uiFixes?.scanMessage).includes('[object Object]')) failures.push('object object scan message');
