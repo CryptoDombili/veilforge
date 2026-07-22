@@ -160,30 +160,34 @@ try {
       let smokeChainId = '0x1';
       let smokeSwitchAttempts = 0;
       globalThis.__walletAddParams = null;
-      const makeProvider = (methodLog, account, flags = {}) => ({
-        ...flags,
-        request: async ({ method, params }) => {
-          methodLog.push(method);
-          if (method === 'eth_requestAccounts' || method === 'eth_accounts') return [account];
-          if (method === 'eth_chainId') return smokeChainId;
-          if (method === 'wallet_switchEthereumChain') {
-            smokeSwitchAttempts += 1;
-            if (smokeSwitchAttempts === 1) {
-              const error = new Error('Unknown chain');
-              error.data = { originalError: { code: 4902 } };
-              throw error;
+      const makeProvider = (methodLog, account, flags = {}) => {
+        const handlers = {};
+        return {
+          ...flags,
+          __handlers: handlers,
+          request: async ({ method, params }) => {
+            methodLog.push(method);
+            if (method === 'eth_requestAccounts' || method === 'eth_accounts') return [account];
+            if (method === 'eth_chainId') return smokeChainId;
+            if (method === 'wallet_switchEthereumChain') {
+              smokeSwitchAttempts += 1;
+              if (smokeSwitchAttempts === 1) {
+                const error = new Error('Unknown chain');
+                error.data = { originalError: { code: 4902 } };
+                throw error;
+              }
+              smokeChainId = params[0].chainId;
+              return null;
             }
-            smokeChainId = params[0].chainId;
+            if (method === 'wallet_addEthereumChain') {
+              globalThis.__walletAddParams = params[0];
+              return null;
+            }
             return null;
-          }
-          if (method === 'wallet_addEthereumChain') {
-            globalThis.__walletAddParams = params[0];
-            return null;
-          }
-          return null;
-        },
-        on: () => {}
-      });
+          },
+          on: (eventName, handler) => { handlers[eventName] = handler; }
+        };
+      };
       const keplrProvider = makeProvider(globalThis.__walletMethodsKeplr, '0x1111111111111111111111111111111111111111', { isKeplr: true });
       const metaMaskProvider = makeProvider(globalThis.__walletMethodsMetaMask, '0x2222222222222222222222222222222222222222', { isMetaMask: true });
       const phantomProvider = makeProvider(globalThis.__walletMethodsPhantom, '0x3333333333333333333333333333333333333333', { isPhantom: true });
@@ -225,6 +229,28 @@ try {
       await new Promise((resolve) => setTimeout(resolve, 120));
       const walletMenuOpenAfterAddressClick = document.querySelector('#wallet-menu')?.classList.contains('open') || false;
       const walletNetworkLabel = document.querySelector('#wallet-menu-network')?.textContent || '';
+      const unusedWalletMethodsBeforeSwitch = [
+        ...globalThis.__walletMethodsKeplr,
+        ...globalThis.__walletMethodsMetaMask,
+        ...globalThis.__walletMethodsPhantom,
+        ...globalThis.__walletMethodsRabby,
+        ...globalThis.__walletMethodsRabbyLegacy,
+      ];
+
+      document.querySelector('#wallet-disconnect')?.click();
+      document.querySelector('#header-wallet-button')?.click();
+      await new Promise((resolve) => setTimeout(resolve, 120));
+      const metaMaskChoice = [...document.querySelectorAll('.wallet-choice')].find((node) => node.querySelector('b')?.textContent === 'MetaMask');
+      metaMaskChoice?.click();
+      await new Promise((resolve) => setTimeout(resolve, 220));
+      zerionProvider.__handlers.accountsChanged?.(['0x7777777777777777777777777777777777777777']);
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      const activeWalletAfterStaleEvent = document.querySelector('#header-wallet-label')?.textContent || '';
+      document.querySelector('#header-wallet-button')?.click();
+      await new Promise((resolve) => setTimeout(resolve, 60));
+      const activeWalletNetworkAfterStaleEvent = document.querySelector('#wallet-menu-network')?.textContent || '';
+      document.querySelector('#wallet-menu-close')?.click();
+
       return {
         starOpacity: Number(star.opacity),
         starZ: Number(star.zIndex),
@@ -239,13 +265,9 @@ try {
         walletMenuOpenAfterAddressClick,
         walletNetworkLabel,
         walletMethods: globalThis.__walletMethodsZerion,
-        unusedWalletMethods: [
-          ...globalThis.__walletMethodsKeplr,
-          ...globalThis.__walletMethodsMetaMask,
-          ...globalThis.__walletMethodsPhantom,
-          ...globalThis.__walletMethodsRabby,
-          ...globalThis.__walletMethodsRabbyLegacy,
-        ],
+        unusedWalletMethods: unusedWalletMethodsBeforeSwitch,
+        activeWalletAfterStaleEvent,
+        activeWalletNetworkAfterStaleEvent,
         walletAddParams: globalThis.__walletAddParams,
         finalWalletChainId: smokeChainId,
         scanMessage: document.querySelector('#scan-message')?.textContent,
@@ -277,6 +299,7 @@ try {
   if (!uiFixes?.walletMenuOpenAfterAddressClick) failures.push('wallet session opens from connected address button');
   if (!String(uiFixes?.walletNetworkLabel).includes('Zerion')) failures.push(`selected wallet identity in session (${uiFixes?.walletNetworkLabel})`);
   if ((uiFixes?.unusedWalletMethods?.length ?? 0) !== 0) failures.push(`unselected wallet was called (${JSON.stringify(uiFixes?.unusedWalletMethods)})`);
+  if (!String(uiFixes?.activeWalletAfterStaleEvent).includes('0x2222') || !String(uiFixes?.activeWalletNetworkAfterStaleEvent).includes('MetaMask')) failures.push(`stale wallet provider event isolation (${uiFixes?.activeWalletAfterStaleEvent}, ${uiFixes?.activeWalletNetworkAfterStaleEvent})`);
   if (uiFixes?.walletMethods?.[0] !== 'eth_requestAccounts' || uiFixes?.walletMethods?.[1] !== 'eth_chainId') failures.push(`selected wallet request order (${JSON.stringify(uiFixes?.walletMethods)})`);
   if (uiFixes?.walletAddParams?.chainId?.toLowerCase() !== '0x4cef52' || uiFixes?.walletAddParams?.nativeCurrency?.decimals !== 18) failures.push(`Arc network add parameters (${JSON.stringify(uiFixes?.walletAddParams)})`);
   if (String(uiFixes?.finalWalletChainId).toLowerCase() !== '0x4cef52') failures.push(`Arc network selection (${uiFixes?.finalWalletChainId})`);
@@ -348,6 +371,28 @@ try {
         if (document.body.dataset.projectStatus === 'Ready' && document.querySelectorAll('.compare-card').length === 4) break;
         await new Promise((resolve) => setTimeout(resolve, 25));
       }
+      const comparedStatus = document.body.dataset.projectStatus;
+      const compareCards = document.querySelectorAll('.compare-card').length;
+      const resolvedText = document.querySelector('.compare-card:nth-child(2) strong')?.textContent;
+
+      openView('history');
+      const historyOpenButtons = [...document.querySelectorAll('[data-action="history-open"]')];
+      historyOpenButtons.at(-1)?.click();
+      await new Promise((resolve) => setTimeout(resolve, 40));
+      const restoredHistoryFile = document.querySelector('#file-list')?.textContent || '';
+      const restoredHistoryLabel = document.querySelector('#project-name')?.value || '';
+      const restoredHistoryView = document.querySelector('[data-view="triage"]')?.classList.contains('active') || false;
+
+      const replacement = new DataTransfer();
+      replacement.items.add(new File(['// SPDX-License-Identifier: MIT\\npragma solidity ^0.8.24; contract Fresh {}'], 'Fresh.sol', { type: 'text/plain' }));
+      const fileInput = document.querySelector('#file-input');
+      fileInput.files = replacement.files;
+      fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const reportInvalidatedAfterFileChange = !document.body.dataset.reportHash
+        && document.querySelector('#mission-summary')?.textContent.includes('Mission awaiting scan')
+        && document.querySelector('#file-list')?.textContent.includes('Fresh.sol');
+
       return {
         chains,
         treatments,
@@ -356,9 +401,13 @@ try {
         historyCards,
         exportCards,
         downloads: globalThis.__veilforgeDownloads,
-        comparedStatus: document.body.dataset.projectStatus,
-        compareCards: document.querySelectorAll('.compare-card').length,
-        resolvedText: document.querySelector('.compare-card:nth-child(2) strong')?.textContent,
+        comparedStatus,
+        compareCards,
+        resolvedText,
+        restoredHistoryFile,
+        restoredHistoryLabel,
+        restoredHistoryView,
+        reportInvalidatedAfterFileChange,
         runtimeError: document.body.dataset.runtimeError || null
       };
     })()`,
@@ -372,6 +421,8 @@ try {
   if ((interactions?.historyCards ?? 0) < 1) failures.push('local history view');
   if (interactions?.exportCards !== 4 || interactions?.downloads?.length !== 4) failures.push('export actions');
   if (interactions?.comparedStatus !== 'Ready' || interactions?.compareCards !== 4 || Number(interactions?.resolvedText) < 1) failures.push('scan comparison flow');
+  if (!String(interactions?.restoredHistoryFile).includes('Payroll.sol') || interactions?.restoredHistoryLabel !== 'Arc Payroll Mission' || !interactions?.restoredHistoryView) failures.push(`history source restoration (${interactions?.restoredHistoryLabel}, ${interactions?.restoredHistoryFile})`);
+  if (!interactions?.reportInvalidatedAfterFileChange) failures.push('file replacement invalidates stale report');
   if (interactions?.runtimeError) failures.push(`interaction runtime error: ${interactions.runtimeError}`);
   if (cdp.exceptions.length) failures.push(`browser exceptions after interactions: ${cdp.exceptions.join('; ')}`);
 

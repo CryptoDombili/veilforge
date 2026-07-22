@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.8.15 — Release-state integrity and wallet isolation
+
+- Invalidate stale reports immediately when source files are replaced or cleared.
+- Restore matching project labels and source files when opening same-session history entries.
+- Prevent historical reports from exporting unrelated current source files after a page reload.
+- Isolate inactive wallet-provider events so an old extension cannot overwrite the active wallet session.
+- Expanded Chromium smoke coverage for file/report integrity, history restoration, and multi-wallet event isolation.
+
 ## v1.8.14 — Confirmed Arc proofs and readable proof UI
 
 - Aligned proof calldata with the deployed registry order: `scannerVersion`, then `reportURI`.

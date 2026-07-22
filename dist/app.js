@@ -317,20 +317,23 @@ function closeWalletPicker() {
   }, 170);
 }
 
-function bindWalletProviderEvents(provider) {
+function bindWalletProviderEvents(provider, providerInfo) {
   if (!provider?.on || boundWalletProviders.has(provider)) return;
   boundWalletProviders.add(provider);
   provider.on('accountsChanged', (accounts) => {
+    if (state.walletProvider !== provider) return;
     if (accounts?.[0]) {
       safeStorageRemove(WALLET_DISCONNECTED_KEY);
-      setWalletUi(accounts[0], state.walletProviderInfo);
+      setWalletUi(accounts[0], providerInfo);
     } else {
       setWalletUi(null);
       closeWalletMenu();
     }
   });
   provider.on('chainChanged', () => {
-    if (state.walletAccount) setMessage('Wallet network changed. VeilForge will request Arc Testnet before publishing.');
+    if (state.walletProvider === provider && state.walletAccount) {
+      setMessage('Wallet network changed. VeilForge will request Arc Testnet before publishing.');
+    }
   });
 }
 
@@ -344,7 +347,7 @@ async function connectWithWalletCandidate(candidate, context = {}) {
     if (elements.walletButton) elements.walletButton.disabled = true;
     state.walletProvider = provider;
     state.walletProviderInfo = info;
-    bindWalletProviderEvents(provider);
+    bindWalletProviderEvents(provider, info);
     const account = await connectWallet(provider);
     await ensureArcTestnet(provider);
     safeStorageRemove(WALLET_DISCONNECTED_KEY);
@@ -408,7 +411,7 @@ async function hydrateWallet() {
       if (!accounts?.[0]) continue;
       state.walletProvider = candidate.provider;
       state.walletProviderInfo = candidate.info;
-      bindWalletProviderEvents(candidate.provider);
+      bindWalletProviderEvents(candidate.provider, candidate.info);
       setWalletUi(accounts[0], candidate.info);
       return;
     } catch {}
@@ -462,10 +465,20 @@ function setMessage(message, type = 'normal') {
   elements.scanMessage.style.color = type === 'error' ? 'var(--red)' : type === 'success' ? 'var(--green)' : '';
 }
 
+function cloneSourceFiles(files = []) {
+  return files
+    .filter((file) => typeof file?.path === 'string' && typeof file?.content === 'string')
+    .map((file) => ({ path: file.path, content: file.content }));
+}
+
 function readHistory() {
   try {
     const value = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-    return Array.isArray(value) ? value.slice(0, MAX_HISTORY) : [];
+    if (!Array.isArray(value)) return [];
+    return value
+      .filter((item) => item?.report?.reportHash && Array.isArray(item.report.findings))
+      .slice(0, MAX_HISTORY)
+      .map((item) => ({ ...item, files: cloneSourceFiles(item.files) }));
   } catch {
     return [];
   }
@@ -473,9 +486,14 @@ function readHistory() {
 
 function writeHistory() {
   try {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(state.history.slice(0, MAX_HISTORY)));
+    // Persist reports without Solidity source content. Source snapshots remain
+    // available for the current browser session, while localStorage stays small.
+    const persisted = state.history.slice(0, MAX_HISTORY).map(({ files: _files, ...item }) => item);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(persisted));
+    return true;
   } catch (error) {
     console.warn('Local history could not be saved.', error);
+    return false;
   }
 }
 
@@ -487,7 +505,8 @@ function saveCurrentToHistory() {
     id: state.report.reportHash,
     label,
     savedAt: new Date().toISOString(),
-    report: state.report,
+    report: structuredClone(state.report),
+    files: cloneSourceFiles(state.files),
   });
   state.history = state.history.slice(0, MAX_HISTORY);
   writeHistory();
@@ -503,12 +522,24 @@ async function readBrowserFiles(fileList) {
   return entries.sort((a, b) => a.path.localeCompare(b.path));
 }
 
-function setFiles(files) {
+function invalidateCurrentReport() {
+  state.report = null;
+  state.filters = { query: '', severity: 'all', policy: 'all' };
+  delete document.body.dataset.reportHash;
+  delete document.body.dataset.projectStatus;
+  renderSummary();
+  renderWorkspace();
+}
+
+function setFiles(files, { invalidateReport = true, announce = true } = {}) {
   const unique = new Map();
-  for (const file of files) unique.set(file.path, file);
+  for (const file of cloneSourceFiles(files)) unique.set(file.path, file);
   state.files = [...unique.values()].sort((a, b) => a.path.localeCompare(b.path));
+  if (invalidateReport && state.report) invalidateCurrentReport();
   renderFileList();
-  setMessage(state.files.length ? `${state.files.length} Solidity file${state.files.length === 1 ? '' : 's'} ready.` : 'Add at least one Solidity file.');
+  if (announce) {
+    setMessage(state.files.length ? `${state.files.length} Solidity file${state.files.length === 1 ? '' : 's'} ready. Run a fresh scan.` : 'Add at least one Solidity file.');
+  }
 }
 
 function renderFileList() {
@@ -845,13 +876,16 @@ function exportZip() {
   const project = slugify(elements.projectName.value);
   const policy = generatePolicyManifest(state.report);
   const proof = buildProofPayload(state.report, '');
+  const sourceNote = state.files.length
+    ? `${state.files.length} matching Solidity source file${state.files.length === 1 ? '' : 's'} included in source/.`
+    : 'Original Solidity source files were unavailable for this historical report and are not included.';
   const entries = [
     { name: 'report/veilforge-report.json', data: JSON.stringify(state.report, null, 2) },
     { name: 'report/veilforge-report.md', data: formatMarkdownReport(state.report, elements.projectName.value) },
     { name: 'policy/arc-policy-manifest.json', data: JSON.stringify(policy, null, 2) },
     { name: 'treatment/treatment-plan.json', data: JSON.stringify(state.report.treatmentPlan, null, 2) },
     { name: 'proof/arc-proof-payload.json', data: JSON.stringify(proof, null, 2) },
-    { name: 'README.txt', data: 'Generated locally by VeilForge v1.8 Privacy Mission Control. Source code was not sent to an AI model or remote analyzer.\n' },
+    { name: 'README.txt', data: `Generated locally by VeilForge v1.8 Privacy Mission Control. Source code was not sent to an AI model or remote analyzer.\n${sourceNote}\n` },
     ...state.files.map((file) => ({ name: `source/${file.path}`, data: file.content })),
   ];
   download(`${project}-remediation-pack.zip`, createZip(entries), 'application/zip');
@@ -935,8 +969,19 @@ async function handleWorkspaceAction(button) {
     state.activeView = 'compare';
     renderAll();
   } else if (action === 'history-open') {
-    state.report = structuredClone(state.history[Number(button.dataset.index)].report);
+    const item = state.history[Number(button.dataset.index)];
+    if (!item?.report) throw new Error('The selected history entry is unavailable.');
+    const files = cloneSourceFiles(item.files);
+    setFiles(files, { invalidateReport: false, announce: false });
+    elements.projectName.value = item.label || 'Solidity project';
+    state.report = structuredClone(item.report);
+    state.activeView = 'triage';
+    state.filters = { query: '', severity: 'all', policy: 'all' };
     renderAll();
+    setMessage(files.length
+      ? `Historical scan opened with ${files.length} matching source file${files.length === 1 ? '' : 's'}.`
+      : 'Historical report opened. Original source files are unavailable after a page reload, so source files will be omitted from ZIP exports.',
+    files.length ? 'success' : 'normal');
   }
 }
 

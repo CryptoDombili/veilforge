@@ -33,7 +33,7 @@ VeilForge does **not** send Solidity source code to an AI model or remote analyz
 2. The same sorted source bundle produces the same findings, source hash, and report hash.
 3. Web, CLI, report exports, selector policies, and proof payloads use the same analyzer modules.
 4. Optional Arc publication sends hashes and metadata—not source code or the complete report.
-5. Local scan history remains in browser `localStorage` and can be cleared from the interface.
+5. Local scan reports remain in browser `localStorage` and can be cleared from the interface. Matching source snapshots are retained only for the current browser session so historical exports never reuse unrelated files.
 
 ## Zero-dependency release architecture
 
