@@ -1,3 +1,9 @@
+## v1.8.10 — version badge pulse + filter dropdown polish
+
+- Added a soft, eye-friendly pulse animation to the mint dot in the hero version badge.
+- Refined the Triage filter dropdown controls for both severity and policy selectors with improved border, shadow, focus, and custom chevron styling.
+- Rebuilt dist assets and revalidated tests and static checks.
+
 ## VeilForge v1.8.8
 - Reduced finding-row and supporting text sizes by one step for a cleaner dashboard.
 - Matched the Privacy readiness and Contract readiness dashboard heading sizes.

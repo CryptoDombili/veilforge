@@ -37,12 +37,12 @@ const configuredAddress = process.env.VITE_REGISTRY_ADDRESS || process.env.VEILF
 if (!validAddress(configuredAddress)) throw new Error('Registry address is invalid. Set VITE_REGISTRY_ADDRESS to a valid EVM address.');
 fs.writeFileSync(
   path.join(dist, 'config.js'),
-  `export const REGISTRY_ADDRESS = '${configuredAddress}';\nexport const BUILD_VERSION = '1.8.6';\n`,
+  `export const REGISTRY_ADDRESS = '${configuredAddress}';\nexport const BUILD_VERSION = '1.8.10';\n`,
 );
 
 const manifest = {
   name: 'VeilForge Privacy Mission Control',
-  version: '1.8.6',
+  version: '1.8.10',
   output: 'static-es-modules',
   registryAddress: configuredAddress,
   generatedFiles: [],
