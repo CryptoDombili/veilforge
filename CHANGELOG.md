@@ -20,3 +20,10 @@
 - selector policy recommendations
 - executive summary and exports
 - Solidity file upload and Arc report proof flow
+
+## 1.8.1
+
+- Restored the header wallet connection control and wallet session popup.
+- Corrected the starfield stacking layer so the animated stars remain visible behind the classic VeilForge UI.
+- Bounded the triage findings area with an internal scrollbar to prevent excessively long pages.
+- Added browser smoke assertions for the wallet popup, visible starfield, and bounded findings list.

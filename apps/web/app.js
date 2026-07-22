@@ -8,6 +8,7 @@ import {
   ARC_TESTNET,
   buildProofPayload,
   connectWallet,
+  ensureArcTestnet,
   publishReport,
 } from './proof/registry.js';
 import { createZip } from './lib/zip.js';
@@ -15,6 +16,7 @@ import { REGISTRY_ADDRESS } from './config.js';
 
 const HISTORY_KEY = 'veilforge:v1.8:scan-history';
 const MAX_HISTORY = 12;
+const WALLET_DISCONNECTED_KEY = 'veilforge:v1.8:wallet-disconnected';
 
 const state = {
   files: [],
@@ -37,6 +39,15 @@ const elements = {
   scanMessage: document.querySelector('#scan-message'),
   missionSummary: document.querySelector('#mission-summary'),
   workspace: document.querySelector('#workspace'),
+  walletButton: document.querySelector('#header-wallet-button'),
+  walletLabel: document.querySelector('#header-wallet-label'),
+  walletBackdrop: document.querySelector('#wallet-backdrop'),
+  walletMenu: document.querySelector('#wallet-menu'),
+  walletMenuClose: document.querySelector('#wallet-menu-close'),
+  walletMenuAddress: document.querySelector('#wallet-menu-address'),
+  walletCopyAddress: document.querySelector('#wallet-copy-address'),
+  walletViewExplorer: document.querySelector('#wallet-view-explorer'),
+  walletDisconnect: document.querySelector('#wallet-disconnect'),
 };
 
 function esc(value) {
@@ -58,6 +69,90 @@ function slugify(value) {
 function shortHash(value, head = 12, tail = 8) {
   const text = String(value ?? '');
   return text.length > head + tail + 3 ? `${text.slice(0, head)}…${text.slice(-tail)}` : text;
+}
+
+
+
+function safeStorageGet(key) {
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+
+function safeStorageSet(key, value) {
+  try { localStorage.setItem(key, value); } catch {}
+}
+
+function safeStorageRemove(key) {
+  try { localStorage.removeItem(key); } catch {}
+}
+
+function shortAddress(address) {
+  return address ? `${address.slice(0, 6)}…${address.slice(-4)}` : 'Connect wallet';
+}
+
+function setWalletUi(address = null) {
+  state.walletAccount = address || null;
+  const connected = Boolean(address);
+  elements.walletButton?.classList.toggle('connected', connected);
+  elements.walletButton?.setAttribute('aria-expanded', 'false');
+  if (elements.walletLabel) elements.walletLabel.textContent = connected ? shortAddress(address) : 'Connect wallet';
+  if (elements.walletMenuAddress) elements.walletMenuAddress.textContent = connected ? address : '—';
+  if (elements.walletViewExplorer) elements.walletViewExplorer.href = connected ? `${ARC_TESTNET.blockExplorerUrls[0]}/address/${address}` : '#';
+}
+
+function openWalletMenu() {
+  if (!state.walletAccount || !elements.walletMenu || !elements.walletBackdrop) return;
+  elements.walletMenu.hidden = false;
+  elements.walletBackdrop.hidden = false;
+  elements.walletMenu.setAttribute('aria-hidden', 'false');
+  elements.walletButton?.setAttribute('aria-expanded', 'true');
+  requestAnimationFrame(() => {
+    elements.walletMenu.classList.add('open');
+    elements.walletBackdrop.classList.add('open');
+  });
+}
+
+function closeWalletMenu() {
+  if (!elements.walletMenu || !elements.walletBackdrop) return;
+  elements.walletMenu.classList.remove('open');
+  elements.walletBackdrop.classList.remove('open');
+  elements.walletMenu.setAttribute('aria-hidden', 'true');
+  elements.walletButton?.setAttribute('aria-expanded', 'false');
+  setTimeout(() => {
+    elements.walletMenu.hidden = true;
+    elements.walletBackdrop.hidden = true;
+  }, 170);
+}
+
+async function connectHeaderWallet() {
+  if (state.walletAccount) { openWalletMenu(); return; }
+  try {
+    elements.walletButton.disabled = true;
+    await ensureArcTestnet();
+    const account = await connectWallet();
+    safeStorageRemove(WALLET_DISCONNECTED_KEY);
+    setWalletUi(account);
+    setMessage(`Wallet connected: ${shortAddress(account)} on Arc Testnet.`, 'success');
+  } catch (error) {
+    setWalletUi(null);
+    setMessage(error instanceof Error ? error.message : String(error), 'error');
+  } finally {
+    elements.walletButton.disabled = false;
+  }
+}
+
+async function hydrateWallet() {
+  if (!globalThis.ethereum?.request || safeStorageGet(WALLET_DISCONNECTED_KEY) === '1') { setWalletUi(null); return; }
+  try {
+    const accounts = await globalThis.ethereum.request({ method: 'eth_accounts' });
+    setWalletUi(accounts?.[0] || null);
+  } catch { setWalletUi(null); }
+}
+
+function disconnectWalletUi() {
+  safeStorageSet(WALLET_DISCONNECTED_KEY, '1');
+  setWalletUi(null);
+  closeWalletMenu();
+  setMessage('Wallet disconnected from VeilForge. Your browser wallet remains installed and unchanged.');
 }
 
 function statusClass(status) {
@@ -515,7 +610,10 @@ async function handleWorkspaceAction(button) {
   } else if (action === 'connect-wallet') {
     const result = document.querySelector('#proof-result');
     try {
+      await ensureArcTestnet();
       state.walletAccount = await connectWallet();
+      safeStorageRemove(WALLET_DISCONNECTED_KEY);
+      setWalletUi(state.walletAccount);
       if (result) result.textContent = `Wallet connected: ${state.walletAccount}`;
       renderWorkspace();
     } catch (error) {
@@ -532,6 +630,7 @@ async function handleWorkspaceAction(button) {
         reportURI: document.querySelector('#report-uri')?.value.trim() || '',
       });
       state.walletAccount = response.account;
+      setWalletUi(response.account);
       if (result) result.innerHTML = `Submitted: <a href="${esc(response.explorerUrl)}" target="_blank" rel="noreferrer">${esc(response.transactionHash)}</a>`;
     } catch (error) {
       if (result) result.textContent = error instanceof Error ? error.message : String(error);
@@ -579,6 +678,23 @@ function bindEvents() {
     if (event.key === 'Enter' || event.key === ' ') elements.fileInput.click();
   });
 
+  elements.walletButton?.addEventListener('click', connectHeaderWallet);
+  elements.walletMenuClose?.addEventListener('click', closeWalletMenu);
+  elements.walletBackdrop?.addEventListener('click', closeWalletMenu);
+  elements.walletDisconnect?.addEventListener('click', disconnectWalletUi);
+  elements.walletCopyAddress?.addEventListener('click', async () => {
+    if (!state.walletAccount) return;
+    await navigator.clipboard.writeText(state.walletAccount);
+    const previous = elements.walletCopyAddress.textContent;
+    elements.walletCopyAddress.textContent = 'Copied';
+    setTimeout(() => { elements.walletCopyAddress.textContent = previous; }, 1200);
+  });
+  globalThis.ethereum?.on?.('accountsChanged', (accounts) => {
+    if (accounts?.[0]) { safeStorageRemove(WALLET_DISCONNECTED_KEY); setWalletUi(accounts[0]); }
+    else setWalletUi(null);
+  });
+  document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeWalletMenu(); });
+
   document.querySelectorAll('.nav-button').forEach((button) => button.addEventListener('click', () => {
     state.activeView = button.dataset.view;
     renderAll();
@@ -610,6 +726,7 @@ async function init() {
     document.body.dataset.runtimeError = event.reason?.message || String(event.reason || 'unhandled rejection');
   });
   bindEvents();
+  await hydrateWallet();
   renderFileList();
   renderAll();
   try {
