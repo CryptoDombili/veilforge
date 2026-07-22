@@ -34,7 +34,7 @@ The build script copies the canonical modules into `dist/engine/` instead of bun
 - current Arc Testnet chain configuration
 - EIP-3085 wallet network parameters
 - deterministic ABI encoding for `publishReport`
-- EIP-1193 wallet connection, chain switching, and transaction submission
+- EIP-6963 multi-provider discovery with EIP-1193 fallback, chain switching, and transaction submission
 
 The module never requests a private key.
 

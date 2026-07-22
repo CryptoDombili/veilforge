@@ -25,6 +25,7 @@ const state = {
   activeView: 'triage',
   walletAccount: null,
   walletProvider: null,
+  walletProviderInfo: null,
   history: readHistory(),
   filters: { query: '', severity: 'all', policy: 'all' },
 };
@@ -49,6 +50,11 @@ const elements = {
   walletCopyAddress: document.querySelector('#wallet-copy-address'),
   walletViewExplorer: document.querySelector('#wallet-view-explorer'),
   walletDisconnect: document.querySelector('#wallet-disconnect'),
+  walletMenuNetwork: document.querySelector('#wallet-menu-network'),
+  walletPickerBackdrop: document.querySelector('#wallet-picker-backdrop'),
+  walletPicker: document.querySelector('#wallet-picker'),
+  walletPickerClose: document.querySelector('#wallet-picker-close'),
+  walletPickerList: document.querySelector('#wallet-picker-list'),
 };
 
 function esc(value) {
@@ -90,22 +96,32 @@ function shortAddress(address) {
   return address ? `${address.slice(0, 6)}…${address.slice(-4)}` : 'Connect wallet';
 }
 
-function setWalletUi(address = null) {
+function setWalletUi(address = null, providerInfo = state.walletProviderInfo) {
   state.walletAccount = address || null;
+  if (!address) state.walletProviderInfo = null;
+  else if (providerInfo) state.walletProviderInfo = providerInfo;
   const connected = Boolean(address);
   elements.walletButton?.classList.toggle('connected', connected);
   elements.walletButton?.setAttribute('aria-expanded', 'false');
   if (elements.walletLabel) elements.walletLabel.textContent = connected ? shortAddress(address) : 'Connect wallet';
   if (elements.walletMenuAddress) elements.walletMenuAddress.textContent = connected ? address : '—';
+  if (elements.walletMenuNetwork) {
+    const walletName = state.walletProviderInfo?.name;
+    elements.walletMenuNetwork.textContent = connected && walletName ? `Arc Network Testnet · ${walletName}` : 'Arc Network Testnet';
+  }
   if (elements.walletViewExplorer) elements.walletViewExplorer.href = connected ? `${ARC_TESTNET.blockExplorerUrls[0]}/address/${address}` : '#';
 }
 
-function normalizeWalletError(error) {
-  if (error?.code === 4001) return 'MetaMask connection was cancelled.';
-  if (error?.code === -32002) return 'MetaMask already has a connection request open. Check the extension window.';
-  if (typeof error?.message === 'string' && error.message.trim()) return error.message;
+function normalizeWalletError(error, walletName = 'EVM wallet') {
+  if (error?.code === 4001) return `${walletName} connection was cancelled.`;
+  if (error?.code === -32002) return `A ${walletName} connection request is already open. Check the wallet extension.`;
+  if (typeof error?.message === 'string' && error.message.trim()) {
+    return error.message
+      .replaceAll('MetaMask', walletName)
+      .replaceAll('metamask', walletName.toLowerCase());
+  }
   if (typeof error === 'string' && error.trim()) return error;
-  return 'Unable to connect MetaMask. Unlock the extension and try again.';
+  return `Unable to connect ${walletName}. Unlock the wallet extension and try again.`;
 }
 
 function openWalletMenu() {
@@ -134,43 +150,102 @@ function closeWalletMenu() {
 
 const announcedWalletProviders = [];
 const boundWalletProviders = new WeakSet();
+let walletPickerCandidates = [];
+let pendingWalletContext = null;
 
-function rememberWalletProvider(candidate) {
-  const provider = candidate?.provider || candidate;
-  if (!provider?.request) return;
-  if (announcedWalletProviders.some((item) => (item?.provider || item) === provider)) return;
-  announcedWalletProviders.push(candidate);
+function detectLegacyWalletName(provider) {
+  if (provider?.isRabby) return 'Rabby';
+  if (provider?.isZerion) return 'Zerion';
+  if (provider?.isCoinbaseWallet) return 'Coinbase Wallet';
+  if (provider?.isBraveWallet) return 'Brave Wallet';
+  if (provider?.isTrust || provider?.isTrustWallet) return 'Trust Wallet';
+  if (provider?.isFrame) return 'Frame';
+  if (provider?.isMetaMask) return 'MetaMask';
+  return 'Browser EVM Wallet';
 }
 
-function rankWalletProvider(candidate) {
+function normalizeWalletCandidate(candidate) {
   const provider = candidate?.provider || candidate;
-  const info = candidate?.info || {};
-  if (!provider?.request) return -1;
-  const rdns = String(info.rdns || '').toLowerCase();
-  const name = String(info.name || '').toLowerCase();
-  if (rdns.includes('metamask') || name.includes('metamask')) return 100;
-  if (provider.isMetaMask && !provider.isBraveWallet) return 90;
-  return 10;
+  if (!provider?.request) return null;
+  const suppliedInfo = candidate?.info || {};
+  const name = String(suppliedInfo.name || detectLegacyWalletName(provider)).trim() || 'Browser EVM Wallet';
+  return {
+    provider,
+    info: {
+      name,
+      rdns: String(suppliedInfo.rdns || '').trim(),
+      uuid: String(suppliedInfo.uuid || '').trim(),
+      icon: String(suppliedInfo.icon || '').trim(),
+    },
+  };
+}
+
+function rememberWalletProvider(candidate) {
+  const normalized = normalizeWalletCandidate(candidate);
+  if (!normalized) return;
+  if (announcedWalletProviders.some((item) => item.provider === normalized.provider)) return;
+  announcedWalletProviders.push(normalized);
+}
+
+function collectLegacyWalletProviders() {
+  const injected = globalThis.ethereum;
+  if (Array.isArray(injected?.providers) && injected.providers.length) injected.providers.forEach(rememberWalletProvider);
+  else rememberWalletProvider(injected);
 }
 
 function requestAnnouncedProviders() {
+  collectLegacyWalletProviders();
   if (typeof globalThis.dispatchEvent !== 'function') return;
   try { globalThis.dispatchEvent(new Event('eip6963:requestProvider')); } catch {}
+  collectLegacyWalletProviders();
 }
 
-function resolveWalletProviderSync() {
-  const candidates = [...announcedWalletProviders];
-  const injected = globalThis.ethereum;
-  if (Array.isArray(injected?.providers)) injected.providers.forEach(rememberWalletProvider);
-  rememberWalletProvider(injected);
-  candidates.push(...announcedWalletProviders);
-  const unique = [];
-  for (const candidate of candidates) {
-    const provider = candidate?.provider || candidate;
-    if (provider?.request && !unique.some((item) => (item?.provider || item) === provider)) unique.push(candidate);
-  }
-  unique.sort((left, right) => rankWalletProvider(right) - rankWalletProvider(left));
-  return unique[0]?.provider || unique[0] || null;
+function getWalletCandidates() {
+  requestAnnouncedProviders();
+  return [...announcedWalletProviders]
+    .sort((left, right) => left.info.name.localeCompare(right.info.name, undefined, { sensitivity: 'base' }));
+}
+
+function safeWalletIcon(icon) {
+  return /^data:image\/(?:png|webp|gif|svg\+xml)[;,]/i.test(icon || '') ? icon : '';
+}
+
+function renderWalletPicker(candidates) {
+  walletPickerCandidates = candidates;
+  if (!elements.walletPickerList) return;
+  elements.walletPickerList.innerHTML = candidates.map((candidate, index) => {
+    const icon = safeWalletIcon(candidate.info.icon);
+    const fallback = esc(candidate.info.name.slice(0, 1).toUpperCase());
+    return `<button class="wallet-choice" type="button" data-wallet-choice="${index}">
+      <span class="wallet-choice-icon">${icon ? `<img src="${esc(icon)}" alt="" />` : fallback}</span>
+      <span><b>${esc(candidate.info.name)}</b><small>Installed EVM browser wallet</small></span>
+      <em>Connect →</em>
+    </button>`;
+  }).join('');
+}
+
+function openWalletPicker(candidates, context = {}) {
+  if (!elements.walletPicker || !elements.walletPickerBackdrop) return;
+  pendingWalletContext = context;
+  renderWalletPicker(candidates);
+  elements.walletPicker.hidden = false;
+  elements.walletPickerBackdrop.hidden = false;
+  elements.walletPicker.setAttribute('aria-hidden', 'false');
+  requestAnimationFrame(() => {
+    elements.walletPicker.classList.add('open');
+    elements.walletPickerBackdrop.classList.add('open');
+  });
+}
+
+function closeWalletPicker() {
+  if (!elements.walletPicker || !elements.walletPickerBackdrop) return;
+  elements.walletPicker.classList.remove('open');
+  elements.walletPickerBackdrop.classList.remove('open');
+  elements.walletPicker.setAttribute('aria-hidden', 'true');
+  setTimeout(() => {
+    elements.walletPicker.hidden = true;
+    elements.walletPickerBackdrop.hidden = true;
+  }, 170);
 }
 
 function bindWalletProviderEvents(provider) {
@@ -179,7 +254,7 @@ function bindWalletProviderEvents(provider) {
   provider.on('accountsChanged', (accounts) => {
     if (accounts?.[0]) {
       safeStorageRemove(WALLET_DISCONNECTED_KEY);
-      setWalletUi(accounts[0]);
+      setWalletUi(accounts[0], state.walletProviderInfo);
     } else {
       setWalletUi(null);
       closeWalletMenu();
@@ -190,49 +265,92 @@ function bindWalletProviderEvents(provider) {
   });
 }
 
-async function connectHeaderWallet() {
-  if (state.walletAccount) { openWalletMenu(); return; }
-
-  // Keep provider discovery and eth_requestAccounts in the same user gesture.
-  requestAnnouncedProviders();
-  const provider = resolveWalletProviderSync();
-  if (!provider) {
-    setMessage('MetaMask was not detected. Install or unlock MetaMask and try again.', 'error');
-    return;
-  }
-
+async function connectWithWalletCandidate(candidate, context = {}) {
+  const normalized = normalizeWalletCandidate(candidate);
+  if (!normalized) throw new Error('The selected wallet does not expose an EIP-1193 provider.');
+  const { provider, info } = normalized;
+  const resultElement = context.resultElement || null;
   try {
-    elements.walletButton.disabled = true;
+    closeWalletPicker();
+    if (elements.walletButton) elements.walletButton.disabled = true;
     state.walletProvider = provider;
+    state.walletProviderInfo = info;
     bindWalletProviderEvents(provider);
     const account = await connectWallet(provider);
     await ensureArcTestnet(provider);
     safeStorageRemove(WALLET_DISCONNECTED_KEY);
-    setWalletUi(account);
-    setMessage(`Wallet connected: ${shortAddress(account)} on Arc Testnet.`, 'success');
-    openWalletMenu();
+    setWalletUi(account, info);
+    setMessage(`${info.name} connected: ${shortAddress(account)} on Arc Testnet.`, 'success');
+    if (resultElement) resultElement.textContent = `Wallet connected: ${account}`;
+    if (state.activeView === 'proof') renderWorkspace();
+    return account;
   } catch (error) {
+    state.walletProvider = null;
+    state.walletProviderInfo = null;
     setWalletUi(null);
-    setMessage(normalizeWalletError(error), 'error');
+    const message = normalizeWalletError(error, info.name);
+    setMessage(message, 'error');
+    if (resultElement) resultElement.textContent = message;
+    return null;
   } finally {
-    elements.walletButton.disabled = false;
+    if (elements.walletButton) elements.walletButton.disabled = false;
+    pendingWalletContext = null;
   }
+}
+
+async function beginWalletConnection(context = {}) {
+  if (state.walletAccount) {
+    if (context.openSessionWhenConnected) openWalletMenu();
+    else if (context.resultElement) context.resultElement.textContent = `Wallet connected: ${state.walletAccount}`;
+    return state.walletAccount;
+  }
+
+  let candidates = getWalletCandidates();
+  if (!candidates.length) {
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    candidates = getWalletCandidates();
+  }
+  if (!candidates.length) {
+    const message = 'No compatible EVM browser wallet was detected. Install or unlock a wallet such as MetaMask, Rabby or Zerion, then try again.';
+    setMessage(message, 'error');
+    if (context.resultElement) context.resultElement.textContent = message;
+    return null;
+  }
+  if (candidates.length === 1) return connectWithWalletCandidate(candidates[0], context);
+  openWalletPicker(candidates, context);
+  return null;
+}
+
+async function connectHeaderWallet() {
+  if (state.walletAccount) {
+    openWalletMenu();
+    return;
+  }
+  await beginWalletConnection({ openSessionWhenConnected: false });
 }
 
 async function hydrateWallet() {
   requestAnnouncedProviders();
-  const provider = resolveWalletProviderSync();
-  if (!provider || safeStorageGet(WALLET_DISCONNECTED_KEY) === '1') { setWalletUi(null); return; }
-  state.walletProvider = provider;
-  bindWalletProviderEvents(provider);
-  try {
-    const accounts = await provider.request({ method: 'eth_accounts' });
-    setWalletUi(accounts?.[0] || null);
-  } catch { setWalletUi(null); }
+  await new Promise((resolve) => setTimeout(resolve, 60));
+  if (safeStorageGet(WALLET_DISCONNECTED_KEY) === '1') { setWalletUi(null); return; }
+  for (const candidate of getWalletCandidates()) {
+    try {
+      const accounts = await candidate.provider.request({ method: 'eth_accounts' });
+      if (!accounts?.[0]) continue;
+      state.walletProvider = candidate.provider;
+      state.walletProviderInfo = candidate.info;
+      bindWalletProviderEvents(candidate.provider);
+      setWalletUi(accounts[0], candidate.info);
+      return;
+    } catch {}
+  }
+  setWalletUi(null);
 }
 
 function disconnectWalletUi() {
   safeStorageSet(WALLET_DISCONNECTED_KEY, '1');
+  state.walletProvider = null;
+  state.walletProviderInfo = null;
   setWalletUi(null);
   closeWalletMenu();
   setMessage('Wallet disconnected from VeilForge. Your browser wallet remains installed and unchanged.');
@@ -704,25 +822,13 @@ async function handleWorkspaceAction(button) {
     importBaseline();
   } else if (action === 'connect-wallet') {
     const result = document.querySelector('#proof-result');
-    requestAnnouncedProviders();
-    const provider = resolveWalletProviderSync();
-    try {
-      if (!provider) throw new Error('No browser wallet was detected. Install or unlock MetaMask, then try again.');
-      state.walletAccount = await connectWallet(provider);
-      await ensureArcTestnet(provider);
-      safeStorageRemove(WALLET_DISCONNECTED_KEY);
-      setWalletUi(state.walletAccount);
-      if (result) result.textContent = `Wallet connected: ${state.walletAccount}`;
-      renderWorkspace();
-      openWalletMenu();
-    } catch (error) {
-      if (result) result.textContent = error?.code === 4001 ? 'Wallet connection was cancelled.' : error instanceof Error ? error.message : String(error);
-    }
+    await beginWalletConnection({ resultElement: result, openSessionWhenConnected: false });
   } else if (action === 'publish-proof') {
     const result = document.querySelector('#proof-result');
     try {
       if (result) result.textContent = 'Waiting for wallet confirmation…';
       const response = await publishReport({
+        provider: state.walletProvider,
         registryAddress: document.querySelector('#registry-address')?.value,
         account: state.walletAccount,
         report: state.report,
@@ -781,6 +887,14 @@ function bindEvents() {
   elements.walletMenuClose?.addEventListener('click', closeWalletMenu);
   elements.walletBackdrop?.addEventListener('click', closeWalletMenu);
   elements.walletDisconnect?.addEventListener('click', disconnectWalletUi);
+  elements.walletPickerClose?.addEventListener('click', closeWalletPicker);
+  elements.walletPickerBackdrop?.addEventListener('click', closeWalletPicker);
+  elements.walletPickerList?.addEventListener('click', (event) => {
+    const choice = event.target.closest('[data-wallet-choice]');
+    if (!choice) return;
+    const candidate = walletPickerCandidates[Number(choice.dataset.walletChoice)];
+    if (candidate) connectWithWalletCandidate(candidate, pendingWalletContext || {}).catch((error) => setMessage(normalizeWalletError(error), 'error'));
+  });
   elements.walletCopyAddress?.addEventListener('click', async () => {
     if (!state.walletAccount) return;
     await navigator.clipboard.writeText(state.walletAccount);
@@ -788,7 +902,7 @@ function bindEvents() {
     elements.walletCopyAddress.textContent = 'Copied';
     setTimeout(() => { elements.walletCopyAddress.textContent = previous; }, 1200);
   });
-  document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeWalletMenu(); });
+  document.addEventListener('keydown', (event) => { if (event.key === 'Escape') { closeWalletMenu(); closeWalletPicker(); } });
 
   document.querySelectorAll('.nav-button').forEach((button) => button.addEventListener('click', () => {
     state.activeView = button.dataset.view;

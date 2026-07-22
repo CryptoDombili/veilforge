@@ -141,7 +141,7 @@ export async function ensureArcTestnet(provider = globalThis.ethereum) {
 
   const selectedChainId = await readChainId();
   if (selectedChainId !== targetChainId) {
-    throw new Error('MetaMask did not switch to Arc Testnet. Select Arc Testnet in MetaMask and try again.');
+    throw new Error('The selected wallet did not switch to Arc Testnet. Select Arc Testnet in your wallet and try again.');
   }
 }
 

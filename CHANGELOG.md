@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.8.5 — Multi-wallet connection behavior
+
+- Stopped opening the Connected Wallet session panel automatically after a successful connection.
+- The connected address button now opens the session panel only when the user clicks it.
+- Added EIP-6963 multi-provider discovery with legacy EIP-1193 injected-wallet fallback.
+- Added an installed-wallet chooser when multiple EVM browser wallets are available.
+- Added generic wallet messages and passed the selected provider into proof publication.
+
 ## v1.8.4 — Arc wallet network correction
 
 - Corrected Arc Testnet chain ID hex to `0x4cef52` (decimal `5042002`).

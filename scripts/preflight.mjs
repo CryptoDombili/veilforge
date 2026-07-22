@@ -5,7 +5,7 @@ const commands = [
   ['npm', ['run', 'build:web']],
   ['npm', ['run', 'test']],
   ['npm', ['run', 'typecheck']],
-  ['npm', ['run', 'smoke:browser']],
+  [process.execPath, ['scripts/smoke-browser.mjs']],
 ];
 
 for (const [command, args] of commands) {

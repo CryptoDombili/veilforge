@@ -212,7 +212,7 @@ Explorer: https://testnet.arcscan.app
 Gas token: USDC
 ```
 
-The browser uses the EIP-1193 wallet provider directly and encodes this exact ABI order:
+The browser discovers installed EVM extension wallets through EIP-6963, falls back to legacy EIP-1193 injection, and encodes this exact ABI order:
 
 ```solidity
 publishReport(
@@ -225,7 +225,7 @@ publishReport(
 )
 ```
 
-The wallet always presents the final transaction for user approval. No private key is requested or stored by the app.
+The selected wallet always presents the final transaction for user approval. Connecting does not automatically open the session panel; the connected address button opens it on demand. No private key is requested or stored by the app.
 
 To override the registry during Vercel build:
 

@@ -65,10 +65,8 @@ const chromium = process.env.CHROMIUM_BIN || '/usr/lib/chromium/chromium';
 const child = spawn(chromium, [
   '--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage',
   '--ozone-platform=headless', '--remote-debugging-port=0', `--user-data-dir=${profile}`, 'about:blank',
-], { stdio: ['ignore', 'ignore', 'pipe'] });
-let chromiumErrors = '';
-child.stderr.setEncoding('utf8');
-child.stderr.on('data', (chunk) => { chromiumErrors += chunk; });
+], { stdio: 'ignore' });
+const chromiumErrors = 'Chromium stderr is suppressed by the deterministic smoke runner.';
 
 async function waitForPort() {
   const file = path.join(profile, 'DevToolsActivePort');
@@ -150,16 +148,16 @@ try {
     expression: `(async () => {
       const star = getComputedStyle(document.querySelector('.starfield-a'));
       const list = document.querySelector('.finding-list');
-      globalThis.__walletMethods = [];
+      globalThis.__walletMethodsRabby = [];
+      globalThis.__walletMethodsZerion = [];
       try { delete globalThis.ethereum; } catch { globalThis.ethereum = undefined; }
       let smokeChainId = '0x1';
       let smokeSwitchAttempts = 0;
       globalThis.__walletAddParams = null;
-      const eip6963Provider = {
-        isMetaMask: true,
+      const makeProvider = (methodLog, account) => ({
         request: async ({ method, params }) => {
-          globalThis.__walletMethods.push(method);
-          if (method === 'eth_requestAccounts' || method === 'eth_accounts') return ['0x1111111111111111111111111111111111111111'];
+          methodLog.push(method);
+          if (method === 'eth_requestAccounts' || method === 'eth_accounts') return [account];
           if (method === 'eth_chainId') return smokeChainId;
           if (method === 'wallet_switchEthereumChain') {
             smokeSwitchAttempts += 1;
@@ -178,14 +176,32 @@ try {
           return null;
         },
         on: () => {}
+      });
+      const rabbyProvider = makeProvider(globalThis.__walletMethodsRabby, '0x2222222222222222222222222222222222222222');
+      const zerionProvider = makeProvider(globalThis.__walletMethodsZerion, '0x3333333333333333333333333333333333333333');
+      const announceProviders = () => {
+        globalThis.dispatchEvent(new CustomEvent('eip6963:announceProvider', {
+          detail: { info: { rdns: 'io.rabby', name: 'Rabby', uuid: 'veilforge-rabby' }, provider: rabbyProvider }
+        }));
+        globalThis.dispatchEvent(new CustomEvent('eip6963:announceProvider', {
+          detail: { info: { rdns: 'io.zerion', name: 'Zerion', uuid: 'veilforge-zerion' }, provider: zerionProvider }
+        }));
       };
-      const announceProvider = () => globalThis.dispatchEvent(new CustomEvent('eip6963:announceProvider', {
-        detail: { info: { rdns: 'io.metamask', name: 'MetaMask', uuid: 'veilforge-smoke' }, provider: eip6963Provider }
-      }));
-      globalThis.addEventListener('eip6963:requestProvider', announceProvider, { once: true });
+      globalThis.addEventListener('eip6963:requestProvider', announceProviders);
       document.querySelector('#header-wallet-button')?.click();
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      await new Promise((resolve) => setTimeout(resolve, 120));
+      const walletChoiceNames = [...document.querySelectorAll('.wallet-choice b')].map((node) => node.textContent);
+      const walletPickerOpen = document.querySelector('#wallet-picker')?.classList.contains('open') || false;
+      const rabbyChoice = [...document.querySelectorAll('.wallet-choice')].find((node) => node.textContent.includes('Rabby'));
+      rabbyChoice?.click();
+      await new Promise((resolve) => setTimeout(resolve, 420));
       const connectedLabel = document.querySelector('#header-wallet-label')?.textContent;
+      const walletMenuAutoOpen = document.querySelector('#wallet-menu')?.classList.contains('open') || false;
+      const walletPickerClosedAfterSelection = !document.querySelector('#wallet-picker')?.classList.contains('open');
+      document.querySelector('#header-wallet-button')?.click();
+      await new Promise((resolve) => setTimeout(resolve, 120));
+      const walletMenuOpenAfterAddressClick = document.querySelector('#wallet-menu')?.classList.contains('open') || false;
+      const walletNetworkLabel = document.querySelector('#wallet-menu-network')?.textContent || '';
       return {
         starOpacity: Number(star.opacity),
         starZ: Number(star.zIndex),
@@ -193,8 +209,14 @@ try {
         listScrollHeight: list?.scrollHeight || 0,
         listOverflow: list ? getComputedStyle(list).overflowY : '',
         connectedLabel,
-        walletMenuOpen: document.querySelector('#wallet-menu')?.classList.contains('open') || false,
-        walletMethods: globalThis.__walletMethods,
+        walletPickerOpen,
+        walletChoiceNames,
+        walletPickerClosedAfterSelection,
+        walletMenuAutoOpen,
+        walletMenuOpenAfterAddressClick,
+        walletNetworkLabel,
+        walletMethods: globalThis.__walletMethodsRabby,
+        unusedWalletMethods: globalThis.__walletMethodsZerion,
         walletAddParams: globalThis.__walletAddParams,
         finalWalletChainId: smokeChainId,
         scanMessage: document.querySelector('#scan-message')?.textContent,
@@ -217,9 +239,14 @@ try {
   if ((snapshot?.findings ?? 0) < 1) failures.push('rendered findings');
   if (snapshot?.runtimeError) failures.push(`runtime error: ${snapshot.runtimeError}`);
   if ((uiFixes?.starOpacity ?? 0) < 0.5 || (uiFixes?.starZ ?? -1) < 0) failures.push('visible starfield layer');
-  if (uiFixes?.listOverflow !== 'auto' || (uiFixes?.listClientHeight ?? 0) > 630 || (uiFixes?.listScrollHeight ?? 0) <= (uiFixes?.listClientHeight ?? 0)) failures.push('bounded findings scroll area');
-  if (!String(uiFixes?.connectedLabel).includes('0x1111') || !uiFixes?.walletMenuOpen) failures.push('direct MetaMask connection and automatic session popup');
-  if (uiFixes?.walletMethods?.[0] !== 'eth_requestAccounts' || uiFixes?.walletMethods?.[1] !== 'eth_chainId') failures.push(`wallet request order (${JSON.stringify(uiFixes?.walletMethods)})`);
+  if (uiFixes?.listOverflow !== 'auto' || (uiFixes?.listClientHeight ?? 0) > 630 || (uiFixes?.listScrollHeight ?? 0) <= (uiFixes?.listClientHeight ?? 0)) failures.push(`bounded findings scroll area (${uiFixes?.listOverflow}, ${uiFixes?.listClientHeight}/${uiFixes?.listScrollHeight})`);
+  if (!uiFixes?.walletPickerOpen || !uiFixes?.walletChoiceNames?.includes('Rabby') || !uiFixes?.walletChoiceNames?.includes('Zerion')) failures.push(`multi-wallet EIP-6963 chooser (${JSON.stringify(uiFixes?.walletChoiceNames)})`);
+  if (!String(uiFixes?.connectedLabel).includes('0x2222') || !uiFixes?.walletPickerClosedAfterSelection) failures.push('selected Rabby connection');
+  if (uiFixes?.walletMenuAutoOpen) failures.push('wallet session must not auto-open after connection');
+  if (!uiFixes?.walletMenuOpenAfterAddressClick) failures.push('wallet session opens from connected address button');
+  if (!String(uiFixes?.walletNetworkLabel).includes('Rabby')) failures.push(`selected wallet identity in session (${uiFixes?.walletNetworkLabel})`);
+  if ((uiFixes?.unusedWalletMethods?.length ?? 0) !== 0) failures.push(`unselected wallet was called (${JSON.stringify(uiFixes?.unusedWalletMethods)})`);
+  if (uiFixes?.walletMethods?.[0] !== 'eth_requestAccounts' || uiFixes?.walletMethods?.[1] !== 'eth_chainId') failures.push(`selected wallet request order (${JSON.stringify(uiFixes?.walletMethods)})`);
   if (uiFixes?.walletAddParams?.chainId?.toLowerCase() !== '0x4cef52' || uiFixes?.walletAddParams?.nativeCurrency?.decimals !== 18) failures.push(`Arc network add parameters (${JSON.stringify(uiFixes?.walletAddParams)})`);
   if (String(uiFixes?.finalWalletChainId).toLowerCase() !== '0x4cef52') failures.push(`Arc network selection (${uiFixes?.finalWalletChainId})`);
   if (!uiFixes?.scanHasPrimaryClass || uiFixes?.heroPrimaryBackground !== uiFixes?.scanPrimaryBackground) failures.push('exact primary gradient parity');
@@ -325,5 +352,12 @@ try {
     child.kill('SIGKILL');
     await Promise.race([new Promise((resolve) => child.once('exit', resolve)), sleep(2000)]);
   }
-  fs.rmSync(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  try {
+    fs.rmSync(profile, { recursive: true, force: true, maxRetries: 20, retryDelay: 150 });
+  } catch (error) {
+    if (!['ENOTEMPTY', 'EBUSY', 'EPERM'].includes(error?.code)) throw error;
+    console.warn(`Chromium profile cleanup deferred: ${error.code}`);
+  }
 }
+
+process.exit(0);

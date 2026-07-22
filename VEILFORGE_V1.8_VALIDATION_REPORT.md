@@ -1,16 +1,22 @@
-# VeilForge v1.8 Validation Report
+# VeilForge v1.8.5 Validation Report
 
-**Release:** VeilForge v1.8.4 — Privacy Mission Control  
+**Release:** VeilForge v1.8.5 — Multi-wallet session behavior  
 **Validation date:** 2026-07-22  
-**Base:** clean `veilforge-v1.1` branch archive; the failed v1.8 monorepo was not patched or reused as the release base.
+**Base:** VeilForge v1.8.4 validated Arc wallet build
 
-## Validated environment
+## Scope of this revision
 
-- Node.js `v22.16.0`
-- npm `10.9.2`
-- Chromium `144.0.7559.96`
-- npm dependencies: none
-- lockfile: npm lockfile v3
+- Do not open the Connected Wallet session panel automatically after connection.
+- Open the session panel only when the user clicks the connected address button.
+- Discover multiple installed EVM browser wallets through EIP-6963.
+- Retain legacy EIP-1193 / `window.ethereum` fallback.
+- Present a wallet chooser only when more than one compatible injected provider is available.
+- Pass the selected provider through Arc proof publication instead of falling back to a different injected wallet.
+- Keep the existing VeilForge visual design, starfield, scanner, analyzer, export and proof layout unchanged.
+
+## Supported wallet scope
+
+This release supports installed browser-extension EVM wallets that expose an EIP-1193 provider, including providers discovered through EIP-6963. The browser smoke test models Rabby and Zerion simultaneously and proves that only the wallet selected by the user receives requests. WalletConnect / QR-based mobile sessions are not included because they require a separate relay integration and project configuration.
 
 ## Commands executed
 
@@ -20,94 +26,28 @@ npm run build:web
 npm run test
 npm run typecheck
 npm run smoke:browser
+npm run preflight
 ```
 
 ## Results
 
 | Check | Result |
 |---|---|
-| npm install | completed; 1 package audited; 0 vulnerabilities |
-| static web build | completed; 25 files generated in `dist/` |
+| Dependency installation | Completed; zero external runtime dependencies; 0 vulnerabilities |
+| Static web build | Completed; canonical engine and proof modules copied into `dist/` |
 | Node test suite | 22 passed, 0 failed |
-| static syntax / JSON validation | 46 JavaScript modules and 6 JSON files passed |
-| Chromium runtime smoke | passed |
-| responsive runtime check | passed at 390 px; no root horizontal overflow |
-| release ZIP exporter | deterministic output; archive accepted by `unzip -t` |
-| report schema | generated canonical report validated against published schema |
-| policy schema | generated Arc Policy Manifest validated against published schema |
+| Static JavaScript / JSON validation | 46 JavaScript modules and 6 JSON files passed |
+| Chromium runtime smoke | Passed |
+| 390 px responsive smoke | Passed; no root horizontal overflow |
+| Multi-provider discovery | Rabby and Zerion discovered through EIP-6963 |
+| Wallet selection | Rabby selected; Zerion received zero provider requests |
+| Connection request order | `eth_requestAccounts` → `eth_chainId` |
+| Arc network add/switch | Correct chain ID `0x4CEF52`, USDC 18 decimals, final chain verified |
+| Automatic session panel | Confirmed closed after connection |
+| Connected address action | Confirmed session panel opens after user clicks the connected address |
+| Selected provider publication | Selected provider passed to proof publication |
+| Existing scanner behavior | 20 findings rendered; bounded scroll area retained |
 
-## Browser runtime coverage
+## Important limitation
 
-The Chromium smoke test loads the generated `dist` HTML, CSS, canonical engine, proof module, ZIP module, configuration, demos, and application code. It verifies:
-
-- single-click MetaMask connection request
-- account permission before Arc network switching
-- automatic connected-wallet session pop-up
-- visible three-layer starfield and subtle aurora motion
-- primary scan button visual parity with the hero action
-- initial vulnerable demo scan
-- canonical report hash generation
-- `Deployment Blocked` project state
-- rendered finding cards
-- Exposure Chains view
-- Treatment Plan 2.0 view
-- local browser history
-- Proof Center 2.0 registry configuration
-- JSON, Markdown, policy, and remediation ZIP export actions
-- vulnerable-to-hardened comparison flow
-- hardened `Ready` state
-- 390 px responsive layout
-- absence of browser runtime exceptions
-
-The execution environment blocks navigation to local HTTP and file URLs through Chromium policy. The smoke script therefore injects the exact generated `dist` assets into a Chromium page through the Chrome DevTools Protocol. It is a real Chromium DOM/runtime test, but not a network-hosted Vercel test.
-
-## Determinism fixtures
-
-### Vulnerable payroll
-
-- status: `Deployment Blocked`
-- score: `0`
-- findings: `20`
-- report hash: `0xe6bf1adafe767d1dd9d65107b4c4e1ab1229cde7ce384c2c7c2f29935bfcde1a`
-
-### Hardened payroll
-
-- status: `Ready`
-- score: `100`
-- findings: `0`
-- report hash: `0x9fcd445bd4bbdbc7c7b6ceff32b91a9abda55f63ca4687e3c1ebc46f4ded732d`
-
-## Proof integration checks
-
-- selector `publishReport(bytes32,bytes32,bytes32,uint16,string,string)` verified as `0x6133eb3a`
-- calldata offsets and dynamic strings decoded in the unit test
-- argument order verified as `reportURI` followed by `scannerVersion`
-- mocked EIP-1193 wallet flow verified in the exact order `eth_requestAccounts` → `eth_chainId`; unknown-network handling adds Arc Testnet with chain ID `0x4cef52`, native USDC decimals `18`, switches to it, verifies it, and then opens the connected-session pop-up; proof publication still verifies one `eth_sendTransaction`
-- reference registry source checked for the same ABI order
-
-## Arc wallet root-cause correction
-
-The previous preview used `0x4cf4b2` as the Arc Testnet chain ID and `6` native-currency decimals. Those values do not describe Arc Testnet. The corrected wallet configuration uses decimal chain ID `5042002` (`0x4cef52`) and native USDC decimals `18`. The test suite now asserts the decimal/hex equivalence directly so this mismatch cannot silently pass again.
-
-## Deliberate limits
-
-- No real wallet transaction was sent during automated validation.
-- The existing Arc Testnet registry was not redeployed.
-- The reference Solidity registry source was not recompiled because this zero-dependency release does not include a Solidity compiler. The browser encoder, selector, argument order, and mocked transaction path were tested.
-- VeilForge is readiness tooling, not a replacement for Solidity compilation, contract tests, manual review, or a security audit.
-- Vercel Preview must still be checked before merging a preview branch into `main`.
-
-## Release packaging rules
-
-- `node_modules` is not included.
-- generated `dist/` is not included; Vercel creates it with `npm run build:web`.
-- the ZIP opens directly to the repository root.
-- the release contains fewer than 100 files for a simpler GitHub web upload workflow.
-
-## Final technical correction
-
-- Header wallet discovery supports both legacy injected `window.ethereum` providers and EIP-6963 provider announcements.
-- MetaMask is prioritized when multiple injected wallets are present.
-- Browser smoke explicitly validates the EIP-6963-only path, `eth_requestAccounts` before `eth_chainId`, and automatic wallet-session modal opening.
-- The workspace scan action uses the same `.primary` gradient as `Scan the payroll demo`; computed browser styles are compared during smoke testing.
-- UI messages normalize object values so `[object Object]` is not rendered.
+A real third-party browser extension cannot be controlled from the isolated validation environment. Runtime validation uses EIP-1193-compatible mock providers through the same EIP-6963 event path used by extension wallets. Final preview testing should still be performed with the user’s installed wallets before merging to `main`.

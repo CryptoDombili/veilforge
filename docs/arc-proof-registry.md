@@ -33,11 +33,11 @@ The registry does not store Solidity source or the finding payload.
 
 1. Run a deterministic local scan.
 2. Review project ID, hashes, score, version, registry, and optional URI.
-3. Connect an EIP-1193 wallet.
+3. Discover installed EVM browser wallets through EIP-6963, with legacy EIP-1193 fallback, and connect the selected provider.
 4. Switch or add Arc Testnet through wallet methods.
 5. Encode calldata locally.
 6. Submit `eth_sendTransaction`.
-7. Confirm the wallet transaction.
+7. Confirm the transaction in the selected wallet.
 8. Open the ArcScan transaction link.
 
 ## Arc Testnet configuration
