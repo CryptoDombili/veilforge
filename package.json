@@ -1,6 +1,6 @@
 {
   "name": "veilforge",
-  "version": "1.8.10",
+  "version": "1.8.11",
   "private": true,
   "type": "module",
   "description": "VeilForge Privacy Mission Control — deterministic, local-first privacy engineering for Solidity projects on Arc.",

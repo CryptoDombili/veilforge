@@ -539,3 +539,77 @@ body{font-size:16px}
 @media(max-width:700px){
   .filter-row .select-input{padding-right:38px;background-position:calc(100% - 16px) calc(50% - 1px),calc(100% - 10px) calc(50% - 1px),0 0}
 }
+
+/* v1.8.11 scroll parity + export alignment */
+.finding-list,
+.chain-list,
+.task-list{
+  display:grid;
+  gap:8px;
+  max-height:540px;
+  overflow:auto;
+  padding-right:6px;
+  scrollbar-width:thin;
+  scrollbar-color:rgba(117,247,200,.22) rgba(255,255,255,.03);
+}
+
+.finding-list::-webkit-scrollbar,
+.chain-list::-webkit-scrollbar,
+.task-list::-webkit-scrollbar{
+  width:10px;
+}
+
+.finding-list::-webkit-scrollbar-track,
+.chain-list::-webkit-scrollbar-track,
+.task-list::-webkit-scrollbar-track{
+  background:rgba(255,255,255,.03);
+  border-radius:999px;
+}
+
+.finding-list::-webkit-scrollbar-thumb,
+.chain-list::-webkit-scrollbar-thumb,
+.task-list::-webkit-scrollbar-thumb{
+  background:linear-gradient(180deg,rgba(117,247,200,.28),rgba(117,247,200,.14));
+  border:2px solid rgba(7,9,15,.78);
+  border-radius:999px;
+}
+
+.finding-list::-webkit-scrollbar-thumb:hover,
+.chain-list::-webkit-scrollbar-thumb:hover,
+.task-list::-webkit-scrollbar-thumb:hover{
+  background:linear-gradient(180deg,rgba(117,247,200,.38),rgba(117,247,200,.2));
+}
+
+.export-grid{
+  align-items:stretch;
+}
+
+.export-card{
+  display:flex;
+  flex-direction:column;
+  min-height:188px;
+}
+
+.export-card p{
+  margin:0;
+  flex:1;
+}
+
+.export-card .action-button{
+  align-self:flex-start;
+  margin-top:16px;
+}
+
+@media(max-width:700px){
+  .finding-list,
+  .chain-list,
+  .task-list{
+    max-height:none;
+    overflow:visible;
+    padding-right:0;
+  }
+
+  .export-card{
+    min-height:auto;
+  }
+}
