@@ -424,3 +424,67 @@ body{font-size:16px}
   .finding-title small,
   .finding-policy{font-size:10px}
 }
+
+/* v1.8.9 intake panel parity + more compact wallet modals */
+.missionShell{align-items:start;gap:16px}
+.intakePanel{align-self:start}
+.intakeBody{padding:18px}
+.intakePanel .fieldLabel,
+.intakePanel .file-heading{font-size:10px;letter-spacing:.12em}
+.intakePanel .text-input{height:44px;padding:0 14px;font-size:14px}
+.intakePanel .soft-button,
+.intakePanel .file-button,
+.intakePanel .text-button{font-size:12px}
+.intakePanel .soft-button{padding:11px 12px}
+.intakePanel .drop-zone{padding:22px 14px;border-radius:13px}
+.intakePanel .drop-zone strong{font-size:15px;line-height:1.25}
+.intakePanel .drop-zone>span{font-size:11px;line-height:1.5}
+.intakePanel .file-button{padding:9px 12px}
+.intakePanel .file-list{max-height:140px}
+.intakePanel .file-item,
+.intakePanel .empty-files{padding:9px 10px;font-size:11px}
+.intakePanel .file-item small{font-size:10px}
+.intakePanel .scan-button.primary{margin-top:14px;min-height:52px;font-size:14px}
+.intakePanel .scan-message{min-height:34px;font-size:11px;line-height:1.5}
+
+.wallet-menu{width:min(420px,calc(100vw - 36px));padding:16px;border-radius:15px}
+.wallet-menu>header{padding-bottom:12px}
+.wallet-menu>header small{font-size:9px}
+.wallet-menu>header b{font-size:24px}
+.wallet-menu-close{width:28px;height:28px;font-size:17px}
+.wallet-identity{gap:10px;padding:14px 2px}
+.wallet-identity b{font-size:13px}
+.wallet-identity small{font-size:11px}
+.wallet-menu-actions{gap:8px}
+.wallet-menu-actions button,
+.wallet-menu-actions a{min-height:42px;font-size:12px}
+.wallet-menu>p{font-size:12px;line-height:1.55}
+
+.wallet-picker{width:min(440px,calc(100vw - 36px));padding:16px;border-radius:15px}
+.wallet-picker>header{padding-bottom:12px}
+.wallet-picker>header small{font-size:9px}
+.wallet-picker>header b{font-size:24px}
+.wallet-picker-list{gap:8px;padding:13px 0 2px;max-height:min(400px,52vh)}
+.wallet-choice{min-height:60px;padding:11px 12px;gap:11px}
+.wallet-choice-icon{width:42px;height:42px}
+.wallet-choice b{font-size:16px}
+.wallet-choice small{font-size:11px}
+.wallet-choice em{font-size:12px}
+.wallet-picker>p{font-size:12px;line-height:1.55}
+
+@media(max-width:700px){
+  .intakeBody{padding:16px}
+  .intakePanel .text-input{height:42px;font-size:13px}
+  .intakePanel .soft-button,
+  .intakePanel .file-button,
+  .intakePanel .text-button{font-size:11px}
+  .intakePanel .drop-zone strong{font-size:14px}
+  .intakePanel .drop-zone>span,
+  .intakePanel .scan-message{font-size:10px}
+  .intakePanel .scan-button.primary{min-height:48px;font-size:13px}
+  .wallet-menu,
+  .wallet-picker{width:min(100vw - 24px,390px);padding:14px}
+  .wallet-menu>header b,
+  .wallet-picker>header b{font-size:21px}
+  .wallet-choice b{font-size:15px}
+}
