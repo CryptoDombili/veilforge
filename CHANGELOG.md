@@ -1,46 +1,55 @@
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://veilforge.dev/schemas/arc-policy-manifest.schema.json",
-  "title": "VeilForge Arc Policy Manifest",
-  "description": "Selector-level policy recommendations derived from a canonical VeilForge report.",
-  "type": "object",
-  "additionalProperties": false,
-  "required": ["schemaVersion", "generator", "sourceHash", "reportHash", "projectStatus", "policies"],
-  "properties": {
-    "schemaVersion": { "type": "string", "const": "1.0" },
-    "generator": { "type": "string", "const": "VeilForge 1.8.0" },
-    "sourceHash": { "$ref": "#/$defs/hash" },
-    "reportHash": { "$ref": "#/$defs/hash" },
-    "projectStatus": { "$ref": "#/$defs/status" },
-    "policies": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["contract", "selector", "signature", "policy", "reason", "confidence", "source"],
-        "properties": {
-          "contract": { "type": "string", "minLength": 1 },
-          "selector": { "type": "string", "pattern": "^0x[0-9a-f]{8}$" },
-          "signature": { "type": "string", "minLength": 1 },
-          "policy": { "type": "string", "enum": ["Open", "Restricted", "Locked"] },
-          "reason": { "type": "string", "minLength": 1 },
-          "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
-          "source": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["file", "startLine", "endLine"],
-            "properties": {
-              "file": { "type": "string", "minLength": 1 },
-              "startLine": { "type": "integer", "minimum": 1 },
-              "endLine": { "type": "integer", "minimum": 1 }
-            }
-          }
-        }
-      }
-    }
-  },
-  "$defs": {
-    "hash": { "type": "string", "pattern": "^0x[0-9a-f]{64}$" },
-    "status": { "type": "string", "enum": ["Ready", "Review Required", "High Risk", "Deployment Blocked"] }
-  }
-}
+## VeilForge v1.8.8
+- Reduced finding-row and supporting text sizes by one step for a cleaner dashboard.
+- Matched the Privacy readiness and Contract readiness dashboard heading sizes.
+- Preserved wallet icons, EIP-6963 wallet behavior and all v1.8.7 functionality.
+
+## VeilForge v1.8.7
+- Added branded fallback icons for Keplr EVM and Phantom in the wallet chooser.
+- Increased wallet chooser, dashboard and workspace typography for better readability.
+- Preserved multi-wallet EIP-6963 discovery and direct session behavior.
+
+# Changelog
+
+## v1.8.6 — Canonical wallet names and duplicate cleanup
+
+- Renamed the Keplr EVM provider to `Keplr EVM` in the wallet chooser.
+- Canonicalized the preferred wallet labels as MetaMask, Phantom, Rabby Wallet and Zerion.
+- Deduplicated legacy and EIP-6963 announcements so Rabby appears only once.
+- Preferred the richer EIP-6963 candidate with the official wallet icon over generic legacy provider rows.
+- Added direct legacy discovery for `window.keplr.ethereum` and `window.phantom.ethereum`.
+
+## v1.8.5 — Multi-wallet connection behavior
+
+- Stopped opening the Connected Wallet session panel automatically after a successful connection.
+- The connected address button now opens the session panel only when the user clicks it.
+- Added EIP-6963 multi-provider discovery with legacy EIP-1193 injected-wallet fallback.
+- Added an installed-wallet chooser when multiple EVM browser wallets are available.
+- Added generic wallet messages and passed the selected provider into proof publication.
+
+## v1.8.4 — Arc wallet network correction
+
+- Corrected Arc Testnet chain ID hex to `0x4cef52` (decimal `5042002`).
+- Corrected native USDC gas-token decimals to `18`.
+- Added nested MetaMask error-code handling for unknown networks.
+- Explicitly switches to Arc Testnet after adding the network and verifies the selected chain before opening the wallet session.
+
+## 1.8.0 — Privacy Mission Control
+
+- replaced duplicate web/standalone analyzers with one canonical ES-module engine
+- added multi-file project scans and contract-level triage
+- added deterministic exposure chains
+- added Treatment Plan 2.0 with P0–P3 priorities
+- added report comparison and local scan history
+- added Proof Center 2.0 with dependency-free ABI encoding
+- corrected registry argument order to `reportURI`, then `scannerVersion`
+- added Arc Policy Manifest and remediation ZIP exports
+- added custom-rule API, CLI, schemas, examples, and showcase documentation
+- replaced the fragile Vite/Vitest dependency graph with a zero-dependency static build
+- added Node tests, static validation, and Chromium CDP runtime smoke testing
+
+## 1.1.0 — Remediation Intelligence
+
+- deterministic impact and remediation guidance
+- selector policy recommendations
+- executive summary and exports
+- Solidity file upload and Arc report proof flow
