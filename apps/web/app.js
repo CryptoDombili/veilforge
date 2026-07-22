@@ -563,6 +563,8 @@ function bindEvents() {
   elements.folderInput.addEventListener('change', async () => setFiles(await readBrowserFiles(elements.folderInput.files)));
   elements.clearFiles.addEventListener('click', () => setFiles([]));
   elements.scanButton.addEventListener('click', runScan);
+  document.querySelector('#heroDemo')?.addEventListener('click', () => { loadDemo('vulnerable', { scan: true }).catch((error) => setMessage(error.message, 'error')); document.querySelector('#scanner')?.scrollIntoView({ behavior: 'smooth' }); });
+  document.querySelector('#heroUpload')?.addEventListener('click', () => elements.fileInput.click());
 
   ['dragenter', 'dragover'].forEach((name) => elements.dropZone.addEventListener(name, (event) => {
     event.preventDefault();
