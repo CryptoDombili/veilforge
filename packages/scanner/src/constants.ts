@@ -1,6 +1,22 @@
 import type { Severity } from './types.js';
 
-export const SCANNER_VERSION = '1.1.0';
+export const SCANNER_VERSION = '1.8.0';
+
+export const BUILT_IN_RULE_IDS = [
+  'VF000',
+  'VF001',
+  'VF002',
+  'VF003',
+  'VF004',
+  'VF005',
+  'VF006',
+  'VF007',
+  'VF008',
+  'VF009',
+  'VF010',
+  'VF011',
+  'VF012',
+] as const;
 
 export const SENSITIVE_TERMS = [
   'salary',

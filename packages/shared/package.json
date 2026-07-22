@@ -1,7 +1,6 @@
 {
   "name": "@veilforge/shared",
-  "version": "1.1.0",
-  "private": true,
+  "version": "1.8.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -14,5 +13,22 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "description": "Shared Arc Testnet constants and VeilForge registry ABI.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CryptoDombili/veilforge.git",
+    "directory": "packages/shared"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

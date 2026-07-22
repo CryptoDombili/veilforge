@@ -11,6 +11,7 @@ export const ARC_TESTNET = {
   explorerUrl: 'https://testnet.arcscan.app',
   faucetUrl: 'https://faucet.circle.com',
 } as const;
+export const ARC_TESTNET_REGISTRY_ADDRESS = '0xf8b1D03931f2c11B642259d9aB19cfA3351C0Bbc' as const;
 
 export const REGISTRY_ABI = [
   {

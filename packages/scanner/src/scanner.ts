@@ -1,4 +1,14 @@
-import { DISCLAIMER, SCANNER_VERSION, SEVERITY_PENALTY } from './constants.js';
+import { BUILT_IN_RULE_IDS, DISCLAIMER, SCANNER_VERSION, SEVERITY_PENALTY } from './constants.js';
+import { runCustomRules } from './custom-rules.js';
+import {
+  buildContractSummaries,
+  buildExposureChains,
+  buildProjectTriage,
+  buildTreatmentPlan,
+  gradeForScore,
+  scoreForFindings,
+  summaryForFindings,
+} from './mission.js';
 import { parseSolidityFile } from './parser.js';
 import { playbookFor } from './playbook.js';
 import { recommendPolicies } from './policy.js';
@@ -8,12 +18,11 @@ import type {
   Finding,
   ParsedFile,
   PolicyRecommendation,
+  ScanOptions,
   ScanReport,
-  SeverityTotals,
   SourceFile,
 } from './types.js';
 import { canonicalize, keccakHex, normalizePath, normalizeText } from './utils.js';
-
 
 function exposureFor(
   parsedFiles: ParsedFile[],
@@ -35,7 +44,9 @@ function exposureFor(
     ).length,
     sensitiveSelectors: policies.filter((policy) => policy.recommendation !== 'Open').length,
     sensitiveEvents: new Set(
-      findings.filter((item) => item.ruleId === 'VF002').map((item) => `${item.file}:${item.startLine}`),
+      findings
+        .filter((item) => item.ruleId === 'VF002' || item.ruleId === 'VF011')
+        .map((item) => `${item.file}:${item.startLine}`),
     ).size,
     crossContractFindings: findings.filter(
       (item) => item.ruleId === 'VF006' || item.ruleId === 'VF007',
@@ -43,26 +54,6 @@ function exposureFor(
     restrictedSelectors: policies.filter((policy) => policy.recommendation === 'Restricted').length,
     lockedSelectors: policies.filter((policy) => policy.recommendation === 'Locked').length,
   };
-}
-
-function scoreFor(findings: Finding[]): number {
-  const penalty = findings.reduce((total, item) => total + SEVERITY_PENALTY[item.severity], 0);
-  return Math.max(0, Math.min(100, 100 - penalty));
-}
-
-function gradeFor(score: number): ScanReport['grade'] {
-  if (score >= 90) return 'A';
-  if (score >= 80) return 'B';
-  if (score >= 70) return 'C';
-  if (score >= 55) return 'D';
-  return 'F';
-}
-
-function summaryFor(findings: Finding[]): SeverityTotals {
-  return findings.reduce<SeverityTotals>(
-    (totals, item) => ({ ...totals, [item.severity]: totals[item.severity] + 1 }),
-    { critical: 0, high: 0, medium: 0, low: 0 },
-  );
 }
 
 export function canonicalSourceHash(files: SourceFile[]): `0x${string}` {
@@ -80,18 +71,29 @@ export function canonicalReportHash(
   const stable = {
     schemaVersion: report.schemaVersion,
     scannerVersion: report.scannerVersion,
+    analysisProfile: report.analysisProfile,
     score: report.score,
     grade: report.grade,
     summary: report.summary,
     exposure: report.exposure,
     findings: [...report.findings].sort(
       (a, b) =>
-        a.file.localeCompare(b.file) || a.startLine - b.startLine || a.ruleId.localeCompare(b.ruleId),
+        a.file.localeCompare(b.file) ||
+        a.startLine - b.startLine ||
+        a.ruleId.localeCompare(b.ruleId),
     ),
     policies: [...report.policies].sort(
       (a, b) =>
-        a.file.localeCompare(b.file) || a.startLine - b.startLine || a.signature.localeCompare(b.signature),
+        a.file.localeCompare(b.file) ||
+        a.startLine - b.startLine ||
+        a.signature.localeCompare(b.signature),
     ),
+    contracts: [...report.contracts].sort(
+      (a, b) => a.file.localeCompare(b.file) || a.startLine - b.startLine,
+    ),
+    triage: report.triage,
+    exposureChains: [...report.exposureChains].sort((a, b) => a.id.localeCompare(b.id)),
+    treatmentPlan: [...report.treatmentPlan].sort((a, b) => a.order - b.order),
     files: [...report.files].sort((a, b) => a.path.localeCompare(b.path)),
     sourceHash: report.sourceHash,
     disclaimer: report.disclaimer,
@@ -99,7 +101,7 @@ export function canonicalReportHash(
   return keccakHex(canonicalize(stable));
 }
 
-export function scanSources(inputFiles: SourceFile[]): ScanReport {
+export function scanSources(inputFiles: SourceFile[], options: ScanOptions = {}): ScanReport {
   if (inputFiles.length === 0) {
     throw new Error('At least one Solidity source file is required.');
   }
@@ -120,7 +122,8 @@ export function scanSources(inputFiles: SourceFile[]): ScanReport {
       parseFindings.push({
         ruleId: 'VF000',
         title: 'Solidity source could not be parsed',
-        description: 'VeilForge could not construct a Solidity AST, so privacy analysis for this file is incomplete.',
+        description:
+          'VeilForge could not construct a Solidity AST, so privacy analysis for this file is incomplete.',
         severity: 'critical',
         file: file.path,
         startLine: 1,
@@ -137,7 +140,8 @@ export function scanSources(inputFiles: SourceFile[]): ScanReport {
     }
   }
 
-  const findings = [...parseFindings, ...parsedFiles.flatMap(runRules)].sort(
+  const customFindings = options.customRules ? runCustomRules(files, options.customRules) : [];
+  const findings = [...parseFindings, ...parsedFiles.flatMap(runRules), ...customFindings].sort(
     (a, b) =>
       SEVERITY_PENALTY[b.severity] - SEVERITY_PENALTY[a.severity] ||
       a.file.localeCompare(b.file) ||
@@ -145,23 +149,47 @@ export function scanSources(inputFiles: SourceFile[]): ScanReport {
       a.ruleId.localeCompare(b.ruleId),
   );
   const policies = recommendPolicies(parsedFiles);
-  const score = scoreFor(findings);
+  const score = scoreForFindings(findings);
   const exposure = exposureFor(parsedFiles, findings, policies);
+  const contracts = buildContractSummaries(parsedFiles, findings, policies);
+  const triage = buildProjectTriage(score, findings, contracts);
+  const exposureChains = buildExposureChains(parsedFiles, findings, policies);
+  const treatmentPlan = buildTreatmentPlan(parsedFiles, findings);
   const sourceHash = canonicalSourceHash(files);
 
   const withoutHash: Omit<ScanReport, 'reportHash'> = {
-    schemaVersion: '1.1',
+    schemaVersion: '1.8',
     scannerVersion: SCANNER_VERSION,
+    analysisProfile: {
+      engine: 'veilforge-deterministic',
+      execution: 'local',
+      aiApiUsed: false,
+      hashAlgorithm: 'keccak256',
+      builtInRuleIds: [...BUILT_IN_RULE_IDS],
+      customRuleIds: [...new Set((options.customRules ?? []).map((rule) => rule.id))].sort(),
+    },
     score,
-    grade: gradeFor(score),
-    summary: summaryFor(findings),
+    grade: gradeForScore(score),
+    summary: summaryForFindings(findings),
     exposure,
     findings,
     policies,
+    contracts,
+    triage,
+    exposureChains,
+    treatmentPlan,
     files: files.map((file) => ({ path: file.path, lines: file.content.split('\n').length })),
     sourceHash,
     disclaimer: DISCLAIMER,
   };
 
   return { ...withoutHash, reportHash: canonicalReportHash(withoutHash) };
+}
+
+/** Analyze a Solidity project using the canonical deterministic engine. */
+export const analyzeProject = scanSources;
+
+/** Convenience wrapper for a single Solidity source string. */
+export function analyzeSolidity(source: string, path = 'Contract.sol', options: ScanOptions = {}): ScanReport {
+  return scanSources([{ path, content: source }], options);
 }

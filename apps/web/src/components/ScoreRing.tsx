@@ -8,18 +8,9 @@ export function ScoreRing({ score, grade }: ScoreRingProps): React.JSX.Element {
   return (
     <div className="score-cluster">
       <div className="score-ring" style={{ '--score': `${score * 3.6}deg` } as React.CSSProperties}>
-        <div className="score-inner">
-          <strong>{score}</strong>
-          <span>/100</span>
-        </div>
+        <div className="score-inner"><strong>{score}</strong><span>/100</span></div>
       </div>
-      <div className="score-copy">
-        <span className={`grade grade-${grade.toLowerCase()}`}>{grade}</span>
-        <div>
-          <strong>{riskLabel}</strong>
-          <p>Privacy readiness</p>
-        </div>
-      </div>
+      <div className="score-copy"><span className={`grade grade-${grade.toLowerCase()}`}>{grade}</span><div><strong>{riskLabel}</strong><p>Privacy readiness</p></div></div>
     </div>
   );
 }

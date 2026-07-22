@@ -1,0 +1,10 @@
+{
+  "network": "Arc Testnet",
+  "chainId": 5042002,
+  "contract": "VeilForgeReportRegistry",
+  "address": "0xf8b1D03931f2c11B642259d9aB19cfA3351C0Bbc",
+  "explorer": "https://testnet.arcscan.app/address/0xf8b1D03931f2c11B642259d9aB19cfA3351C0Bbc",
+  "sourcePath": "contracts/contracts/VeilForgeReportRegistry.sol",
+  "compiler": "0.8.24",
+  "verificationStatus": "pending"
+}

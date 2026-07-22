@@ -1,10 +1,37 @@
-# 90-second demo script
+# VeilForge v1.8 demo script
 
-1. Explain that VeilForge analyzes Solidity locally and does not use an AI API.
-2. Scan the vulnerable payroll fixture and show the readiness score.
-3. Open one exact source-line finding.
-4. Enter the Remediation workspace and show impact, suggested policy, and safer pattern.
-5. Switch to the hardened fixture and compare the score.
-6. Export a Markdown report.
-7. Show the Arc proof payload and explain that only hashes and metadata are published.
-8. Close with the responsible claim: pre-APS readiness tooling, not a formal audit.
+## 0:00–0:12 — Problem
+
+“Privacy can fail before a privacy layer is ever enabled. Public getters, events, calldata and unrestricted selectors can expose the data a project intends to protect.”
+
+## 0:12–0:25 — Product
+
+“VeilForge v1.8 is a local, deterministic Privacy Mission Control for Solidity projects. There is no AI API and source code stays on the device.”
+
+## 0:25–0:43 — Mission overview
+
+Show the vulnerable payroll project. Highlight project score, deployment-blocked state, contract triage and P0 blockers.
+
+## 0:43–1:03 — Exposure chains
+
+Open Exposure chains. Follow a public mapping or sensitive storage path into a callable selector and restricted policy recommendation.
+
+## 1:03–1:23 — Treatment plan
+
+Open Treatment Plan 2.0. Show ordered P0–P3 actions, exact evidence and safer pattern.
+
+## 1:23–1:39 — Progress
+
+Switch to Hardened, open Progress and show score improvement, resolved findings and policy changes.
+
+## 1:39–1:55 — Open-source artifacts
+
+Export JSON, Markdown, Arc Policy Manifest and Remediation Pack. Show the reusable scanner import example.
+
+## 1:55–2:10 — Arc proof
+
+Open Proof Center. Explain that only canonical hashes and metadata are stored. Show the registry and ArcScan link.
+
+## Closing
+
+“VeilForge helps Arc builders find, prioritize and prove privacy-readiness work before production—locally, deterministically and without exposing source code.”

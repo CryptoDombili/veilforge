@@ -1,15 +1,33 @@
-# Roadmap
+# VeilForge roadmap
 
 ## v1.1 — Remediation Intelligence
 
-Impact explanations, safer patterns, exposure metrics, prioritized fixes, and Markdown reports.
+Exact findings, impact explanations, safer patterns, policy recommendations, exports and Arc proof publishing.
 
-## Next candidates
+## v1.8 — Privacy Mission Control
 
-- GitHub Action and pull-request annotations.
-- Multi-contract repository scanning.
-- Baseline comparison between commits.
-- Machine-readable policy manifests.
-- Additional false-positive fixtures and parser coverage.
+Canonical engine unification, project triage, contract summaries, deterministic exposure chains, Treatment Plan 2.0, progress comparison, local metadata history, policy studio, Proof Center 2.0, reusable custom rules and showcase documentation.
 
-Roadmap items are proposals, not promises. Features should be driven by feedback from Arc builders and backed by deterministic tests.
+## v1.9 — Showcase feedback and hardening
+
+Planned focus:
+
+- feedback-driven rule precision
+- wider fixture library
+- CI examples
+- registry source verification
+- accessibility and performance audit
+- package publication strategy
+
+## v3.2 — Privacy Hospital
+
+Long-term direction:
+
+- deeper multi-contract case records
+- full deployment ICU workflows
+- richer source-to-event data-flow analysis
+- policy authoring studio
+- project history and discharge records
+- team and organization workflows where privacy guarantees remain explicit
+
+AI analysis is not planned for the VeilForge product.

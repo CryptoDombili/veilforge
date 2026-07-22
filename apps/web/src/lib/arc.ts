@@ -1,4 +1,4 @@
-import { ARC_TESTNET, REGISTRY_ABI } from '@veilforge/shared';
+import { ARC_TESTNET, ARC_TESTNET_REGISTRY_ADDRESS, REGISTRY_ABI } from '@veilforge/shared';
 import { createPublicClient, createWalletClient, custom, http, keccak256, stringToHex, type Address, type Chain, type EIP1193Provider } from 'viem';
 
 export const arcTestnet: Chain = {
@@ -31,9 +31,9 @@ export interface PublishResult {
 }
 
 function registryAddress(): Address {
-  const address = import.meta.env.VITE_REGISTRY_ADDRESS;
-  if (!address || !/^0x[a-fA-F0-9]{40}$/.test(address)) {
-    throw new Error('VITE_REGISTRY_ADDRESS is not configured with a deployed Arc Testnet registry.');
+  const address = import.meta.env.VITE_REGISTRY_ADDRESS || ARC_TESTNET_REGISTRY_ADDRESS;
+  if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
+    throw new Error('The Arc Testnet registry address is invalid.');
   }
   return address as Address;
 }
@@ -65,6 +65,9 @@ async function ensureArcNetwork(provider: EIP1193Provider): Promise<void> {
 export async function publishProof(input: PublishInput): Promise<PublishResult> {
   if (!window.ethereum) throw new Error('No browser wallet detected. Install a wallet that supports custom EVM networks.');
   if (!input.projectName.trim()) throw new Error('Project name is required.');
+  if (input.projectName.trim().length > 80) throw new Error('Project name must be 80 characters or fewer.');
+  if (input.reportURI.length > 512) throw new Error('Report URI must be 512 characters or fewer.');
+  if (input.scannerVersion.length > 32) throw new Error('Scanner version metadata is too long.');
 
   await ensureArcNetwork(window.ethereum);
 

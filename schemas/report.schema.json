@@ -1,0 +1,385 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://veilforge.dev/schemas/report.schema.json",
+  "title": "VeilForge v1.8 Canonical Scan Report",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "scannerVersion",
+    "analysisProfile",
+    "score",
+    "grade",
+    "summary",
+    "exposure",
+    "findings",
+    "policies",
+    "contracts",
+    "triage",
+    "exposureChains",
+    "treatmentPlan",
+    "files",
+    "sourceHash",
+    "reportHash",
+    "disclaimer"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.8"
+    },
+    "scannerVersion": {
+      "type": "string",
+      "pattern": "^1\\.8\\.[0-9]+$"
+    },
+    "analysisProfile": {
+      "type": "object",
+      "required": [
+        "engine",
+        "execution",
+        "aiApiUsed",
+        "hashAlgorithm",
+        "builtInRuleIds",
+        "customRuleIds"
+      ],
+      "properties": {
+        "engine": {
+          "const": "veilforge-deterministic"
+        },
+        "execution": {
+          "const": "local"
+        },
+        "aiApiUsed": {
+          "const": false
+        },
+        "hashAlgorithm": {
+          "const": "keccak256"
+        },
+        "builtInRuleIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^VF[0-9]{3}$"
+          },
+          "uniqueItems": true
+        },
+        "customRuleIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^VF_[A-Z0-9_]{3,64}$"
+          },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "score": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "grade": {
+      "enum": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "F"
+      ]
+    },
+    "summary": {
+      "$ref": "#/$defs/severityTotals"
+    },
+    "exposure": {
+      "type": "object",
+      "required": [
+        "publicStateVariables",
+        "publicMappings",
+        "externallyCallableFunctions",
+        "sensitiveSelectors",
+        "sensitiveEvents",
+        "crossContractFindings",
+        "restrictedSelectors",
+        "lockedSelectors"
+      ],
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "ruleId",
+          "title",
+          "description",
+          "severity",
+          "file",
+          "startLine",
+          "endLine",
+          "evidence",
+          "remediation",
+          "confidence",
+          "fingerprint",
+          "category",
+          "impact",
+          "suggestedPolicy"
+        ],
+        "properties": {
+          "ruleId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "severity": {
+            "$ref": "#/$defs/severity"
+          },
+          "file": {
+            "type": "string"
+          },
+          "startLine": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "endLine": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "evidence": {
+            "type": "string"
+          },
+          "remediation": {
+            "type": "string"
+          },
+          "confidence": {
+            "$ref": "#/$defs/confidence"
+          },
+          "fingerprint": {
+            "$ref": "#/$defs/hash"
+          },
+          "category": {
+            "type": "string"
+          },
+          "impact": {
+            "type": "string"
+          },
+          "suggestedPolicy": {
+            "$ref": "#/$defs/accessPolicy"
+          },
+          "saferPattern": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "policies": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "contracts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "file",
+          "contractName",
+          "score",
+          "grade",
+          "status",
+          "summary",
+          "findingCount"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/hash"
+          },
+          "file": {
+            "type": "string"
+          },
+          "contractName": {
+            "type": "string"
+          },
+          "score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "grade": {
+            "enum": [
+              "A",
+              "B",
+              "C",
+              "D",
+              "F"
+            ]
+          },
+          "status": {
+            "$ref": "#/$defs/triageStatus"
+          },
+          "summary": {
+            "$ref": "#/$defs/severityTotals"
+          },
+          "findingCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "triage": {
+      "type": "object",
+      "required": [
+        "status",
+        "deploymentAllowed",
+        "blockerFingerprints",
+        "contractsAtRisk",
+        "topRiskCategories",
+        "explanation"
+      ],
+      "properties": {
+        "status": {
+          "$ref": "#/$defs/triageStatus"
+        },
+        "deploymentAllowed": {
+          "type": "boolean"
+        },
+        "blockerFingerprints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/hash"
+          }
+        },
+        "contractsAtRisk": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "topRiskCategories": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "explanation": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "exposureChains": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "treatmentPlan": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "lines"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "lines": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "sourceHash": {
+      "$ref": "#/$defs/hash"
+    },
+    "reportHash": {
+      "$ref": "#/$defs/hash"
+    },
+    "disclaimer": {
+      "type": "string"
+    }
+  },
+  "$defs": {
+    "hash": {
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]{64}$"
+    },
+    "severity": {
+      "enum": [
+        "critical",
+        "high",
+        "medium",
+        "low"
+      ]
+    },
+    "confidence": {
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ]
+    },
+    "accessPolicy": {
+      "enum": [
+        "Open",
+        "Restricted",
+        "Locked"
+      ]
+    },
+    "triageStatus": {
+      "enum": [
+        "ready",
+        "review-required",
+        "high-risk",
+        "deployment-blocked"
+      ]
+    },
+    "severityTotals": {
+      "type": "object",
+      "required": [
+        "critical",
+        "high",
+        "medium",
+        "low"
+      ],
+      "properties": {
+        "critical": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "high": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "medium": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "low": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

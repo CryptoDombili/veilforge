@@ -1,7 +1,6 @@
 {
   "name": "@veilforge/scanner",
-  "version": "1.1.0",
-  "private": true,
+  "version": "1.8.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -29,5 +28,22 @@
     "@vitest/coverage-v8": "^2.1.8",
     "tsup": "^8.3.5",
     "vitest": "^2.1.8"
+  },
+  "description": "Local, deterministic pre-APS privacy-readiness engine for Solidity projects.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CryptoDombili/veilforge.git",
+    "directory": "packages/scanner"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

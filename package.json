@@ -1,6 +1,6 @@
 {
   "name": "veilforge",
-  "version": "1.1.0",
+  "version": "1.8.0",
   "private": true,
   "description": "Pre-APS privacy-readiness tooling for Solidity projects targeting Arc.",
   "license": "MIT",
@@ -10,6 +10,7 @@
     "contracts"
   ],
   "scripts": {
+    "preflight": "node scripts/preflight.mjs",
     "build": "npm run build -w @veilforge/shared && npm run build -w @veilforge/scanner && npm run build -w @veilforge/contracts && npm run build -w @veilforge/web",
     "dev": "npm run build -w @veilforge/shared && npm run build -w @veilforge/scanner && npm run dev -w @veilforge/web",
     "lint": "eslint . --max-warnings=0",
@@ -17,7 +18,8 @@
     "test": "npm run test -w @veilforge/scanner && npm run test -w @veilforge/contracts && npm run test -w @veilforge/web",
     "scan:demo": "npm run build -w @veilforge/scanner && node packages/scanner/dist/cli.js scan examples/vulnerable-payroll/Payroll.sol",
     "format": "prettier --write .",
-    "check": "npm run lint && npm run typecheck && npm run test && npm run build"
+    "check": "npm run lint && npm run typecheck && npm run test && npm run build",
+    "build:web": "npm run build -w @veilforge/shared && npm run build -w @veilforge/scanner && npm run build -w @veilforge/web"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",

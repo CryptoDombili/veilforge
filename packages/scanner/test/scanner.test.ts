@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { canonicalReportHash, canonicalSourceHash, formatMarkdownReport, scanSources } from '../src/index.js';
-import type { SourceFile } from '../src/types.js';
+import {
+  canonicalReportHash,
+  canonicalSourceHash,
+  compareReports,
+  formatMarkdownReport,
+  generatePolicyManifest,
+  scanSources,
+} from '../src/index.js';
+import type { CustomDetectionRule, SourceFile } from '../src/types.js';
 
 const wrap = (body: string): SourceFile => ({
   path: 'Fixture.sol',
@@ -163,6 +170,66 @@ contract Fixture {
     ]);
     expect(safer.score).toBeGreaterThan(vulnerable.score);
   });
+
+  it('builds v1.8 project triage, contract summaries and treatment actions', () => {
+    const report = scanSources([
+      wrap('mapping(address => uint256) public salary; function setSalary(address user, uint256 amount) external { salary[user] = amount; }'),
+    ]);
+    expect(report.schemaVersion).toBe('1.8');
+    expect(report.scannerVersion).toBe('1.8.0');
+    expect(report.analysisProfile.aiApiUsed).toBe(false);
+    expect(report.analysisProfile.builtInRuleIds).toContain('VF012');
+    expect(report.triage.status).toBe('deployment-blocked');
+    expect(report.triage.deploymentAllowed).toBe(false);
+    expect(report.contracts[0]?.contractName).toBe('Fixture');
+    expect(report.treatmentPlan[0]?.priority).toBe('P0');
+  });
+
+  it('creates deterministic exposure chains', () => {
+    const report = scanSources([
+      wrap('mapping(address => uint256) private salary; function getSalary(address user) external view returns (uint256) { return salary[user]; }'),
+    ]);
+    expect(report.exposureChains.length).toBeGreaterThan(0);
+    expect(report.exposureChains[0]?.nodes.some((node) => node.kind === 'storage')).toBe(true);
+    expect(report.exposureChains[0]?.nodes.some((node) => node.kind === 'policy')).toBe(true);
+  });
+
+  it('generates an Arc Policy Manifest from the canonical report', () => {
+    const report = scanSources([
+      wrap('mapping(address => uint256) private salary; function getSalary(address user) external view returns (uint256) { return salary[user]; }'),
+    ]);
+    const manifest = generatePolicyManifest(report);
+    expect(manifest.reportHash).toBe(report.reportHash);
+    expect(manifest.sourceHash).toBe(report.sourceHash);
+    expect(manifest.selectors[0]?.policy).toBe('restricted');
+  });
+
+  it('supports project-specific deterministic custom rules', () => {
+    const rule: CustomDetectionRule = {
+      id: 'VF_CUSTOM_MEMO',
+      title: 'Custom memo exposure',
+      description: 'A project-specific memo was detected.',
+      severity: 'high',
+      category: 'event-disclosure',
+      confidence: 'high',
+      impact: 'The memo may become public metadata.',
+      remediation: 'Remove the memo from public output.',
+      suggestedPolicy: 'Locked',
+      matches: ({ line }) => line.includes('customMemo'),
+    };
+    const report = scanSources([wrap('string public customMemo;')], { customRules: [rule] });
+    expect(report.findings.some((finding) => finding.ruleId === rule.id)).toBe(true);
+  });
+
+  it('compares remediation progress deterministically', () => {
+    const before = scanSources([wrap('mapping(address => uint256) public salary;')]);
+    const after = scanSources([wrap('mapping(address => uint256) private salary;')]);
+    const comparison = compareReports(before, after);
+    expect(comparison.scoreDelta).toBeGreaterThan(0);
+    expect(comparison.resolvedFindings.length).toBeGreaterThan(0);
+    expect(comparison.currentStatus).not.toBe('deployment-blocked');
+  });
+
 });
 
 describe('canonical hashing', () => {
