@@ -270,3 +270,18 @@ nav,main,footer{position:relative;z-index:2}
 .finding-list{max-height:620px;overflow-y:auto;overscroll-behavior:contain;padding-right:5px;scrollbar-gutter:stable}
 .finding-list::-webkit-scrollbar{width:8px}.finding-list::-webkit-scrollbar-track{background:#080c13;border-radius:8px}.finding-list::-webkit-scrollbar-thumb{background:#253044;border-radius:8px}.finding-list::-webkit-scrollbar-thumb:hover{background:#35445b}
 @media(max-width:700px){.navActions{margin-left:auto}.wallet-button{padding:9px 10px}.ghost{display:none}.wallet-menu{top:92px;right:16px}.wallet-menu-actions{grid-template-columns:1fr}.finding-list{max-height:540px}}
+
+
+/* v1.8.2 wallet reliability, richer starfield and unified primary scan action */
+.starfield-c{position:fixed;inset:-12%;pointer-events:none;z-index:0;opacity:.28;mix-blend-mode:screen;background-image:radial-gradient(circle,rgba(255,255,255,.92) 0 1px,transparent 1.65px),radial-gradient(circle,rgba(117,247,200,.72) 0 1.15px,transparent 1.85px),radial-gradient(circle,rgba(155,140,255,.68) 0 1px,transparent 1.8px);background-size:370px 370px,520px 520px,690px 690px;background-position:41px 73px,183px 211px,317px 119px;animation:starParallax 88s linear infinite,starTwinkle 7s ease-in-out infinite}
+.starfield-a{animation:starsDrift 48s linear infinite,starTwinkle 8.5s ease-in-out infinite}
+.starfield-b{animation:starsDriftReverse 72s linear infinite,starTwinkle 11s ease-in-out infinite reverse}
+body:after{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(circle at 18% 18%,rgba(91,79,255,.10),transparent 32%),radial-gradient(circle at 82% 58%,rgba(0,217,159,.08),transparent 34%);animation:auroraBreath 12s ease-in-out infinite alternate}
+.scan-button{background:linear-gradient(135deg,#75f7c8 0%,#52d6a2 58%,#087c4c 100%);color:#f5fff9;border-color:rgba(117,247,200,.58);box-shadow:0 12px 30px rgba(43,210,146,.17),inset 0 1px 0 rgba(255,255,255,.18);text-shadow:0 1px 0 rgba(0,0,0,.18);transition:transform .18s ease,filter .18s ease,box-shadow .18s ease}
+.scan-button:hover{transform:translateY(-1px);filter:brightness(1.06);box-shadow:0 16px 38px rgba(43,210,146,.23),inset 0 1px 0 rgba(255,255,255,.2)}
+.scan-button:active{transform:translateY(0)}
+.scan-button .scan-pulse{background:#062d20;box-shadow:0 0 0 3px rgba(6,45,32,.12)}
+@keyframes starParallax{to{transform:translate3d(-140px,95px,0) scale(1.015)}}
+@keyframes starTwinkle{0%,100%{filter:brightness(.86)}50%{filter:brightness(1.18)}}
+@keyframes auroraBreath{from{opacity:.48;transform:scale(1)}to{opacity:.78;transform:scale(1.035)}}
+@media(prefers-reduced-motion:reduce){.starfield-c,body:after{animation:none!important}}

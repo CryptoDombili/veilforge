@@ -150,8 +150,11 @@ try {
     expression: `(async () => {
       const star = getComputedStyle(document.querySelector('.starfield-a'));
       const list = document.querySelector('.finding-list');
+      globalThis.__walletMethods = [];
       globalThis.ethereum = {
+        isMetaMask: true,
         request: async ({ method }) => {
+          globalThis.__walletMethods.push(method);
           if (method === 'eth_chainId') return '0x4cf4b2';
           if (method === 'eth_requestAccounts' || method === 'eth_accounts') return ['0x1111111111111111111111111111111111111111'];
           return null;
@@ -159,10 +162,8 @@ try {
         on: () => {}
       };
       document.querySelector('#header-wallet-button')?.click();
-      await new Promise((resolve) => setTimeout(resolve, 30));
+      await new Promise((resolve) => setTimeout(resolve, 60));
       const connectedLabel = document.querySelector('#header-wallet-label')?.textContent;
-      document.querySelector('#header-wallet-button')?.click();
-      await new Promise((resolve) => setTimeout(resolve, 30));
       return {
         starOpacity: Number(star.opacity),
         starZ: Number(star.zIndex),
@@ -170,7 +171,10 @@ try {
         listScrollHeight: list?.scrollHeight || 0,
         listOverflow: list ? getComputedStyle(list).overflowY : '',
         connectedLabel,
-        walletMenuOpen: document.querySelector('#wallet-menu')?.classList.contains('open') || false, scanMessage: document.querySelector('#scan-message')?.textContent, runtimeErrorNow: document.body.dataset.runtimeError || null
+        walletMenuOpen: document.querySelector('#wallet-menu')?.classList.contains('open') || false,
+        walletMethods: globalThis.__walletMethods,
+        scanMessage: document.querySelector('#scan-message')?.textContent,
+        runtimeErrorNow: document.body.dataset.runtimeError || null
       };
     })()`,
     awaitPromise: true,
@@ -187,7 +191,8 @@ try {
   if (snapshot?.runtimeError) failures.push(`runtime error: ${snapshot.runtimeError}`);
   if ((uiFixes?.starOpacity ?? 0) < 0.5 || (uiFixes?.starZ ?? -1) < 0) failures.push('visible starfield layer');
   if (uiFixes?.listOverflow !== 'auto' || (uiFixes?.listClientHeight ?? 0) > 630 || (uiFixes?.listScrollHeight ?? 0) <= (uiFixes?.listClientHeight ?? 0)) failures.push('bounded findings scroll area');
-  if (!String(uiFixes?.connectedLabel).includes('0x1111') || !uiFixes?.walletMenuOpen) failures.push('header wallet connection and popup');
+  if (!String(uiFixes?.connectedLabel).includes('0x1111') || !uiFixes?.walletMenuOpen) failures.push('header wallet connection and automatic popup');
+  if (uiFixes?.walletMethods?.[0] !== 'eth_requestAccounts' || uiFixes?.walletMethods?.[1] !== 'eth_chainId') failures.push(`wallet request order (${JSON.stringify(uiFixes?.walletMethods)})`);
   if (cdp.exceptions.length) failures.push(`browser exceptions: ${cdp.exceptions.join('; ')}`);
 
   const screenshotPath = process.env.VEILFORGE_SMOKE_SCREENSHOT;

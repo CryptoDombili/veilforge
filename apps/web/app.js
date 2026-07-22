@@ -105,10 +105,8 @@ function openWalletMenu() {
   elements.walletBackdrop.hidden = false;
   elements.walletMenu.setAttribute('aria-hidden', 'false');
   elements.walletButton?.setAttribute('aria-expanded', 'true');
-  requestAnimationFrame(() => {
-    elements.walletMenu.classList.add('open');
-    elements.walletBackdrop.classList.add('open');
-  });
+  elements.walletMenu.classList.add('open');
+  elements.walletBackdrop.classList.add('open');
 }
 
 function closeWalletMenu() {
@@ -123,27 +121,48 @@ function closeWalletMenu() {
   }, 170);
 }
 
+function resolveWalletProvider() {
+  const injected = globalThis.ethereum;
+  if (!injected?.request) return null;
+  if (Array.isArray(injected.providers) && injected.providers.length) {
+    return injected.providers.find((provider) => provider?.isMetaMask && provider?.request)
+      || injected.providers.find((provider) => provider?.request)
+      || injected;
+  }
+  return injected;
+}
+
 async function connectHeaderWallet() {
   if (state.walletAccount) { openWalletMenu(); return; }
+  const provider = resolveWalletProvider();
+  if (!provider) {
+    setMessage('No browser wallet was detected. Install or unlock MetaMask, then try again.', 'error');
+    return;
+  }
   try {
     elements.walletButton.disabled = true;
-    await ensureArcTestnet();
-    const account = await connectWallet();
+    const account = await connectWallet(provider);
+    await ensureArcTestnet(provider);
     safeStorageRemove(WALLET_DISCONNECTED_KEY);
     setWalletUi(account);
     setMessage(`Wallet connected: ${shortAddress(account)} on Arc Testnet.`, 'success');
+    openWalletMenu();
   } catch (error) {
     setWalletUi(null);
-    setMessage(error instanceof Error ? error.message : String(error), 'error');
+    const message = error?.code === 4001
+      ? 'Wallet connection was cancelled.'
+      : error instanceof Error ? error.message : String(error);
+    setMessage(message, 'error');
   } finally {
     elements.walletButton.disabled = false;
   }
 }
 
 async function hydrateWallet() {
-  if (!globalThis.ethereum?.request || safeStorageGet(WALLET_DISCONNECTED_KEY) === '1') { setWalletUi(null); return; }
+  const provider = resolveWalletProvider();
+  if (!provider || safeStorageGet(WALLET_DISCONNECTED_KEY) === '1') { setWalletUi(null); return; }
   try {
-    const accounts = await globalThis.ethereum.request({ method: 'eth_accounts' });
+    const accounts = await provider.request({ method: 'eth_accounts' });
     setWalletUi(accounts?.[0] || null);
   } catch { setWalletUi(null); }
 }
@@ -609,15 +628,18 @@ async function handleWorkspaceAction(button) {
     importBaseline();
   } else if (action === 'connect-wallet') {
     const result = document.querySelector('#proof-result');
+    const provider = resolveWalletProvider();
     try {
-      await ensureArcTestnet();
-      state.walletAccount = await connectWallet();
+      if (!provider) throw new Error('No browser wallet was detected. Install or unlock MetaMask, then try again.');
+      state.walletAccount = await connectWallet(provider);
+      await ensureArcTestnet(provider);
       safeStorageRemove(WALLET_DISCONNECTED_KEY);
       setWalletUi(state.walletAccount);
       if (result) result.textContent = `Wallet connected: ${state.walletAccount}`;
       renderWorkspace();
+      openWalletMenu();
     } catch (error) {
-      if (result) result.textContent = error instanceof Error ? error.message : String(error);
+      if (result) result.textContent = error?.code === 4001 ? 'Wallet connection was cancelled.' : error instanceof Error ? error.message : String(error);
     }
   } else if (action === 'publish-proof') {
     const result = document.querySelector('#proof-result');
@@ -689,9 +711,12 @@ function bindEvents() {
     elements.walletCopyAddress.textContent = 'Copied';
     setTimeout(() => { elements.walletCopyAddress.textContent = previous; }, 1200);
   });
-  globalThis.ethereum?.on?.('accountsChanged', (accounts) => {
+  resolveWalletProvider()?.on?.('accountsChanged', (accounts) => {
     if (accounts?.[0]) { safeStorageRemove(WALLET_DISCONNECTED_KEY); setWalletUi(accounts[0]); }
     else setWalletUi(null);
+  });
+  resolveWalletProvider()?.on?.('chainChanged', () => {
+    if (state.walletAccount) setMessage(`Wallet network changed. VeilForge will request Arc Testnet before publishing.`, 'normal');
   });
   document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeWalletMenu(); });
 
