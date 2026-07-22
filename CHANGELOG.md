@@ -1,69 +1,81 @@
-## v1.8.14 — confirmed Arc proofs and readable proof UI
+# Changelog
+
+## v1.8.14 — Confirmed Arc proofs and readable proof UI
 
 - Aligned proof calldata with the deployed registry order: `scannerVersion`, then `reportURI`.
 - Added preflight `eth_call` simulation before sending a proof transaction.
 - Wait for the Arc transaction receipt and show success only after `status = 1`.
 - Failed or timed-out transactions now show an explicit ArcScan link instead of a false Submitted success state.
 - Increased comparison and Proof Center microcopy sizes for comfortable reading.
+- Added automated tests for successful and reverted mined proof transactions.
 
-## v1.8.10 — version badge pulse + filter dropdown polish
+## v1.8.13 — Adaptive card density
+
+- Rebalanced Exposure Chain column widths around real content length.
+- Improved long-title wrapping and reduced wasted space for short values.
+- Preserved responsive single-column layouts and internal scroll behavior.
+
+## v1.8.12 — Comparison overflow and scroll
+
+- Fixed long comparison text overflowing its cards.
+- Added internal scrolling to Resolved, Ongoing, and Introduced columns.
+- Removed the comparison display cap so the full result set remains browsable.
+
+## v1.8.11 — Scroll parity and export alignment
+
+- Added matching internal scroll behavior to Triage, Exposure Chains, and Treatment Plan lists.
+- Aligned all export cards and download actions.
+
+## v1.8.10 — Version badge pulse and filter polish
 
 - Added a soft, eye-friendly pulse animation to the mint dot in the hero version badge.
-- Refined the Triage filter dropdown controls for both severity and policy selectors with improved border, shadow, focus, and custom chevron styling.
-- Rebuilt dist assets and revalidated tests and static checks.
+- Refined severity and policy filters with improved border, focus, hover, and chevron styling.
 
-## VeilForge v1.8.8
+## v1.8.9 — Intake and wallet modal polish
+
+- Balanced Project Intake spacing and field sizing.
+- Reduced wallet chooser and session modal dimensions without sacrificing readability.
+
+## v1.8.8 — Balanced typography
+
 - Reduced finding-row and supporting text sizes by one step for a cleaner dashboard.
-- Matched the Privacy readiness and Contract readiness dashboard heading sizes.
-- Preserved wallet icons, EIP-6963 wallet behavior and all v1.8.7 functionality.
+- Matched Privacy Readiness and Contract Readiness heading sizes.
 
-## VeilForge v1.8.7
-- Added branded fallback icons for Keplr EVM and Phantom in the wallet chooser.
-- Increased wallet chooser, dashboard and workspace typography for better readability.
-- Preserved multi-wallet EIP-6963 discovery and direct session behavior.
+## v1.8.7 — Wallet icons and readability
 
-# Changelog
+- Added branded fallback icons for Keplr EVM and Phantom.
+- Increased wallet chooser, dashboard, and workspace typography.
 
 ## v1.8.6 — Canonical wallet names and duplicate cleanup
 
 - Renamed the Keplr EVM provider to `Keplr EVM` in the wallet chooser.
-- Canonicalized the preferred wallet labels as MetaMask, Phantom, Rabby Wallet and Zerion.
-- Deduplicated legacy and EIP-6963 announcements so Rabby appears only once.
-- Preferred the richer EIP-6963 candidate with the official wallet icon over generic legacy provider rows.
+- Canonicalized MetaMask, Phantom, Rabby Wallet, and Zerion labels.
+- Deduplicated legacy and EIP-6963 announcements.
 - Added direct legacy discovery for `window.keplr.ethereum` and `window.phantom.ethereum`.
 
 ## v1.8.5 — Multi-wallet connection behavior
 
-- Stopped opening the Connected Wallet session panel automatically after a successful connection.
-- The connected address button now opens the session panel only when the user clicks it.
-- Added EIP-6963 multi-provider discovery with legacy EIP-1193 injected-wallet fallback.
-- Added an installed-wallet chooser when multiple EVM browser wallets are available.
-- Added generic wallet messages and passed the selected provider into proof publication.
+- Stopped opening the Connected Wallet panel automatically after connection.
+- Added EIP-6963 discovery with EIP-1193 fallback.
+- Added a wallet chooser for multiple installed EVM wallets.
+- Passed the selected provider through proof publication.
 
 ## v1.8.4 — Arc wallet network correction
 
-- Corrected Arc Testnet chain ID hex to `0x4cef52` (decimal `5042002`).
-- Corrected native USDC gas-token decimals to `18`.
-- Added nested MetaMask error-code handling for unknown networks.
-- Explicitly switches to Arc Testnet after adding the network and verifies the selected chain before opening the wallet session.
+- Corrected Arc Testnet chain ID to `5042002` / `0x4CEF52`.
+- Corrected native USDC decimals to `18`.
+- Added unknown-network handling, explicit switching, and post-switch verification.
 
-## 1.8.0 — Privacy Mission Control
+## v1.8.0 — Privacy Mission Control
 
-- replaced duplicate web/standalone analyzers with one canonical ES-module engine
-- added multi-file project scans and contract-level triage
-- added deterministic exposure chains
-- added Treatment Plan 2.0 with P0–P3 priorities
-- added report comparison and local scan history
-- added Proof Center 2.0 with dependency-free ABI encoding
-- legacy note superseded in v1.8.14: live registry order verified as `scannerVersion`, then `reportURI`
-- added Arc Policy Manifest and remediation ZIP exports
-- added custom-rule API, CLI, schemas, examples, and showcase documentation
-- replaced the fragile Vite/Vitest dependency graph with a zero-dependency static build
-- added Node tests, static validation, and Chromium CDP runtime smoke testing
+- Replaced duplicate analyzers with one canonical ES-module engine.
+- Added multi-file project scans and contract-level triage.
+- Added deterministic exposure chains and Treatment Plan 2.0.
+- Added report comparison, local history, Proof Center 2.0, exports, schemas, CLI, examples, and showcase documentation.
+- Replaced the fragile dependency graph with a zero-dependency static build.
+- Added Node tests, static validation, and Chromium runtime smoke testing.
 
-## 1.1.0 — Remediation Intelligence
+## v1.1.0 — Remediation Intelligence
 
-- deterministic impact and remediation guidance
-- selector policy recommendations
-- executive summary and exports
-- Solidity file upload and Arc report proof flow
+- Added deterministic impact and remediation guidance.
+- Added selector policy recommendations, executive summary, exports, Solidity upload, and Arc report proof flow.

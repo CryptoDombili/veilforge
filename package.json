@@ -3,7 +3,7 @@
   "version": "1.8.14",
   "private": true,
   "type": "module",
-  "description": "VeilForge Privacy Mission Control — deterministic, local-first privacy engineering for Solidity projects on Arc.",
+  "description": "VeilForge Privacy Mission Control \u2014 deterministic, local-first privacy engineering for Solidity projects on Arc.",
   "license": "MIT",
   "engines": {
     "node": ">=20"
@@ -17,6 +17,8 @@
     "preflight": "node scripts/preflight.mjs",
     "check": "npm run preflight",
     "scan:demo": "node packages/analyzer/cli.mjs scan examples/vulnerable-payroll --format text",
-    "scan:json": "node packages/analyzer/cli.mjs scan examples/vulnerable-payroll --format json"
+    "scan:json": "node packages/analyzer/cli.mjs scan examples/vulnerable-payroll --format json",
+    "manifest:write": "node scripts/release-manifest.mjs --write",
+    "manifest:check": "node scripts/release-manifest.mjs --check"
   }
 }

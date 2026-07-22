@@ -96,6 +96,7 @@ Preflight runs:
 2. deterministic engine and proof tests
 3. JavaScript syntax and JSON validation
 4. Chromium CDP runtime smoke test
+5. release-source SHA-256 manifest verification
 
 ## CLI
 
@@ -253,7 +254,7 @@ packages/analyzer/cli.mjs  CLI entrypoint
 schemas/                   Report and policy JSON schemas
 examples/                  Vulnerable, hardened, multi-file, custom-rule examples
 contracts/                 Report Registry reference contract
-scripts/                   Build, validation, preflight, browser smoke
+scripts/                   Build, validation, manifest, preflight, browser smoke
 showcase/                  Arc Open Source Showcase material
 docs/                      Architecture and integration documentation
 ```
