@@ -1,3 +1,46 @@
+## Live Demo
+
+[Launch VeilForge](https://veilforge-web.vercel.app)
+
+
+
+
+## Arc Testnet Deployment
+
+**Registry Contract:**  
+[`0xf8b1D03931f2c11B642259d9aB19cfA3351C0Bbc`](https://testnet.arcscan.app/address/0xf8b1D03931f2c11B642259d9aB19cfA3351C0Bbc)
+
+
+
+
+
+**First On-chain Report:**  
+[View transaction on ArcScan](https://testnet.arcscan.app/tx/0x3270d43b814d4083aee3f97377495ff2866d58a43b792d41c5b04beb8d693d4d)
+
+
+
+
+
+**Live App Transaction:**  
+[View live app publication on ArcScan](https://testnet.arcscan.app/tx/0xa3585453549b60d71819df0e4c32d341687e7cf50836cce26e7add7830f5e1a1)
+
+
+
+
+
+## Demo Video
+
+[Watch the VeilForge demo](https://youtu.be/URAFCuYUQy0)
+
+
+
+
+
+
+
+
+
+
 <p align="center">
   <strong>VeilForge v1.8 — Privacy Mission Control</strong><br>
   Deterministic, local-first privacy engineering for Solidity projects targeting Arc.
