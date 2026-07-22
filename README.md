@@ -43,68 +43,11 @@ VeilForge analyzes Solidity projects locally before deployment and turns determi
 - canonical JSON, Markdown, Arc Policy Manifest, and Remediation Pack ZIP exports
 - reusable analyzer engine, CLI, custom-rule interface, JSON schemas, and integration examples
 
-## Product tour
-
-### Privacy Mission Control
-
-Project-level intake, deterministic scanning, readiness states, filters, hashes, and findings in one workspace.
-
 <p align="center">
   <img
     src="./assets/v1.8/veilforge-v18-dashboard.png"
-    alt="VeilForge v1.8 contract readiness dashboard"
-    width="100%"
-  />
-</p>
-
-### Deterministic exposure chains
-
-Trace how a privacy-relevant storage value reaches functions, events, callable selectors, and the recommended Arc policy boundary.
-
-<p align="center">
-  <img
-    src="./assets/v1.8/veilforge-v18-exposure-chains.png"
-    alt="VeilForge deterministic exposure chains"
-    width="82%"
-  />
-</p>
-
-### Baseline comparison
-
-Compare scans to identify findings that were resolved, remain ongoing, or were introduced by a new revision.
-
-<p align="center">
-  <img
-    src="./assets/v1.8/veilforge-v18-comparison.png"
-    alt="VeilForge baseline comparison"
-    width="82%"
-  />
-</p>
-
-### Multi-EVM wallet session and Proof Center 2.0
-
-VeilForge discovers compatible browser wallets through EIP-6963/EIP-1193, simulates the registry call, sends the selected-wallet transaction, waits for the receipt, and reports success only after onchain confirmation.
-
-<p align="center">
-  <img
-    src="./assets/v1.8/veilforge-v18-wallet-session.png"
-    alt="VeilForge connected wallet session"
-    width="48%"
-  />
-  <img
-    src="./assets/v1.8/veilforge-v18-proof-center.png"
-    alt="VeilForge Arc Testnet Proof Center"
-    width="48%"
-  />
-</p>
-
-### Verified Arc Testnet publication
-
-<p align="center">
-  <img
-    src="./assets/v1.8/veilforge-v18-arcscan-success.png"
-    alt="Successful VeilForge report publication on ArcScan"
-    width="100%"
+    alt="VeilForge v1.8 Privacy Mission Control workspace"
+    width="92%"
   />
 </p>
 
