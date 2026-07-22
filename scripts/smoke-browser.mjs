@@ -151,7 +151,8 @@ try {
       const star = getComputedStyle(document.querySelector('.starfield-a'));
       const list = document.querySelector('.finding-list');
       globalThis.__walletMethods = [];
-      globalThis.ethereum = {
+      try { delete globalThis.ethereum; } catch { globalThis.ethereum = undefined; }
+      const eip6963Provider = {
         isMetaMask: true,
         request: async ({ method }) => {
           globalThis.__walletMethods.push(method);
@@ -161,8 +162,12 @@ try {
         },
         on: () => {}
       };
+      const announceProvider = () => globalThis.dispatchEvent(new CustomEvent('eip6963:announceProvider', {
+        detail: { info: { rdns: 'io.metamask', name: 'MetaMask', uuid: 'veilforge-smoke' }, provider: eip6963Provider }
+      }));
+      globalThis.addEventListener('eip6963:requestProvider', announceProvider, { once: true });
       document.querySelector('#header-wallet-button')?.click();
-      await new Promise((resolve) => setTimeout(resolve, 60));
+      await new Promise((resolve) => setTimeout(resolve, 620));
       const connectedLabel = document.querySelector('#header-wallet-label')?.textContent;
       return {
         starOpacity: Number(star.opacity),
@@ -174,6 +179,9 @@ try {
         walletMenuOpen: document.querySelector('#wallet-menu')?.classList.contains('open') || false,
         walletMethods: globalThis.__walletMethods,
         scanMessage: document.querySelector('#scan-message')?.textContent,
+        heroPrimaryBackground: getComputedStyle(document.querySelector('#heroDemo')).backgroundImage,
+        scanPrimaryBackground: getComputedStyle(document.querySelector('#scan-button')).backgroundImage,
+        scanHasPrimaryClass: document.querySelector('#scan-button')?.classList.contains('primary') || false,
         runtimeErrorNow: document.body.dataset.runtimeError || null
       };
     })()`,
@@ -193,6 +201,8 @@ try {
   if (uiFixes?.listOverflow !== 'auto' || (uiFixes?.listClientHeight ?? 0) > 630 || (uiFixes?.listScrollHeight ?? 0) <= (uiFixes?.listClientHeight ?? 0)) failures.push('bounded findings scroll area');
   if (!String(uiFixes?.connectedLabel).includes('0x1111') || !uiFixes?.walletMenuOpen) failures.push('header wallet connection and automatic popup');
   if (uiFixes?.walletMethods?.[0] !== 'eth_requestAccounts' || uiFixes?.walletMethods?.[1] !== 'eth_chainId') failures.push(`wallet request order (${JSON.stringify(uiFixes?.walletMethods)})`);
+  if (!uiFixes?.scanHasPrimaryClass || uiFixes?.heroPrimaryBackground !== uiFixes?.scanPrimaryBackground) failures.push('exact primary gradient parity');
+  if (String(uiFixes?.scanMessage).includes('[object Object]')) failures.push('object object scan message');
   if (cdp.exceptions.length) failures.push(`browser exceptions: ${cdp.exceptions.join('; ')}`);
 
   const screenshotPath = process.env.VEILFORGE_SMOKE_SCREENSHOT;

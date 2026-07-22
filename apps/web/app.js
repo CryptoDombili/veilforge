@@ -24,6 +24,7 @@ const state = {
   baseline: null,
   activeView: 'triage',
   walletAccount: null,
+  walletProvider: null,
   history: readHistory(),
   filters: { query: '', severity: 'all', policy: 'all' },
 };
@@ -121,26 +122,74 @@ function closeWalletMenu() {
   }, 170);
 }
 
-function resolveWalletProvider() {
+const boundWalletProviders = new WeakSet();
+
+function rankWalletProvider(candidate) {
+  const provider = candidate?.provider || candidate;
+  const info = candidate?.info || {};
+  if (!provider?.request) return -1;
+  const rdns = String(info.rdns || '').toLowerCase();
+  const name = String(info.name || '').toLowerCase();
+  if (rdns.includes('metamask') || name.includes('metamask')) return 100;
+  if (provider.isMetaMask) return 90;
+  return 10;
+}
+
+async function resolveWalletProvider(waitMs = 450) {
+  const candidates = [];
+  const remember = (candidate) => {
+    const provider = candidate?.provider || candidate;
+    if (!provider?.request || candidates.some((item) => (item?.provider || item) === provider)) return;
+    candidates.push(candidate);
+  };
+
   const injected = globalThis.ethereum;
-  if (!injected?.request) return null;
-  if (Array.isArray(injected.providers) && injected.providers.length) {
-    return injected.providers.find((provider) => provider?.isMetaMask && provider?.request)
-      || injected.providers.find((provider) => provider?.request)
-      || injected;
+  if (Array.isArray(injected?.providers)) injected.providers.forEach(remember);
+  remember(injected);
+
+  if (typeof globalThis.addEventListener === 'function' && typeof globalThis.dispatchEvent === 'function') {
+    const onAnnounce = (event) => remember(event?.detail);
+    globalThis.addEventListener('eip6963:announceProvider', onAnnounce);
+    try {
+      globalThis.dispatchEvent(new Event('eip6963:requestProvider'));
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+    } finally {
+      globalThis.removeEventListener('eip6963:announceProvider', onAnnounce);
+    }
   }
-  return injected;
+
+  candidates.sort((left, right) => rankWalletProvider(right) - rankWalletProvider(left));
+  return candidates[0]?.provider || candidates[0] || null;
+}
+
+function bindWalletProviderEvents(provider) {
+  if (!provider?.on || boundWalletProviders.has(provider)) return;
+  boundWalletProviders.add(provider);
+  provider.on('accountsChanged', (accounts) => {
+    if (accounts?.[0]) {
+      safeStorageRemove(WALLET_DISCONNECTED_KEY);
+      setWalletUi(accounts[0]);
+    } else {
+      setWalletUi(null);
+      closeWalletMenu();
+    }
+  });
+  provider.on('chainChanged', () => {
+    if (state.walletAccount) setMessage('Wallet network changed. VeilForge will request Arc Testnet before publishing.');
+  });
 }
 
 async function connectHeaderWallet() {
   if (state.walletAccount) { openWalletMenu(); return; }
-  const provider = resolveWalletProvider();
+  const provider = await resolveWalletProvider();
   if (!provider) {
     setMessage('No browser wallet was detected. Install or unlock MetaMask, then try again.', 'error');
     return;
   }
   try {
     elements.walletButton.disabled = true;
+    state.walletProvider = provider;
+    bindWalletProviderEvents(provider);
     const account = await connectWallet(provider);
     await ensureArcTestnet(provider);
     safeStorageRemove(WALLET_DISCONNECTED_KEY);
@@ -159,8 +208,10 @@ async function connectHeaderWallet() {
 }
 
 async function hydrateWallet() {
-  const provider = resolveWalletProvider();
+  const provider = await resolveWalletProvider(120);
   if (!provider || safeStorageGet(WALLET_DISCONNECTED_KEY) === '1') { setWalletUi(null); return; }
+  state.walletProvider = provider;
+  bindWalletProviderEvents(provider);
   try {
     const accounts = await provider.request({ method: 'eth_accounts' });
     setWalletUi(accounts?.[0] || null);
@@ -194,8 +245,20 @@ function fileSize(content) {
   return bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`;
 }
 
+function normalizeUiMessage(message) {
+  if (message == null) return '';
+  if (message instanceof Error) return message.message;
+  if (typeof message === 'string') return message;
+  if (typeof message === 'object') {
+    if (typeof message.message === 'string') return message.message;
+    if (typeof message.status === 'string') return message.status;
+    try { return JSON.stringify(message); } catch { return 'Operation completed.'; }
+  }
+  return String(message);
+}
+
 function setMessage(message, type = 'normal') {
-  elements.scanMessage.textContent = message;
+  elements.scanMessage.textContent = normalizeUiMessage(message);
   elements.scanMessage.style.color = type === 'error' ? 'var(--red)' : type === 'success' ? 'var(--green)' : '';
 }
 
@@ -710,13 +773,6 @@ function bindEvents() {
     const previous = elements.walletCopyAddress.textContent;
     elements.walletCopyAddress.textContent = 'Copied';
     setTimeout(() => { elements.walletCopyAddress.textContent = previous; }, 1200);
-  });
-  resolveWalletProvider()?.on?.('accountsChanged', (accounts) => {
-    if (accounts?.[0]) { safeStorageRemove(WALLET_DISCONNECTED_KEY); setWalletUi(accounts[0]); }
-    else setWalletUi(null);
-  });
-  resolveWalletProvider()?.on?.('chainChanged', () => {
-    if (state.walletAccount) setMessage(`Wallet network changed. VeilForge will request Arc Testnet before publishing.`, 'normal');
   });
   document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeWalletMenu(); });
 

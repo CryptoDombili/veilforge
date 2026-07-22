@@ -277,11 +277,16 @@ nav,main,footer{position:relative;z-index:2}
 .starfield-a{animation:starsDrift 48s linear infinite,starTwinkle 8.5s ease-in-out infinite}
 .starfield-b{animation:starsDriftReverse 72s linear infinite,starTwinkle 11s ease-in-out infinite reverse}
 body:after{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(circle at 18% 18%,rgba(91,79,255,.10),transparent 32%),radial-gradient(circle at 82% 58%,rgba(0,217,159,.08),transparent 34%);animation:auroraBreath 12s ease-in-out infinite alternate}
-.scan-button{background:linear-gradient(135deg,#75f7c8 0%,#52d6a2 58%,#087c4c 100%);color:#f5fff9;border-color:rgba(117,247,200,.58);box-shadow:0 12px 30px rgba(43,210,146,.17),inset 0 1px 0 rgba(255,255,255,.18);text-shadow:0 1px 0 rgba(0,0,0,.18);transition:transform .18s ease,filter .18s ease,box-shadow .18s ease}
-.scan-button:hover{transform:translateY(-1px);filter:brightness(1.06);box-shadow:0 16px 38px rgba(43,210,146,.23),inset 0 1px 0 rgba(255,255,255,.2)}
-.scan-button:active{transform:translateY(0)}
+
+
+
 .scan-button .scan-pulse{background:#062d20;box-shadow:0 0 0 3px rgba(6,45,32,.12)}
 @keyframes starParallax{to{transform:translate3d(-140px,95px,0) scale(1.015)}}
 @keyframes starTwinkle{0%,100%{filter:brightness(.86)}50%{filter:brightness(1.18)}}
 @keyframes auroraBreath{from{opacity:.48;transform:scale(1)}to{opacity:.78;transform:scale(1.035)}}
 @media(prefers-reduced-motion:reduce){.starfield-c,body:after{animation:none!important}}
+
+/* v1.8.3 exact hero-primary parity for scan action */
+.scan-button.primary{width:100%;margin-top:12px;padding:13px 18px;background:linear-gradient(135deg,#75f7c8,#a5ffd9);color:#06110d;border-color:rgba(117,247,200,.4);box-shadow:0 12px 35px rgba(80,235,184,.16);font-size:13px;font-weight:700}
+.scan-button.primary:hover{filter:brightness(1.04);transform:translateY(-1px)}
+.scan-button.primary:active{transform:translateY(0)}

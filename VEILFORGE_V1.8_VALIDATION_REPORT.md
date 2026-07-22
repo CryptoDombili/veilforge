@@ -99,3 +99,11 @@ The execution environment blocks navigation to local HTTP and file URLs through 
 - generated `dist/` is not included; Vercel creates it with `npm run build:web`.
 - the ZIP opens directly to the repository root.
 - the release contains fewer than 100 files for a simpler GitHub web upload workflow.
+
+## Final technical correction
+
+- Header wallet discovery supports both legacy injected `window.ethereum` providers and EIP-6963 provider announcements.
+- MetaMask is prioritized when multiple injected wallets are present.
+- Browser smoke explicitly validates the EIP-6963-only path, `eth_requestAccounts` before `eth_chainId`, and automatic wallet-session modal opening.
+- The workspace scan action uses the same `.primary` gradient as `Scan the payroll demo`; computed browser styles are compared during smoke testing.
+- UI messages normalize object values so `[object Object]` is not rendered.
