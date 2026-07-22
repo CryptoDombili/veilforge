@@ -1,55 +1,3 @@
-## Live Demo
-
-[Launch VeilForge](https://veilforge-web.vercel.app)
-
-
-
-
-## Arc Testnet Deployment
-
-**Registry Contract:**  
-[`0xf8b1D03931f2c11B642259d9aB19cfA3351C0Bbc`](https://testnet.arcscan.app/address/0xf8b1D03931f2c11B642259d9aB19cfA3351C0Bbc)
-
-
-
-
-
-**First On-chain Report:**  
-[View transaction on ArcScan](https://testnet.arcscan.app/tx/0x3270d43b814d4083aee3f97377495ff2866d58a43b792d41c5b04beb8d693d4d)
-
-
-
-
-
-**Live App Transaction:**  
-[View live app publication on ArcScan](https://testnet.arcscan.app/tx/0xa3585453549b60d71819df0e4c32d341687e7cf50836cce26e7add7830f5e1a1)
-
-
-
-
-
-## Demo Video
-
-[Watch the VeilForge demo](https://youtu.be/URAFCuYUQy0)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 <p align="center">
   <strong>VeilForge v1.8 — Privacy Mission Control</strong><br>
   Deterministic, local-first privacy engineering for Solidity projects targeting Arc.
@@ -59,23 +7,121 @@
   <code>No AI API</code> · <code>Local analysis</code> · <code>Deterministic output</code> · <code>Hashes only onchain</code>
 </p>
 
+<p align="center">
+  <a href="https://veilforge-web.vercel.app"><strong>Live App</strong></a>
+  ·
+  <a href="https://testnet.arcscan.app/address/0xf8b1D03931f2c11B642259d9aB19cfA3351C0Bbc"><strong>Registry</strong></a>
+  ·
+  <a href="https://testnet.arcscan.app/tx/0x969534cc42f7c57e5c202f0abc65bcaef2f43a12ef24dcca454f334d9ef64d3a"><strong>Successful Arc Proof</strong></a>
+  ·
+  <a href="showcase/ARC_OPEN_SOURCE_SHOWCASE.md"><strong>Showcase</strong></a>
+</p>
+
+<p align="center">
+  <img
+    src="./assets/v1.8/veilforge-v18-hero.png"
+    alt="VeilForge v1.8 Privacy Mission Control"
+    width="100%"
+  />
+</p>
+
 > [!IMPORTANT]
 > VeilForge is independent community-built pre-APS readiness tooling. It is not an official Circle product and is not a formal security audit. Arc privacy capabilities may evolve; always review current Arc documentation before deployment.
 
-## What changed in v1.8
+## What VeilForge does
 
-VeilForge is no longer only a single-contract scanner. **Privacy Mission Control** provides a project-level workbench:
+VeilForge analyzes Solidity projects locally before deployment and turns deterministic privacy findings into an actionable engineering workflow:
 
 - multi-file Solidity intake by files, folder, or drag-and-drop
-- contract-by-contract readiness scores
-- `Ready`, `Review Required`, `High Risk`, and `Deployment Blocked` triage states
-- deterministic exposure chains: `Storage → Function → Event → Selector → Policy`
+- contract-by-contract readiness scores and deployment states
+- deterministic findings with exact source evidence
+- exposure chains: `Storage → Function → Event → Selector → Policy`
 - Treatment Plan 2.0 with P0–P3 remediation priorities
 - baseline comparison with resolved, ongoing, and introduced findings
 - local browser scan history
 - Proof Center 2.0 for Arc Testnet hash anchoring
 - canonical JSON, Markdown, Arc Policy Manifest, and Remediation Pack ZIP exports
 - reusable analyzer engine, CLI, custom-rule interface, JSON schemas, and integration examples
+
+## Product tour
+
+### Privacy Mission Control
+
+Project-level intake, deterministic scanning, readiness states, filters, hashes, and findings in one workspace.
+
+<p align="center">
+  <img
+    src="./assets/v1.8/veilforge-v18-dashboard.png"
+    alt="VeilForge v1.8 contract readiness dashboard"
+    width="100%"
+  />
+</p>
+
+### Deterministic exposure chains
+
+Trace how a privacy-relevant storage value reaches functions, events, callable selectors, and the recommended Arc policy boundary.
+
+<p align="center">
+  <img
+    src="./assets/v1.8/veilforge-v18-exposure-chains.png"
+    alt="VeilForge deterministic exposure chains"
+    width="82%"
+  />
+</p>
+
+### Baseline comparison
+
+Compare scans to identify findings that were resolved, remain ongoing, or were introduced by a new revision.
+
+<p align="center">
+  <img
+    src="./assets/v1.8/veilforge-v18-comparison.png"
+    alt="VeilForge baseline comparison"
+    width="82%"
+  />
+</p>
+
+### Multi-EVM wallet session and Proof Center 2.0
+
+VeilForge discovers compatible browser wallets through EIP-6963/EIP-1193, simulates the registry call, sends the selected-wallet transaction, waits for the receipt, and reports success only after onchain confirmation.
+
+<p align="center">
+  <img
+    src="./assets/v1.8/veilforge-v18-wallet-session.png"
+    alt="VeilForge connected wallet session"
+    width="48%"
+  />
+  <img
+    src="./assets/v1.8/veilforge-v18-proof-center.png"
+    alt="VeilForge Arc Testnet Proof Center"
+    width="48%"
+  />
+</p>
+
+### Verified Arc Testnet publication
+
+<p align="center">
+  <img
+    src="./assets/v1.8/veilforge-v18-arcscan-success.png"
+    alt="Successful VeilForge report publication on ArcScan"
+    width="100%"
+  />
+</p>
+
+## What changed from v1.1
+
+v1.1 introduced remediation intelligence for single-contract scans. v1.8 expands VeilForge into a project-level Privacy Mission Control environment:
+
+| v1.1 | v1.8 |
+|---|---|
+| primarily single-contract analysis | multi-file project intake and contract-level triage |
+| findings and remediation guidance | readiness dashboard and deployment states |
+| selector policy recommendations | deterministic exposure chains |
+| before/after comparison | persistent baseline comparison with resolved, ongoing, and introduced findings |
+| basic Arc proof flow | Proof Center 2.0 with simulation, receipt confirmation, and ArcScan verification |
+| basic injected wallet connection | multi-EVM EIP-6963 wallet discovery and isolated sessions |
+| JSON/Markdown/policy outputs | canonical JSON, Markdown, Arc Policy Manifest, and Remediation Pack ZIP |
+| scanner interface | reusable engine, CLI, custom rules, schemas, examples, history, and exports |
 
 ## Trust model
 
@@ -309,6 +355,7 @@ contracts/                 Report Registry reference contract
 scripts/                   Build, validation, manifest, preflight, browser smoke
 showcase/                  Arc Open Source Showcase material
 docs/                      Architecture and integration documentation
+assets/v1.8/               README product screenshots
 ```
 
 ## Documentation
@@ -322,6 +369,11 @@ docs/                      Architecture and integration documentation
 - [Showcase submission](showcase/ARC_OPEN_SOURCE_SHOWCASE.md)
 - [Security policy](SECURITY.md)
 - [Contributing](CONTRIBUTING.md)
+
+## Previous releases
+
+- **v1.1 — Remediation Intelligence:** detection-to-remediation workflow, APS-aligned selector guidance, and exportable findings.
+- Older screenshots and demos are historical references; v1.8 is the current showcase release.
 
 ## License
 
