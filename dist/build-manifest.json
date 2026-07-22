@@ -1,0 +1,32 @@
+{
+  "name": "VeilForge Privacy Mission Control",
+  "version": "1.8.6",
+  "output": "static-es-modules",
+  "registryAddress": "0xf8b1D03931f2c11B642259d9aB19cfA3351C0Bbc",
+  "generatedFiles": [
+    "app.js",
+    "config.js",
+    "engine/canonical.js",
+    "engine/compare.js",
+    "engine/constants.js",
+    "engine/exposure.js",
+    "engine/format.js",
+    "engine/index.js",
+    "engine/keccak.js",
+    "engine/parser.js",
+    "engine/policies.js",
+    "engine/report.js",
+    "engine/rules.js",
+    "examples/custom-rule.mjs",
+    "examples/multi-contract/Payroll.sol",
+    "examples/multi-contract/Settlement.sol",
+    "examples/programmatic-scan.mjs",
+    "examples/remediated-payroll/PayrollPrivateReady.sol",
+    "examples/vulnerable-payroll/Payroll.sol",
+    "favicon.png",
+    "index.html",
+    "lib/zip.js",
+    "proof/registry.js",
+    "styles.css"
+  ]
+}

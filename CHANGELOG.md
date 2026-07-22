@@ -1,3 +1,8 @@
+## VeilForge v1.8.7
+- Added branded fallback icons for Keplr EVM and Phantom in the wallet chooser.
+- Increased wallet chooser, dashboard and workspace typography for better readability.
+- Preserved multi-wallet EIP-6963 discovery and direct session behavior.
+
 # Changelog
 
 ## v1.8.6 — Canonical wallet names and duplicate cleanup

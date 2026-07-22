@@ -1,29 +1,15 @@
-# VeilForge v1.8.6 Validation Report
+# VeilForge v1.8.7 Validation Report
 
-**Release:** VeilForge v1.8.6 — Canonical EVM wallet chooser  
+**Release:** VeilForge v1.8.7 — Readable UI and branded wallet icons  
 **Validation date:** 2026-07-22  
-**Base:** VeilForge v1.8.5 validated multi-wallet build
+**Base:** VeilForge v1.8.6 validated wallet chooser build
 
 ## Scope of this revision
 
-- Display Keplr's EVM provider as `Keplr EVM`.
-- Keep MetaMask and Phantom as EVM wallet choices.
-- Show one canonical `Rabby Wallet` row even when Rabby is discovered through both EIP-6963 and legacy injection.
-- Show `Zerion` when the Zerion EIP-1193 provider is actually announced by the installed extension.
-- Prefer EIP-6963 metadata and wallet icons over generic legacy provider rows.
-- Keep the existing connection, Arc Testnet, manual session popup, scanner and visual behavior unchanged.
-
-## Wallet chooser behavior
-
-The chooser canonicalizes recognized installed providers in this order:
-
-1. Keplr EVM
-2. MetaMask
-3. Phantom
-4. Rabby Wallet
-5. Zerion
-
-Unknown compatible EIP-1193 wallets remain supported and are listed after the recognized wallets. A wallet is never relabeled as a different provider: Zerion appears only when a Zerion provider is actually discovered.
+- Add branded fallback icons for **Keplr EVM** and **Phantom** inside the wallet chooser when wallet metadata does not provide a usable icon.
+- Preserve the existing wallet chooser order and behavior: Keplr EVM, MetaMask, Phantom, Rabby Wallet, Zerion.
+- Increase typography sizes across the wallet modal, wallet chooser, scanner workspace and key dashboard surfaces so the UI is easier to read on desktop and mobile.
+- Keep the existing Arc Testnet session behavior, manual session popup, EIP-6963 discovery and responsive scanner layout intact.
 
 ## Commands executed
 
@@ -45,11 +31,12 @@ npm run preflight
 | Node test suite | 22 passed, 0 failed |
 | Static JavaScript / JSON validation | 46 JavaScript modules and 6 JSON files passed |
 | Chromium runtime smoke | Passed |
-| Wallet labels | Exact order verified: Keplr EVM, MetaMask, Phantom, Rabby Wallet, Zerion |
-| Duplicate Rabby cleanup | Legacy Rabby and EIP-6963 Rabby collapsed to one `Rabby Wallet` row |
-| Zerion selection isolation | Zerion selected; all four unselected provider logs remained empty |
+| Wallet chooser icons | Keplr EVM and Phantom now render branded fallback icons when no announced icon is available |
+| Wallet chooser order | Preserved: Keplr EVM, MetaMask, Phantom, Rabby Wallet, Zerion |
+| Readability update | Larger typography applied to wallet chooser, wallet session popup, feature cards, workspace headers, filters and finding rows |
 | Mobile responsive smoke | Passed at 390 px; no root horizontal overflow |
+| Preflight | Completed successfully |
 
 ## Important limitation
 
-The isolated browser validation uses EIP-1193 mock providers announced through the same EIP-6963 event flow used by browser extensions. Final preview testing should still be performed with the user's installed wallet extensions before merging to `main`.
+The isolated browser validation uses EIP-1193 mock providers announced through the same EIP-6963 event flow used by browser extensions. Final preview testing should still be performed with the user's installed extensions before merging to `main`.
