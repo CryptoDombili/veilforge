@@ -21,6 +21,15 @@
     <div class="navActions"><a class="ghost" href="https://github.com/CryptoDombili/veilforge" target="_blank" rel="noreferrer">Open source</a><button id="header-wallet-button" class="wallet-button" type="button" aria-haspopup="dialog" aria-expanded="false"><span class="wallet-dot"></span><span id="header-wallet-label">Connect wallet</span></button><span class="versionPill">v1.8</span></div>
   </nav>
 
+  <div id="wallet-connect-backdrop" class="wallet-connect-backdrop" hidden></div>
+  <section id="wallet-connect-modal" class="wallet-connect-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="wallet-connect-title" hidden>
+    <header><div><small>CONNECT WALLET</small><b id="wallet-connect-title">Connect to VeilForge</b></div><button id="wallet-connect-close" class="wallet-menu-close" type="button" aria-label="Close wallet connector">×</button></header>
+    <p class="wallet-connect-copy">Connect MetaMask to use Arc Testnet proof publishing. VeilForge never receives your private key or seed phrase.</p>
+    <button id="wallet-connect-metamask" class="wallet-provider-button" type="button"><span class="wallet-provider-icon">◆</span><span><b>Connect MetaMask</b><small>Browser extension · Arc Testnet</small></span><em>→</em></button>
+    <p id="wallet-connect-status" class="wallet-connect-status" role="status"></p>
+    <a class="wallet-install-link" href="https://metamask.io/download/" target="_blank" rel="noreferrer">MetaMask not installed? Open the official download page ↗</a>
+  </section>
+
   <div id="wallet-backdrop" class="wallet-backdrop" hidden></div>
   <section id="wallet-menu" class="wallet-menu" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="wallet-menu-title" hidden>
     <header><div><small>ARC TESTNET WALLET</small><b id="wallet-menu-title">Wallet session</b></div><button id="wallet-menu-close" class="wallet-menu-close" type="button" aria-label="Close wallet menu">×</button></header>

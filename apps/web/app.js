@@ -42,6 +42,11 @@ const elements = {
   workspace: document.querySelector('#workspace'),
   walletButton: document.querySelector('#header-wallet-button'),
   walletLabel: document.querySelector('#header-wallet-label'),
+  walletConnectBackdrop: document.querySelector('#wallet-connect-backdrop'),
+  walletConnectModal: document.querySelector('#wallet-connect-modal'),
+  walletConnectClose: document.querySelector('#wallet-connect-close'),
+  walletConnectMetaMask: document.querySelector('#wallet-connect-metamask'),
+  walletConnectStatus: document.querySelector('#wallet-connect-status'),
   walletBackdrop: document.querySelector('#wallet-backdrop'),
   walletMenu: document.querySelector('#wallet-menu'),
   walletMenuClose: document.querySelector('#wallet-menu-close'),
@@ -98,6 +103,35 @@ function setWalletUi(address = null) {
   if (elements.walletLabel) elements.walletLabel.textContent = connected ? shortAddress(address) : 'Connect wallet';
   if (elements.walletMenuAddress) elements.walletMenuAddress.textContent = connected ? address : '—';
   if (elements.walletViewExplorer) elements.walletViewExplorer.href = connected ? `${ARC_TESTNET.blockExplorerUrls[0]}/address/${address}` : '#';
+}
+
+function setWalletConnectStatus(message = '', type = '') {
+  if (!elements.walletConnectStatus) return;
+  elements.walletConnectStatus.textContent = message;
+  elements.walletConnectStatus.className = `wallet-connect-status${type ? ` ${type}` : ''}`;
+}
+
+function openWalletConnectModal() {
+  if (!elements.walletConnectModal || !elements.walletConnectBackdrop) return;
+  setWalletConnectStatus('');
+  elements.walletConnectModal.hidden = false;
+  elements.walletConnectBackdrop.hidden = false;
+  elements.walletConnectModal.setAttribute('aria-hidden', 'false');
+  requestAnimationFrame(() => {
+    elements.walletConnectModal.classList.add('open');
+    elements.walletConnectBackdrop.classList.add('open');
+  });
+}
+
+function closeWalletConnectModal() {
+  if (!elements.walletConnectModal || !elements.walletConnectBackdrop) return;
+  elements.walletConnectModal.classList.remove('open');
+  elements.walletConnectBackdrop.classList.remove('open');
+  elements.walletConnectModal.setAttribute('aria-hidden', 'true');
+  setTimeout(() => {
+    elements.walletConnectModal.hidden = true;
+    elements.walletConnectBackdrop.hidden = true;
+  }, 180);
 }
 
 function openWalletMenu() {
@@ -181,29 +215,38 @@ function bindWalletProviderEvents(provider) {
 
 async function connectHeaderWallet() {
   if (state.walletAccount) { openWalletMenu(); return; }
-  const provider = await resolveWalletProvider();
-  if (!provider) {
-    setMessage('No browser wallet was detected. Install or unlock MetaMask, then try again.', 'error');
-    return;
-  }
+  openWalletConnectModal();
+}
+
+async function connectSelectedMetaMask() {
   try {
-    elements.walletButton.disabled = true;
+    elements.walletConnectMetaMask.disabled = true;
+    setWalletConnectStatus('Waiting for MetaMask…');
+    const provider = await resolveWalletProvider(900);
+    if (!provider) {
+      setWalletConnectStatus('MetaMask was not detected. Unlock the extension, refresh this page and try again.', 'error');
+      return;
+    }
     state.walletProvider = provider;
     bindWalletProviderEvents(provider);
     const account = await connectWallet(provider);
+    setWalletConnectStatus('Account approved. Checking Arc Testnet…');
     await ensureArcTestnet(provider);
     safeStorageRemove(WALLET_DISCONNECTED_KEY);
     setWalletUi(account);
     setMessage(`Wallet connected: ${shortAddress(account)} on Arc Testnet.`, 'success');
-    openWalletMenu();
+    setWalletConnectStatus('Connected.', 'success');
+    closeWalletConnectModal();
+    setTimeout(openWalletMenu, 190);
   } catch (error) {
     setWalletUi(null);
     const message = error?.code === 4001
-      ? 'Wallet connection was cancelled.'
+      ? 'MetaMask connection was cancelled.'
       : error instanceof Error ? error.message : String(error);
+    setWalletConnectStatus(message, 'error');
     setMessage(message, 'error');
   } finally {
-    elements.walletButton.disabled = false;
+    elements.walletConnectMetaMask.disabled = false;
   }
 }
 
@@ -764,6 +807,9 @@ function bindEvents() {
   });
 
   elements.walletButton?.addEventListener('click', connectHeaderWallet);
+  elements.walletConnectMetaMask?.addEventListener('click', connectSelectedMetaMask);
+  elements.walletConnectClose?.addEventListener('click', closeWalletConnectModal);
+  elements.walletConnectBackdrop?.addEventListener('click', closeWalletConnectModal);
   elements.walletMenuClose?.addEventListener('click', closeWalletMenu);
   elements.walletBackdrop?.addEventListener('click', closeWalletMenu);
   elements.walletDisconnect?.addEventListener('click', disconnectWalletUi);
@@ -774,7 +820,7 @@ function bindEvents() {
     elements.walletCopyAddress.textContent = 'Copied';
     setTimeout(() => { elements.walletCopyAddress.textContent = previous; }, 1200);
   });
-  document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeWalletMenu(); });
+  document.addEventListener('keydown', (event) => { if (event.key === 'Escape') { closeWalletConnectModal(); closeWalletMenu(); } });
 
   document.querySelectorAll('.nav-button').forEach((button) => button.addEventListener('click', () => {
     state.activeView = button.dataset.view;
