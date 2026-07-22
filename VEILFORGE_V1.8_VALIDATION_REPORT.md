@@ -1,22 +1,29 @@
-# VeilForge v1.8.5 Validation Report
+# VeilForge v1.8.6 Validation Report
 
-**Release:** VeilForge v1.8.5 — Multi-wallet session behavior  
+**Release:** VeilForge v1.8.6 — Canonical EVM wallet chooser  
 **Validation date:** 2026-07-22  
-**Base:** VeilForge v1.8.4 validated Arc wallet build
+**Base:** VeilForge v1.8.5 validated multi-wallet build
 
 ## Scope of this revision
 
-- Do not open the Connected Wallet session panel automatically after connection.
-- Open the session panel only when the user clicks the connected address button.
-- Discover multiple installed EVM browser wallets through EIP-6963.
-- Retain legacy EIP-1193 / `window.ethereum` fallback.
-- Present a wallet chooser only when more than one compatible injected provider is available.
-- Pass the selected provider through Arc proof publication instead of falling back to a different injected wallet.
-- Keep the existing VeilForge visual design, starfield, scanner, analyzer, export and proof layout unchanged.
+- Display Keplr's EVM provider as `Keplr EVM`.
+- Keep MetaMask and Phantom as EVM wallet choices.
+- Show one canonical `Rabby Wallet` row even when Rabby is discovered through both EIP-6963 and legacy injection.
+- Show `Zerion` when the Zerion EIP-1193 provider is actually announced by the installed extension.
+- Prefer EIP-6963 metadata and wallet icons over generic legacy provider rows.
+- Keep the existing connection, Arc Testnet, manual session popup, scanner and visual behavior unchanged.
 
-## Supported wallet scope
+## Wallet chooser behavior
 
-This release supports installed browser-extension EVM wallets that expose an EIP-1193 provider, including providers discovered through EIP-6963. The browser smoke test models Rabby and Zerion simultaneously and proves that only the wallet selected by the user receives requests. WalletConnect / QR-based mobile sessions are not included because they require a separate relay integration and project configuration.
+The chooser canonicalizes recognized installed providers in this order:
+
+1. Keplr EVM
+2. MetaMask
+3. Phantom
+4. Rabby Wallet
+5. Zerion
+
+Unknown compatible EIP-1193 wallets remain supported and are listed after the recognized wallets. A wallet is never relabeled as a different provider: Zerion appears only when a Zerion provider is actually discovered.
 
 ## Commands executed
 
@@ -33,21 +40,16 @@ npm run preflight
 
 | Check | Result |
 |---|---|
-| Dependency installation | Completed; zero external runtime dependencies; 0 vulnerabilities |
-| Static web build | Completed; canonical engine and proof modules copied into `dist/` |
+| Dependency installation | Completed; zero external dependencies; 0 vulnerabilities |
+| Static web build | Completed; 25 files generated in `dist/` |
 | Node test suite | 22 passed, 0 failed |
 | Static JavaScript / JSON validation | 46 JavaScript modules and 6 JSON files passed |
 | Chromium runtime smoke | Passed |
-| 390 px responsive smoke | Passed; no root horizontal overflow |
-| Multi-provider discovery | Rabby and Zerion discovered through EIP-6963 |
-| Wallet selection | Rabby selected; Zerion received zero provider requests |
-| Connection request order | `eth_requestAccounts` → `eth_chainId` |
-| Arc network add/switch | Correct chain ID `0x4CEF52`, USDC 18 decimals, final chain verified |
-| Automatic session panel | Confirmed closed after connection |
-| Connected address action | Confirmed session panel opens after user clicks the connected address |
-| Selected provider publication | Selected provider passed to proof publication |
-| Existing scanner behavior | 20 findings rendered; bounded scroll area retained |
+| Wallet labels | Exact order verified: Keplr EVM, MetaMask, Phantom, Rabby Wallet, Zerion |
+| Duplicate Rabby cleanup | Legacy Rabby and EIP-6963 Rabby collapsed to one `Rabby Wallet` row |
+| Zerion selection isolation | Zerion selected; all four unselected provider logs remained empty |
+| Mobile responsive smoke | Passed at 390 px; no root horizontal overflow |
 
 ## Important limitation
 
-A real third-party browser extension cannot be controlled from the isolated validation environment. Runtime validation uses EIP-1193-compatible mock providers through the same EIP-6963 event path used by extension wallets. Final preview testing should still be performed with the user’s installed wallets before merging to `main`.
+The isolated browser validation uses EIP-1193 mock providers announced through the same EIP-6963 event flow used by browser extensions. Final preview testing should still be performed with the user's installed wallet extensions before merging to `main`.

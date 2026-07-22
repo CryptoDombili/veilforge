@@ -148,13 +148,20 @@ try {
     expression: `(async () => {
       const star = getComputedStyle(document.querySelector('.starfield-a'));
       const list = document.querySelector('.finding-list');
+      globalThis.__walletMethodsKeplr = [];
+      globalThis.__walletMethodsMetaMask = [];
+      globalThis.__walletMethodsPhantom = [];
       globalThis.__walletMethodsRabby = [];
+      globalThis.__walletMethodsRabbyLegacy = [];
       globalThis.__walletMethodsZerion = [];
       try { delete globalThis.ethereum; } catch { globalThis.ethereum = undefined; }
+      try { delete globalThis.keplr; } catch { globalThis.keplr = undefined; }
+      try { delete globalThis.phantom; } catch { globalThis.phantom = undefined; }
       let smokeChainId = '0x1';
       let smokeSwitchAttempts = 0;
       globalThis.__walletAddParams = null;
-      const makeProvider = (methodLog, account) => ({
+      const makeProvider = (methodLog, account, flags = {}) => ({
+        ...flags,
         request: async ({ method, params }) => {
           methodLog.push(method);
           if (method === 'eth_requestAccounts' || method === 'eth_accounts') return [account];
@@ -177,14 +184,30 @@ try {
         },
         on: () => {}
       });
-      const rabbyProvider = makeProvider(globalThis.__walletMethodsRabby, '0x2222222222222222222222222222222222222222');
-      const zerionProvider = makeProvider(globalThis.__walletMethodsZerion, '0x3333333333333333333333333333333333333333');
+      const keplrProvider = makeProvider(globalThis.__walletMethodsKeplr, '0x1111111111111111111111111111111111111111', { isKeplr: true });
+      const metaMaskProvider = makeProvider(globalThis.__walletMethodsMetaMask, '0x2222222222222222222222222222222222222222', { isMetaMask: true });
+      const phantomProvider = makeProvider(globalThis.__walletMethodsPhantom, '0x3333333333333333333333333333333333333333', { isPhantom: true });
+      const rabbyProvider = makeProvider(globalThis.__walletMethodsRabby, '0x4444444444444444444444444444444444444444', { isRabby: true });
+      const rabbyLegacyProvider = makeProvider(globalThis.__walletMethodsRabbyLegacy, '0x5555555555555555555555555555555555555555', { isRabby: true, isMetaMask: true });
+      const zerionProvider = makeProvider(globalThis.__walletMethodsZerion, '0x6666666666666666666666666666666666666666', { isZerion: true });
+      globalThis.ethereum = { providers: [rabbyLegacyProvider] };
+      globalThis.keplr = { ethereum: keplrProvider };
+      globalThis.phantom = { ethereum: phantomProvider };
       const announceProviders = () => {
         globalThis.dispatchEvent(new CustomEvent('eip6963:announceProvider', {
-          detail: { info: { rdns: 'io.rabby', name: 'Rabby', uuid: 'veilforge-rabby' }, provider: rabbyProvider }
+          detail: { info: { rdns: 'app.keplr', name: 'Keplr', uuid: 'veilforge-keplr' }, provider: keplrProvider }
         }));
         globalThis.dispatchEvent(new CustomEvent('eip6963:announceProvider', {
-          detail: { info: { rdns: 'io.zerion', name: 'Zerion', uuid: 'veilforge-zerion' }, provider: zerionProvider }
+          detail: { info: { rdns: 'io.metamask', name: 'MetaMask', uuid: 'veilforge-metamask' }, provider: metaMaskProvider }
+        }));
+        globalThis.dispatchEvent(new CustomEvent('eip6963:announceProvider', {
+          detail: { info: { rdns: 'app.phantom', name: 'Phantom', uuid: 'veilforge-phantom' }, provider: phantomProvider }
+        }));
+        globalThis.dispatchEvent(new CustomEvent('eip6963:announceProvider', {
+          detail: { info: { rdns: 'io.rabby', name: 'Rabby Wallet', uuid: 'veilforge-rabby', icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"></svg>' }, provider: rabbyProvider }
+        }));
+        globalThis.dispatchEvent(new CustomEvent('eip6963:announceProvider', {
+          detail: { info: { rdns: 'io.zerion.wallet', name: 'Zerion Wallet', uuid: 'veilforge-zerion' }, provider: zerionProvider }
         }));
       };
       globalThis.addEventListener('eip6963:requestProvider', announceProviders);
@@ -192,8 +215,8 @@ try {
       await new Promise((resolve) => setTimeout(resolve, 120));
       const walletChoiceNames = [...document.querySelectorAll('.wallet-choice b')].map((node) => node.textContent);
       const walletPickerOpen = document.querySelector('#wallet-picker')?.classList.contains('open') || false;
-      const rabbyChoice = [...document.querySelectorAll('.wallet-choice')].find((node) => node.textContent.includes('Rabby'));
-      rabbyChoice?.click();
+      const zerionChoice = [...document.querySelectorAll('.wallet-choice')].find((node) => node.querySelector('b')?.textContent === 'Zerion');
+      zerionChoice?.click();
       await new Promise((resolve) => setTimeout(resolve, 420));
       const connectedLabel = document.querySelector('#header-wallet-label')?.textContent;
       const walletMenuAutoOpen = document.querySelector('#wallet-menu')?.classList.contains('open') || false;
@@ -215,8 +238,14 @@ try {
         walletMenuAutoOpen,
         walletMenuOpenAfterAddressClick,
         walletNetworkLabel,
-        walletMethods: globalThis.__walletMethodsRabby,
-        unusedWalletMethods: globalThis.__walletMethodsZerion,
+        walletMethods: globalThis.__walletMethodsZerion,
+        unusedWalletMethods: [
+          ...globalThis.__walletMethodsKeplr,
+          ...globalThis.__walletMethodsMetaMask,
+          ...globalThis.__walletMethodsPhantom,
+          ...globalThis.__walletMethodsRabby,
+          ...globalThis.__walletMethodsRabbyLegacy,
+        ],
         walletAddParams: globalThis.__walletAddParams,
         finalWalletChainId: smokeChainId,
         scanMessage: document.querySelector('#scan-message')?.textContent,
@@ -240,11 +269,13 @@ try {
   if (snapshot?.runtimeError) failures.push(`runtime error: ${snapshot.runtimeError}`);
   if ((uiFixes?.starOpacity ?? 0) < 0.5 || (uiFixes?.starZ ?? -1) < 0) failures.push('visible starfield layer');
   if (uiFixes?.listOverflow !== 'auto' || (uiFixes?.listClientHeight ?? 0) > 630 || (uiFixes?.listScrollHeight ?? 0) <= (uiFixes?.listClientHeight ?? 0)) failures.push(`bounded findings scroll area (${uiFixes?.listOverflow}, ${uiFixes?.listClientHeight}/${uiFixes?.listScrollHeight})`);
-  if (!uiFixes?.walletPickerOpen || !uiFixes?.walletChoiceNames?.includes('Rabby') || !uiFixes?.walletChoiceNames?.includes('Zerion')) failures.push(`multi-wallet EIP-6963 chooser (${JSON.stringify(uiFixes?.walletChoiceNames)})`);
-  if (!String(uiFixes?.connectedLabel).includes('0x2222') || !uiFixes?.walletPickerClosedAfterSelection) failures.push('selected Rabby connection');
+  const expectedWalletNames = ['Keplr EVM', 'MetaMask', 'Phantom', 'Rabby Wallet', 'Zerion'];
+  if (!uiFixes?.walletPickerOpen || JSON.stringify(uiFixes?.walletChoiceNames) !== JSON.stringify(expectedWalletNames)) failures.push(`canonical wallet chooser (${JSON.stringify(uiFixes?.walletChoiceNames)})`);
+  if ((uiFixes?.walletChoiceNames || []).filter((name) => name.includes('Rabby')).length !== 1) failures.push(`duplicate Rabby entry (${JSON.stringify(uiFixes?.walletChoiceNames)})`);
+  if (!String(uiFixes?.connectedLabel).includes('0x6666') || !uiFixes?.walletPickerClosedAfterSelection) failures.push('selected Zerion connection');
   if (uiFixes?.walletMenuAutoOpen) failures.push('wallet session must not auto-open after connection');
   if (!uiFixes?.walletMenuOpenAfterAddressClick) failures.push('wallet session opens from connected address button');
-  if (!String(uiFixes?.walletNetworkLabel).includes('Rabby')) failures.push(`selected wallet identity in session (${uiFixes?.walletNetworkLabel})`);
+  if (!String(uiFixes?.walletNetworkLabel).includes('Zerion')) failures.push(`selected wallet identity in session (${uiFixes?.walletNetworkLabel})`);
   if ((uiFixes?.unusedWalletMethods?.length ?? 0) !== 0) failures.push(`unselected wallet was called (${JSON.stringify(uiFixes?.unusedWalletMethods)})`);
   if (uiFixes?.walletMethods?.[0] !== 'eth_requestAccounts' || uiFixes?.walletMethods?.[1] !== 'eth_chainId') failures.push(`selected wallet request order (${JSON.stringify(uiFixes?.walletMethods)})`);
   if (uiFixes?.walletAddParams?.chainId?.toLowerCase() !== '0x4cef52' || uiFixes?.walletAddParams?.nativeCurrency?.decimals !== 18) failures.push(`Arc network add parameters (${JSON.stringify(uiFixes?.walletAddParams)})`);

@@ -153,14 +153,34 @@ const boundWalletProviders = new WeakSet();
 let walletPickerCandidates = [];
 let pendingWalletContext = null;
 
+const WALLET_BRANDS = [
+  { id: 'keplr', label: 'Keplr EVM', order: 10, tokens: ['keplr', 'app.keplr'] },
+  { id: 'metamask', label: 'MetaMask', order: 20, tokens: ['metamask', 'io.metamask'] },
+  { id: 'phantom', label: 'Phantom', order: 30, tokens: ['phantom', 'app.phantom'] },
+  { id: 'rabby', label: 'Rabby Wallet', order: 40, tokens: ['rabby', 'io.rabby'] },
+  { id: 'zerion', label: 'Zerion', order: 50, tokens: ['zerion', 'io.zerion.wallet'] },
+];
+
+function identifyWalletBrand(suppliedInfo = {}, provider = null) {
+  const metadata = `${String(suppliedInfo.rdns || '')} ${String(suppliedInfo.name || '')}`.toLowerCase();
+  const metadataMatch = WALLET_BRANDS.find((brand) => brand.tokens.some((token) => metadata.includes(token)));
+  if (metadataMatch) return metadataMatch;
+
+  if (provider === globalThis.keplr?.ethereum || provider?.isKeplr) return WALLET_BRANDS[0];
+  if (provider === globalThis.phantom?.ethereum || provider?.isPhantom) return WALLET_BRANDS[2];
+  if (provider?.isZerion) return WALLET_BRANDS[4];
+  if (provider?.isRabby) return WALLET_BRANDS[3];
+  if (provider?.isMetaMask) return WALLET_BRANDS[1];
+  return null;
+}
+
 function detectLegacyWalletName(provider) {
-  if (provider?.isRabby) return 'Rabby';
-  if (provider?.isZerion) return 'Zerion';
+  const brand = identifyWalletBrand({}, provider);
+  if (brand) return brand.label;
   if (provider?.isCoinbaseWallet) return 'Coinbase Wallet';
   if (provider?.isBraveWallet) return 'Brave Wallet';
   if (provider?.isTrust || provider?.isTrustWallet) return 'Trust Wallet';
   if (provider?.isFrame) return 'Frame';
-  if (provider?.isMetaMask) return 'MetaMask';
   return 'Browser EVM Wallet';
 }
 
@@ -168,14 +188,23 @@ function normalizeWalletCandidate(candidate) {
   const provider = candidate?.provider || candidate;
   if (!provider?.request) return null;
   const suppliedInfo = candidate?.info || {};
-  const name = String(suppliedInfo.name || detectLegacyWalletName(provider)).trim() || 'Browser EVM Wallet';
+  const brand = identifyWalletBrand(suppliedInfo, provider);
+  const suppliedName = String(suppliedInfo.name || '').trim();
+  const name = brand?.label || suppliedName || detectLegacyWalletName(provider);
+  const rdns = String(suppliedInfo.rdns || '').trim();
+  const uuid = String(suppliedInfo.uuid || '').trim();
+  const icon = String(suppliedInfo.icon || '').trim();
+  const quality = (rdns ? 8 : 0) + (uuid ? 4 : 0) + (icon ? 6 : 0) + (suppliedName ? 2 : 0);
   return {
     provider,
+    quality,
     info: {
       name,
-      rdns: String(suppliedInfo.rdns || '').trim(),
-      uuid: String(suppliedInfo.uuid || '').trim(),
-      icon: String(suppliedInfo.icon || '').trim(),
+      brandId: brand?.id || '',
+      brandOrder: brand?.order ?? 1000,
+      rdns,
+      uuid,
+      icon,
     },
   };
 }
@@ -191,6 +220,19 @@ function collectLegacyWalletProviders() {
   const injected = globalThis.ethereum;
   if (Array.isArray(injected?.providers) && injected.providers.length) injected.providers.forEach(rememberWalletProvider);
   else rememberWalletProvider(injected);
+
+  if (globalThis.keplr?.ethereum) {
+    rememberWalletProvider({
+      provider: globalThis.keplr.ethereum,
+      info: { name: 'Keplr EVM', rdns: 'app.keplr' },
+    });
+  }
+  if (globalThis.phantom?.ethereum) {
+    rememberWalletProvider({
+      provider: globalThis.phantom.ethereum,
+      info: { name: 'Phantom', rdns: 'app.phantom' },
+    });
+  }
 }
 
 function requestAnnouncedProviders() {
@@ -200,10 +242,26 @@ function requestAnnouncedProviders() {
   collectLegacyWalletProviders();
 }
 
+function walletCandidateKey(candidate) {
+  if (candidate.info.brandId) return `brand:${candidate.info.brandId}`;
+  if (candidate.info.rdns) return `rdns:${candidate.info.rdns.toLowerCase()}`;
+  if (candidate.info.uuid) return `uuid:${candidate.info.uuid.toLowerCase()}`;
+  return `name:${candidate.info.name.toLowerCase().replace(/[^a-z0-9]+/g, '')}`;
+}
+
 function getWalletCandidates() {
   requestAnnouncedProviders();
-  return [...announcedWalletProviders]
-    .sort((left, right) => left.info.name.localeCompare(right.info.name, undefined, { sensitivity: 'base' }));
+  const deduplicated = new Map();
+  for (const candidate of announcedWalletProviders) {
+    const key = walletCandidateKey(candidate);
+    const current = deduplicated.get(key);
+    if (!current || candidate.quality > current.quality) deduplicated.set(key, candidate);
+  }
+  return [...deduplicated.values()].sort((left, right) => {
+    const order = (left.info.brandOrder ?? 1000) - (right.info.brandOrder ?? 1000);
+    if (order) return order;
+    return left.info.name.localeCompare(right.info.name, undefined, { sensitivity: 'base' });
+  });
 }
 
 function safeWalletIcon(icon) {

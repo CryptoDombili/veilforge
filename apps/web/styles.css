@@ -295,7 +295,7 @@ body:after{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;backg
 /* reliable wallet connector modal */
 
 
-/* v1.8.5 multi-wallet discovery and deliberate session menu */
+/* v1.8.6 multi-wallet discovery and deliberate session menu */
 .wallet-picker-backdrop{position:fixed;inset:0;z-index:84;background:rgba(2,5,10,.62);backdrop-filter:blur(6px);opacity:0;transition:opacity .17s ease}
 .wallet-picker-backdrop.open{opacity:1}
 .wallet-picker{position:fixed;z-index:85;top:50%;left:50%;width:min(420px,calc(100vw - 32px));padding:16px;border:1px solid rgba(117,247,200,.22);border-radius:16px;background:linear-gradient(180deg,rgba(17,24,35,.995),rgba(10,15,24,.998));box-shadow:0 28px 100px rgba(0,0,0,.62);opacity:0;transform:translate(-50%,-48%) scale(.985);transition:opacity .17s ease,transform .17s ease}

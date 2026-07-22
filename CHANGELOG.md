@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.8.6 — Canonical wallet names and duplicate cleanup
+
+- Renamed the Keplr EVM provider to `Keplr EVM` in the wallet chooser.
+- Canonicalized the preferred wallet labels as MetaMask, Phantom, Rabby Wallet and Zerion.
+- Deduplicated legacy and EIP-6963 announcements so Rabby appears only once.
+- Preferred the richer EIP-6963 candidate with the official wallet icon over generic legacy provider rows.
+- Added direct legacy discovery for `window.keplr.ethereum` and `window.phantom.ethereum`.
+
 ## v1.8.5 — Multi-wallet connection behavior
 
 - Stopped opening the Connected Wallet session panel automatically after a successful connection.
