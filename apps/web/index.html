@@ -3,15 +3,93 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#07090f" />
-    <meta
-      name="description"
-      content="VeilForge prepares Solidity contracts for Arc Privacy Sector with deterministic privacy-readiness analysis."
-    />
-    <title>VeilForge — Pre-APS Privacy Readiness</title>
+    <meta name="description" content="VeilForge Privacy Mission Control — deterministic, local-first privacy engineering for Solidity projects on Arc." />
+    <meta name="theme-color" content="#07100f" />
+    <link rel="icon" type="image/png" href="./favicon.png" />
+    <link rel="stylesheet" href="./styles.css" />
+    <title>VeilForge v1.8 — Privacy Mission Control</title>
   </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+  <body data-ready="false">
+    <div class="aurora" aria-hidden="true"></div>
+    <div class="stars" aria-hidden="true"></div>
+    <div class="signal-grid" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="VeilForge home">
+        <span class="brand-mark"><span></span></span>
+        <span>
+          <strong>VeilForge</strong>
+          <small>Privacy Mission Control · v1.8</small>
+        </span>
+      </a>
+      <div class="trust-strip" aria-label="Trust guarantees">
+        <span><i></i> Local analysis</span>
+        <span><i></i> No AI API</span>
+        <span><i></i> Deterministic output</span>
+      </div>
+    </header>
+
+    <main class="shell">
+      <aside class="control-panel panel">
+        <div class="panel-heading">
+          <span class="eyebrow">Project intake</span>
+          <h1>Load a Solidity mission</h1>
+          <p>Files stay in this browser. VeilForge never sends source code to a model or API.</p>
+        </div>
+
+        <label class="field-label" for="project-name">Project label</label>
+        <input id="project-name" class="text-input" value="Arc Payroll Mission" autocomplete="off" />
+
+        <div class="demo-grid" aria-label="Demo projects">
+          <button class="soft-button" data-demo="vulnerable">Vulnerable demo</button>
+          <button class="soft-button" data-demo="hardened">Hardened demo</button>
+          <button class="soft-button" data-demo="multi">Multi-file demo</button>
+        </div>
+
+        <div id="drop-zone" class="drop-zone" tabindex="0" role="button" aria-label="Drop Solidity files">
+          <strong>Drop .sol files here</strong>
+          <span>or select files / a project folder</span>
+          <div class="drop-actions">
+            <label class="file-button">Select files<input id="file-input" type="file" accept=".sol" multiple hidden /></label>
+            <label class="file-button">Open folder<input id="folder-input" type="file" accept=".sol" webkitdirectory directory multiple hidden /></label>
+          </div>
+        </div>
+
+        <div class="file-heading">
+          <span>Mission files</span>
+          <button id="clear-files" class="text-button">Clear</button>
+        </div>
+        <div id="file-list" class="file-list" aria-live="polite"></div>
+
+        <button id="scan-button" class="scan-button">
+          <span class="scan-pulse"></span>
+          Run deterministic scan
+        </button>
+        <p id="scan-message" class="scan-message" aria-live="polite">Loading local demo…</p>
+      </aside>
+
+      <section class="mission-area">
+        <div id="mission-summary" class="mission-summary panel"></div>
+
+        <nav class="mission-nav panel" aria-label="Mission Control sections">
+          <button class="nav-button active" data-view="triage">Triage</button>
+          <button class="nav-button" data-view="chains">Exposure chains</button>
+          <button class="nav-button" data-view="treatment">Treatment plan</button>
+          <button class="nav-button" data-view="compare">Comparison</button>
+          <button class="nav-button" data-view="proof">Proof center</button>
+          <button class="nav-button" data-view="exports">Exports</button>
+          <button class="nav-button" data-view="history">History</button>
+        </nav>
+
+        <section id="workspace" class="workspace panel" aria-live="polite"></section>
+      </section>
+    </main>
+
+    <footer>
+      <span>Independent community-built pre-APS readiness tooling.</span>
+      <span>Source stays local · Hashes only onchain</span>
+    </footer>
+
+    <script type="module" src="./app.js"></script>
   </body>
 </html>
