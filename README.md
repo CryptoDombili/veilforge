@@ -30,7 +30,7 @@
 
 ## Demo Video
 
-[Watch the VeilForge demo](https://youtu.be/URAFCuYUQy0)
+[Watch the VeilForge demo](https://youtu.be/bOXMsb-RTVk)
 
 
 
