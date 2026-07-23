@@ -1,69 +1,109 @@
-# VeilForge v1.8 architecture
+# VeilForge v1.8 Architecture
 
-VeilForge uses one canonical analyzer package. Every interface consumes the same report shape and hashing functions.
+## Design goals
+
+1. local source processing
+2. deterministic output
+3. one canonical analyzer for every surface
+4. small, inspectable dependency boundary
+5. reusable components for Arc builders
+6. explicit proof payloads and wallet approval
+
+## Components
+
+### Canonical analyzer
+
+`packages/analyzer/src/` contains the source parser, rule playbook, policy generator, exposure-chain generator, report builder, comparison logic, canonical serialization, and Keccak-256 implementation.
+
+The browser and CLI import these modules directly. No alternate rule subset exists.
+
+### Browser Mission Control
+
+`apps/web/` is a static ES-module application. It supports file and folder intake, demo projects, triage, exposure chains, remediation, comparison, local history, proof publication, and exports.
+
+The build script copies the canonical modules into `dist/engine/` instead of bundling a separate implementation.
+
+### CLI
+
+`packages/analyzer/cli.mjs` reads one Solidity file or recursively collects `.sol` files from a directory. Output formats are text, JSON, Markdown, and Arc Policy Manifest JSON.
+
+### Proof module
+
+`packages/proof/src/registry.js` provides:
+
+- current Arc Testnet chain configuration
+- EIP-3085 wallet network parameters
+- deterministic ABI encoding for `publishReport`
+- EIP-6963 multi-provider discovery with EIP-1193 fallback, chain switching, and transaction submission
+
+The module never requests a private key.
+
+## Data flow
 
 ```mermaid
-flowchart LR
-    A[Solidity source bundle] --> B[Path and line-ending normalization]
-    B --> C[Solidity AST parser]
-    C --> D[Built-in deterministic rules]
-    B --> E[Optional custom deterministic rules]
-    D --> F[Canonical findings]
-    E --> F
-    C --> G[Selector policy recommendations]
-    C --> H[Contract summaries]
-    F --> H
-    F --> I[Project triage]
-    C --> J[Observed exposure chains]
-    F --> J
-    G --> J
-    F --> K[Treatment Plan 2.0]
-    B --> L[Canonical source hash]
-    F --> M[Canonical report object]
-    G --> M
-    H --> M
-    I --> M
-    J --> M
+flowchart TD
+    A[Solidity source files] --> B[Normalize paths and line endings]
+    B --> C[Parse contracts, state, functions and events]
+    C --> D[Built-in and optional custom rules]
+    C --> E[Selector extraction and policy generator]
+    D --> F[Contract and project triage]
+    D --> G[Exposure-chain generator]
+    D --> H[Treatment Plan 2.0]
+    E --> G
+    F --> I[Canonical report]
+    G --> I
+    H --> I
+    B --> J[Canonical source hash]
+    I --> K[Canonical report hash]
+    I --> L[Web, CLI and exports]
+    J --> M[Optional Arc proof payload]
     K --> M
-    L --> M
-    M --> N[Canonical report hash]
-    M --> O[Web Mission Control]
-    M --> P[CLI]
-    M --> Q[Markdown and JSON exports]
-    M --> R[Arc Policy Manifest]
-    N --> S[Arc Testnet registry proof]
 ```
 
-## Workspaces
+## Determinism
 
-### `packages/scanner`
+The canonical source hash sorts normalized paths and joins each file as:
 
-The canonical engine. It owns parsing, built-in rules, custom-rule execution, score calculation, contract triage, exposure chains, treatment plans, comparison, report formatting and hashing.
+```text
+path + NUL + normalized content + RECORD_SEPARATOR
+```
 
-### `apps/web`
+The report hash uses recursively key-sorted JSON serialization. No generation timestamp, random value, browser state, project label, or network response is part of the canonical report.
 
-The browser interface. It imports `@veilforge/scanner`; it does not implement a second scanner. Source is analyzed in the browser process.
+Finding fingerprints use rule ID, normalized path, contract name, and compact evidence. This allows comparison to survive many line-number changes.
 
-### `packages/shared`
+## Parser boundary
 
-Arc Testnet constants and the registry ABI shared by the web app and integrations.
+v1.8 uses an inspectable lexical Solidity parser rather than a dependency-heavy AST package. It recognizes:
 
-### `contracts`
+- contracts, interfaces, and libraries
+- top-level state declarations
+- events
+- constructors, functions, fallback, and receive
+- visibility, mutability, modifiers, parameters, returns, and canonical signatures
+- balanced braces, parentheses, brackets, comments, and quoted strings
 
-The `VeilForgeReportRegistry` Hardhat workspace.
+Unsupported or malformed source creates `VF000` and blocks deployment. The parser is not a compiler and should not replace `solc`.
 
-### `schemas`
+## Build pipeline
 
-Machine-readable contracts for canonical report and Arc Policy Manifest exports.
+`npm run build:web`:
 
-## Canonicality
+1. removes the prior `dist/`
+2. copies the browser files
+3. copies the canonical analyzer modules
+4. copies the proof module and rewrites only its build-relative Keccak import
+5. copies demo Solidity fixtures
+6. injects a validated registry address into `dist/config.js`
+7. writes a build manifest
+8. verifies required output files
 
-The source hash normalizes path separators and line endings, sorts source files by path and hashes the resulting bundle with Keccak-256.
+## Runtime security
 
-The report hash canonicalizes object keys and stable array ordering before Keccak-256. The `reportHash` field itself is excluded from the hashed payload.
-
-The scanner version is part of the report hash. A rule change should increment the scanner version.
-
-## Why the legacy standalone scanner was retired
-
-Before v1.8, `standalone/app.js` contained a separate browser ruleset and used SHA-256. That made cross-interface report equality impossible. v1.8 replaces it with a notice and uses the TypeScript package everywhere.
+- no source upload endpoint exists
+- no analytics SDK is included
+- no remote JavaScript or CSS is loaded
+- local history can be cleared
+- export downloads are generated in memory
+- proof publishing requires a wallet confirmation
+- report URI is optional and user-controlled

@@ -1,74 +1,106 @@
-# Detection rules
+# Detection Rules and Custom Rules
 
-Each built-in rule is explainable and produces source evidence, confidence, impact, remediation and a suggested policy boundary.
+## Built-in rule contract
 
-## `VF000` — parse integrity
+Every finding contains:
 
-Emitted when a source file cannot be parsed. Analysis is incomplete, so the finding is critical and the project is deployment blocked.
+- stable rule ID
+- title and description
+- severity and P0–P3 priority
+- category and confidence
+- exact file and line range
+- contract and optional function association
+- source evidence
+- impact
+- remediation
+- suggested policy
+- optional safer pattern
+- deterministic fingerprint
 
-## `VF001` — sensitive public state
+## Built-in rules
 
-Detects non-mapping public state whose name or type contains configured sensitive terms. Public Solidity state creates an automatic getter.
+### VF001 — sensitive public state
 
-## `VF002` — sensitive event schema
+Detects non-mapping public state declarations with sensitive semantic names. Default: Critical / P0 / Restricted.
 
-Detects event names or parameters associated with financial, identity or operational data.
+### VF002 — sensitive event schema
 
-## `VF003` — sensitive revert text
+Detects events whose name or parameters include sensitive semantics. Default: High / P1 / Locked.
 
-Detects `require` or `revert` string literals containing sensitive terms.
+### VF003 — secret-bearing revert text
 
-## `VF004` — unguarded sensitive read
+Detects sensitive text in `require` or string-style `revert`. Default: Medium / P2 / Restricted.
 
-Detects public/external read functions that appear to return or derive sensitive information without a recognizable authorization guard.
+### VF004 — unguarded sensitive read
 
-## `VF005` — unguarded sensitive write
+Detects publicly callable read functions with sensitive semantics and no recognized authorization or caller-scoped pattern. Default: High / P1 / Restricted.
 
-Detects public/external state-changing functions in sensitive contexts without a recognizable guard. Common permissionless verbs reduce severity when intent may be legitimate.
+### VF005 — unguarded sensitive write
 
-## `VF006` — low-level call surface
+Detects publicly callable state-changing functions with sensitive semantics and no recognized authorization. Permissionless-looking names receive Medium instead of High.
 
-Detects `.call`, `.staticcall`, `.delegatecall` and `.callcode`. Delegate-style calls are treated more severely.
+### VF006 — low-level call
 
-## `VF007` — sensitive cross-contract flow
+Detects `call`, `staticcall`, `delegatecall`, and `callcode`. Delegate-style calls escalate to Critical / P0 / Locked.
 
-Detects sensitive values passed into typed external contract calls.
+### VF007 — cross-contract sensitive value
 
-## `VF008` — public mapping
+Detects likely sensitive values passed through call expressions. Default: Medium / P2 / Restricted.
 
-Detects public mappings. Known keys can be queried through compiler-generated getters.
+### VF008 — public mapping
 
-## `VF009` — unrestricted administrative mutation
+Detects automatic mapping getters. Sensitive mappings are Critical; other public mappings are High.
 
-Detects public/external administrative setters without a recognizable guard.
+### VF009 — unguarded administrative mutation
 
-## `VF010` — `tx.origin` authorization
+Detects public administrative-looking state changes without recognizable access control. Default: Critical / P0 / Restricted.
 
-Detects `tx.origin`, which creates ambiguous caller trust and phishing risk.
+### VF010 — tx.origin authorization
 
-## `VF011` — sensitive event emission
+Detects `tx.origin`. Default: Critical / P0 / Locked.
 
-Detects sensitive runtime values used in `emit` expressions.
+### VF011 — sensitive emit values
 
-## `VF012` — sensitive dynamic calldata
+Detects event emissions with sensitive runtime semantics. Default: High / P1 / Locked.
 
-Detects sensitive `string calldata` and `bytes calldata` parameters.
+### VF012 — dynamic sensitive calldata
 
-## Sensitive vocabulary
+Detects sensitive public APIs with `string` or `bytes` parameters. Default: High / P1 / Restricted.
 
-The built-in semantic vocabulary lives in `packages/scanner/src/constants.ts`. Semantic-name findings are heuristics and include confidence metadata.
+## Authorization markers
 
-## Access-control recognition
+The deterministic guard recognizer checks:
 
-The scanner recognizes common owner, role and authorization patterns plus project-specific `only*`, `require*` and `when*` modifiers.
+- modifiers beginning with `only`, `require`, or `when`
+- modifier names containing owner, admin, role, auth, guardian, operator, manager, approver, or controller
+- common inline `msg.sender`, role, and authorization checks
 
-## False-positive discipline
+It cannot prove that a guard is correct. It only recognizes an explicit boundary.
 
-A new built-in rule should include:
+## Custom rule interface
 
-- a positive fixture
-- a negative fixture
-- explicit confidence
-- a documented boundary
-- deterministic evidence
-- an actionable remediation playbook
+```js
+const rule = {
+  id: 'ORG001',
+  title: 'Organization rule title',
+  severity: 'medium',
+  category: 'custom-rule',
+  impact: 'Default impact.',
+  remediation: 'Default remediation.',
+  suggestedPolicy: 'Restricted',
+  detect({ parsedFiles, helpers }) {
+    return [
+      {
+        file: 'Contract.sol',
+        contractName: 'Contract',
+        startLine: 10,
+        endLine: 10,
+        evidence: 'source evidence',
+        confidence: 'high',
+      },
+    ];
+  },
+};
+```
+
+`helpers` exposes deterministic sensitive-term and authorization functions. A custom rule must not call a network service, read time, use randomness, or mutate the parsed project.

@@ -1,23 +1,29 @@
-# Security policy
+# Security Policy
 
-## Supported release
+## Scope
 
-Security fixes are accepted for the current `1.8.x` line.
+VeilForge is privacy-readiness tooling, not a formal smart-contract audit. Reports are prioritization signals and must not replace manual review, compiler checks, tests, audits, or operational controls.
 
 ## Reporting a vulnerability
 
-Do not publish a working exploit, private key, wallet seed, confidential Solidity source or unredacted user data in a public issue.
+Do not publish an exploitable issue or user secret in a public GitHub issue. Contact the repository owner privately through the contact method listed on the GitHub profile and include:
 
-Use GitHub's private vulnerability reporting feature for the repository when available. Include:
+- affected version and file
+- reproduction steps
+- impact
+- suggested remediation, when known
 
-- affected version and component
-- minimal reproduction steps
-- expected and observed behavior
-- impact assessment
-- a safe proof of concept with secrets removed
+Do not include seed phrases, private keys, production credentials, or private source code that you are not authorized to share.
 
-The maintainers will acknowledge a complete report, reproduce it, prepare a deterministic fix and publish release notes. No response-time or bounty guarantee is implied.
+## Trust boundaries
 
-## Product boundary
+- Solidity analysis runs locally.
+- Browser history is stored in localStorage on the current device.
+- Exported ZIP files may contain the source files selected by the user.
+- Arc proof publication is optional and stores hashes and metadata only.
+- The app relies on the connected EIP-1193 wallet to display and approve transactions.
+- Registry addresses and Arc network configuration must be verified before publication.
 
-VeilForge is pre-APS privacy-readiness tooling, not a formal audit or proof of security. A `ready` result only means no current deterministic rule matched the supplied sources.
+## Supported version
+
+Security fixes target the latest tagged release. Historical demos may remain available for comparison but are not supported deployment branches.

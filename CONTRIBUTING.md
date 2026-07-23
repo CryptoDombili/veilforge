@@ -1,51 +1,37 @@
 # Contributing to VeilForge
 
-VeilForge accepts contributions that strengthen deterministic, local and explainable privacy-readiness analysis.
+VeilForge accepts focused contributions that preserve its local-first and deterministic trust model.
 
-## Product invariants
+## Ground rules
 
-Every contribution must preserve these rules:
-
-1. Solidity source is not sent to an AI API or external analysis service.
-2. Identical normalized input and scanner version produce identical output.
-3. Findings include a rule ID, exact location, evidence, impact and remediation.
-4. New rules avoid pretending certainty; confidence must be explicit.
-5. On-chain integrations store hashes and metadata, never source code.
-6. Web, CLI and exports use the canonical `packages/scanner` engine.
+- Never add an AI API call that receives Solidity source or report evidence.
+- The same normalized source bundle must produce the same canonical report.
+- Web, CLI, exports, and proof payloads must use the canonical analyzer engine.
+- New rules must include deterministic fixtures and remediation guidance.
+- Do not commit private keys, seed phrases, `.env` files, `node_modules`, or wallet exports.
+- Keep pull requests narrow and explain the privacy-engineering reason for the change.
 
 ## Development
 
 ```bash
 npm install
-npm run check
-npm run dev
+npm run preflight
 ```
 
 ## Adding a built-in rule
 
-1. Add detection logic to `packages/scanner/src/rules.ts`.
-2. Add impact, policy and safer-pattern metadata to `packages/scanner/src/playbook.ts`.
-3. Add positive and negative fixtures to `packages/scanner/test/scanner.test.ts`.
-4. Document the rule in `docs/detection-rules.md`.
-5. Confirm canonical report hashing remains stable for identical input.
+1. Add playbook metadata in `packages/analyzer/src/rules.js`.
+2. Implement deterministic detection without network access or timestamps.
+3. Return exact file and line evidence.
+4. Define severity, confidence, impact, remediation, suggested policy, and safer pattern where useful.
+5. Add a fixture and a test proving both detection and non-detection.
+6. Update `docs/detection-rules.md` and the report schema when the output shape changes.
 
-## Adding a project-specific rule
+## Pull request checklist
 
-Use the public `CustomDetectionRule` interface instead of editing the built-in rule set. See `examples/custom-detection-rule`.
-
-## Pull requests
-
-A useful pull request should include:
-
-- the problem and privacy impact
-- why the implementation is deterministic
-- false-positive and false-negative boundaries
-- tests
-- documentation updates
-- screenshots for visual changes
-
-Avoid unrelated formatting changes in the same pull request.
-
-## Security reports
-
-Do not publish private source code or credentials in an issue. Provide a minimal reproducible fixture that does not contain production secrets.
+- [ ] `npm run preflight` passes
+- [ ] no source code leaves the local runtime
+- [ ] output is deterministic
+- [ ] report and policy schema compatibility considered
+- [ ] browser and CLI use the same engine
+- [ ] no secrets or generated `dist/` files committed

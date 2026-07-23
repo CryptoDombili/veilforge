@@ -1,357 +1,366 @@
+## Live Demo
+
+[Launch VeilForge](https://veilforge-web.vercel.app)
+
+
+
+
+## Arc Testnet Deployment
+
+**Registry Contract:**  
+[`0xf8b1D03931f2c11B642259d9aB19cfA3351C0Bbc`](https://testnet.arcscan.app/address/0xf8b1D03931f2c11B642259d9aB19cfA3351C0Bbc)
+
+
+
+
+
+**First On-chain Report:**  
+[View transaction on ArcScan](https://testnet.arcscan.app/tx/0x3270d43b814d4083aee3f97377495ff2866d58a43b792d41c5b04beb8d693d4d)
+
+
+
+
+
+**Live App Transaction:**  
+[View live app publication on ArcScan](https://testnet.arcscan.app/tx/0xa3585453549b60d71819df0e4c32d341687e7cf50836cce26e7add7830f5e1a1)
+
+
+
+
+
+## Demo Video
+
+[Watch the VeilForge demo](https://youtu.be/URAFCuYUQy0)
+
+
+
+
+
+
+
+
+
+
 <p align="center">
-  <img src="assets/social-preview.png" alt="VeilForge — deterministic privacy readiness for Solidity" width="100%" />
+  <strong>VeilForge v1.8 — Privacy Mission Control</strong><br>
+  Deterministic, local-first privacy engineering for Solidity projects targeting Arc.
 </p>
 
-<h1 align="center">VeilForge v1.8</h1>
-<p align="center"><strong>Privacy Mission Control for Solidity projects targeting Arc.</strong></p>
-<p align="center">Local analysis · Deterministic output · No AI API · Arc-ready policy and proof artifacts</p>
-
 <p align="center">
-  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/License-MIT-63f6c7.svg"></a>
-  <img alt="Version" src="https://img.shields.io/badge/version-1.8.0-62c9ff">
-  <img alt="Solidity" src="https://img.shields.io/badge/Solidity-0.8.24-363636?logo=solidity">
-  <img alt="Arc Testnet" src="https://img.shields.io/badge/Arc-Testnet-66f4c6">
-  <img alt="AI" src="https://img.shields.io/badge/AI%20API-none-6cf4d2">
+  <code>No AI API</code> · <code>Local analysis</code> · <code>Deterministic output</code> · <code>Hashes only onchain</code>
 </p>
 
-## Live product
+<p align="center">
+  <a href="https://veilforge-web.vercel.app"><strong>Live App</strong></a>
+  ·
+  <a href="https://testnet.arcscan.app/address/0xf8b1D03931f2c11B642259d9aB19cfA3351C0Bbc"><strong>Registry</strong></a>
+  ·
+  <a href="https://testnet.arcscan.app/tx/0x969534cc42f7c57e5c202f0abc65bcaef2f43a12ef24dcca454f334d9ef64d3a"><strong>Successful Arc Proof</strong></a>
+  ·
+  <a href="showcase/ARC_OPEN_SOURCE_SHOWCASE.md"><strong>Showcase</strong></a>
+</p>
 
-- **Application:** [veilforge-web.vercel.app](https://veilforge-web.vercel.app)
-- **Arc Testnet registry:** [`0xf8b1D03931f2c11B642259d9aB19cfA3351C0Bbc`](https://testnet.arcscan.app/address/0xf8b1D03931f2c11B642259d9aB19cfA3351C0Bbc)
-- **First report transaction:** [ArcScan](https://testnet.arcscan.app/tx/0x3270d43b814d4083aee3f97377495ff2866d58a43b792d41c5b04beb8d693d4d)
-- **Live-app publication:** [ArcScan](https://testnet.arcscan.app/tx/0xa3585453549b60d71819df0e4c32d341687e7cf50836cce26e7add7830f5e1a1)
-- **v1.1 demo video:** [YouTube](https://youtu.be/NMbUYhL427s)
+<p align="center">
+  <img
+    src="./assets/v1.8/veilforge-v18-hero.png"
+    alt="VeilForge v1.8 Privacy Mission Control"
+    width="100%"
+  />
+</p>
 
 > [!IMPORTANT]
-> VeilForge is an independent community project. It is not an official Circle product and it is not a formal security audit. The project is pre-APS readiness tooling based on Arc's published privacy design. Arc's official documentation currently describes APS as roadmap functionality that is not yet available; VeilForge does not execute private transactions or claim live APS integration.
+> VeilForge is independent community-built pre-APS readiness tooling. It is not an official Circle product and is not a formal security audit. Arc privacy capabilities may evolve; always review current Arc documentation before deployment.
 
-## What changed in v1.8
+## What VeilForge does
 
-v1.1 acted like a privacy specialist: it found disclosure risks, explained impact and suggested deterministic remediation.
+VeilForge analyzes Solidity projects locally before deployment and turns deterministic privacy findings into an actionable engineering workflow:
 
-v1.8 turns that specialist into **Privacy Mission Control**:
+- multi-file Solidity intake by files, folder, or drag-and-drop
+- contract-by-contract readiness scores and deployment states
+- deterministic findings with exact source evidence
+- exposure chains: `Storage → Function → Event → Selector → Policy`
+- Treatment Plan 2.0 with P0–P3 remediation priorities
+- baseline comparison with resolved, ongoing, and introduced findings
+- local browser scan history
+- Proof Center 2.0 for Arc Testnet hash anchoring
+- canonical JSON, Markdown, Arc Policy Manifest, and Remediation Pack ZIP exports
+- reusable analyzer engine, CLI, custom-rule interface, JSON schemas, and integration examples
 
-- project-level triage with `ready`, `review-required`, `high-risk` and `deployment-blocked` states
-- contract-by-contract readiness and risk ordering
-- deterministic exposure chains across storage, functions, events, selectors and policy boundaries
-- prioritized Treatment Plan 2.0 with P0–P3 actions
-- scan comparison and local metadata-only history
-- Arc Policy Manifest export
-- deterministic Remediation Pack ZIP export
-- Proof Center 2.0 with the deployed Arc Testnet registry configured by default
-- one canonical engine for the web app, CLI, exports and report fingerprints
-- reusable public API and custom deterministic rule support
-- complete architecture, integration and contribution documentation
-- redesigned privacy-focused Mission Control interface with reduced-motion support
+<p align="center">
+  <img
+    src="./assets/v1.8/veilforge-v18-dashboard.png"
+    alt="VeilForge v1.8 Privacy Mission Control workspace"
+    width="92%"
+  />
+</p>
 
-## Why VeilForge exists
+## What changed from v1.1
 
-A Solidity system can expose sensitive financial, identity or operational data before a privacy layer is added. Common surfaces include:
+v1.1 introduced remediation intelligence for single-contract scans. v1.8 expands VeilForge into a project-level Privacy Mission Control environment:
 
-- public state getters and public mappings
-- unguarded sensitive read and write functions
-- event schemas and runtime event values
-- plaintext dynamic calldata
-- verbose revert messages
-- low-level calls and cross-contract value movement
-- unrestricted administrative selectors
-- ambiguous authorization such as `tx.origin`
-
-VeilForge converts these surfaces into an explainable workflow:
-
-```text
-Solidity project
-      ↓
-Canonical AST parser + deterministic rules
-      ↓
-Project triage + contract readiness
-      ↓
-Exact source-line findings
-      ↓
-Observed exposure chains
-      ↓
-Prioritized treatment plan
-      ↓
-Open / Restricted / Locked policy manifest
-      ↓
-Canonical source + report hashes
-      ↓
-Optional Arc Testnet proof
-```
+| v1.1 | v1.8 |
+|---|---|
+| primarily single-contract analysis | multi-file project intake and contract-level triage |
+| findings and remediation guidance | readiness dashboard and deployment states |
+| selector policy recommendations | deterministic exposure chains |
+| before/after comparison | persistent baseline comparison with resolved, ongoing, and introduced findings |
+| basic Arc proof flow | Proof Center 2.0 with simulation, receipt confirmation, and ArcScan verification |
+| basic injected wallet connection | multi-EVM EIP-6963 wallet discovery and isolated sessions |
+| JSON/Markdown/policy outputs | canonical JSON, Markdown, Arc Policy Manifest, and Remediation Pack ZIP |
+| scanner interface | reusable engine, CLI, custom rules, schemas, examples, history, and exports |
 
 ## Trust model
 
-VeilForge deliberately does **not** use an AI model inside the product.
+VeilForge does **not** send Solidity source code to an AI model or remote analyzer.
 
-- source code stays in the browser or local CLI process
-- no Solidity code is sent to an AI API or analysis service
-- the same normalized input and rule version produce the same output
-- findings are tied to rule IDs, exact source locations and evidence
-- report fingerprints use canonical Keccak-256 hashing
-- every report records the exact built-in and custom rule IDs executed
-- local scan history stores metadata only, not source code
-- on-chain proofs store hashes and report metadata, never Solidity source
+1. Source files are normalized and analyzed locally.
+2. The same sorted source bundle produces the same findings, source hash, and report hash.
+3. Web, CLI, report exports, selector policies, and proof payloads use the same analyzer modules.
+4. Optional Arc publication sends hashes and metadata—not source code or the complete report.
+5. Local scan reports remain in browser `localStorage` and can be cleared from the interface. Matching source snapshots are retained only for the current browser session so historical exports never reuse unrelated files.
 
-See [`docs/privacy-model.md`](docs/privacy-model.md) and [`docs/threat-model.md`](docs/threat-model.md).
+## Zero-dependency release architecture
 
-## 60-second reviewer walkthrough
-
-1. Open the live app.
-2. Review **Mission overview** and the deployment decision.
-3. Switch between the vulnerable and hardened payroll demos.
-4. Open **Source & findings** to inspect exact evidence lines.
-5. Open **Exposure chains** and follow a storage → function → selector → policy path.
-6. Open **Treatment plan** to see P0–P3 remediation order.
-7. Open **Progress** on the hardened demo to view resolved findings and score change.
-8. Export JSON, Markdown, Arc Policy Manifest and Remediation Pack ZIP.
-9. Open **Proof center** to preview or publish the canonical report fingerprint on Arc Testnet.
-
-## Quick start
-
-### Requirements
-
-- Node.js 20+
-- npm 10+
-
-### Windows
-
-Double-click:
+v1.8 intentionally avoids a fragile frontend dependency graph. The release uses browser-native ES modules and Node.js built-ins.
 
 ```text
-run-demo.bat
+Solidity files
+    │
+    ▼
+packages/analyzer/src
+    ├── parser.js
+    ├── rules.js
+    ├── policies.js
+    ├── exposure.js
+    ├── report.js
+    └── keccak.js
+    │
+    ├──────────────► Browser Mission Control
+    ├──────────────► CLI / programmatic usage
+    ├──────────────► JSON + Markdown + policy exports
+    └──────────────► Arc proof payload
 ```
 
-### macOS / Linux
+There are no npm runtime or development dependencies. `package-lock.json` is retained for reproducible install metadata.
+
+## Run locally
+
+Requirements:
+
+- Node.js 20 or newer
+- npm 10 or newer
+- Chromium only for the optional browser smoke command
 
 ```bash
-./run-demo.sh
-```
-
-### Manual setup
-
-```bash
-git clone https://github.com/CryptoDombili/veilforge.git
-cd veilforge
 npm install
+npm run build:web
+npm run test
+npm run typecheck
+npm run smoke:browser
+```
+
+Serve the generated static app:
+
+```bash
+cd dist
+python -m http.server 4173
+```
+
+Open `http://localhost:4173`.
+
+## One-command preflight
+
+```bash
 npm run preflight
-npm run check
-npm run dev
 ```
 
-The terminal prints the Vite development URL.
+Preflight runs:
 
-## Canonical scanner API
-
-The reusable engine is in [`packages/scanner`](packages/scanner).
-
-```ts
-import {
-  analyzeProject,
-  scanSources,
-  generatePolicyManifest,
-  compareReports,
-  type SourceFile,
-} from '@veilforge/scanner';
-
-const files: SourceFile[] = [
-  {
-    path: 'Payroll.sol',
-    content: soliditySource,
-  },
-];
-
-const report = analyzeProject(files);
-const manifest = generatePolicyManifest(report);
-
-console.log(report.triage.status);
-console.log(report.contracts);
-console.log(report.exposureChains);
-console.log(report.treatmentPlan);
-console.log(manifest.selectors);
-```
-
-### Compare two scans
-
-```ts
-const before = scanSources(vulnerableFiles);
-const after = scanSources(hardenedFiles);
-const progress = compareReports(before, after);
-
-console.log(progress.scoreDelta);
-console.log(progress.resolvedFindings);
-console.log(progress.introducedFindings);
-```
-
-### Add a custom deterministic rule
-
-```ts
-import { scanSources, type CustomDetectionRule } from '@veilforge/scanner';
-
-const customRule: CustomDetectionRule = {
-  id: 'VF_CUSTOM_MEMO',
-  title: 'Sensitive memo emitted in an event',
-  description: 'A project-specific memo field is written to a public event.',
-  severity: 'high',
-  category: 'event-disclosure',
-  confidence: 'high',
-  impact: 'The memo becomes permanent, indexable public metadata.',
-  remediation: 'Emit a commitment or non-sensitive status instead of the memo.',
-  suggestedPolicy: 'Locked',
-  matches: ({ line }) => /emit\s+\w+\([^;]*memo/i.test(line),
-};
-
-const report = scanSources(files, { customRules: [customRule] });
-```
-
-Custom rule IDs must match `VF_[A-Z0-9_]{3,64}`. See [`examples/custom-detection-rule`](examples/custom-detection-rule).
+1. static web build
+2. deterministic engine and proof tests
+3. JavaScript syntax and JSON validation
+4. Chromium CDP runtime smoke test
+5. release-source SHA-256 manifest verification
 
 ## CLI
 
 ```bash
-npm run build -w @veilforge/scanner
-node packages/scanner/dist/cli.js scan examples/vulnerable-payroll/Payroll.sol
-node packages/scanner/dist/cli.js scan examples --format json --output veilforge-report.json
-node packages/scanner/dist/cli.js scan examples --format markdown --project-name "Payroll demo" --output report.md
-node packages/scanner/dist/cli.js scan examples --format policy --output arc-policy.json
-node packages/scanner/dist/cli.js scan contracts --fail-on high
+npm run scan:demo
+node packages/analyzer/cli.mjs scan examples/multi-contract --format text
+node packages/analyzer/cli.mjs scan examples/multi-contract --format json --output report.json
+node packages/analyzer/cli.mjs scan examples/multi-contract --format markdown --output report.md
+node packages/analyzer/cli.mjs scan examples/multi-contract --format policy --output arc-policy-manifest.json
 ```
 
-Supported formats are `text`, `json`, `markdown`, `policy` and `treatment`. Exit code `1` is used when `--fail-on` is met. Exit code `3` indicates scanner failure.
+## Programmatic usage
 
-## Detection rules
+```js
+import fs from 'node:fs';
+import { scanProject, generatePolicyManifest } from './packages/analyzer/src/index.js';
 
-VeilForge includes twelve built-in deterministic rules plus the parse-integrity rule `VF000`.
+const files = [{
+  path: 'Payroll.sol',
+  content: fs.readFileSync('Payroll.sol', 'utf8'),
+}];
 
-| Rule | Primary severity | Detects |
-|---|---:|---|
-| `VF000` | Critical | Source that cannot be parsed completely |
-| `VF001` | Critical | Sensitive public state with automatic getters |
-| `VF002` | High | Sensitive event schemas |
-| `VF003` | Medium | Secret-bearing revert text |
-| `VF004` | High | Unguarded sensitive read selectors |
-| `VF005` | High / Medium | Unguarded sensitive state-changing selectors |
-| `VF006` | Critical / Medium | Low-level and delegate-style calls |
-| `VF007` | Medium | Sensitive values crossing contract boundaries |
-| `VF008` | Critical / High | Public mappings and indexed-record exposure |
-| `VF009` | Critical | Unrestricted administrative mutation |
+const report = scanProject(files);
+const manifest = generatePolicyManifest(report);
+
+console.log(report.status, report.score, report.reportHash);
+console.log(manifest.policies);
+```
+
+See [`examples/programmatic-scan.mjs`](examples/programmatic-scan.mjs). Add `--write` to create Markdown and policy files beside the example.
+
+## Custom detection rule
+
+```js
+const customRule = {
+  id: 'TEAM001',
+  title: 'Team-specific forbidden marker',
+  severity: 'medium',
+  detect({ parsedFiles }) {
+    return parsedFiles.flatMap((parsed) =>
+      parsed.source.content.includes('legacyPrivateFlow')
+        ? [{
+            file: parsed.source.path,
+            contractName: parsed.contracts[0]?.name ?? 'Global',
+            startLine: 1,
+            evidence: 'legacyPrivateFlow',
+            impact: 'A deprecated privacy flow remains enabled.',
+            remediation: 'Remove the legacy flow before deployment.',
+            suggestedPolicy: 'Locked',
+          }]
+        : [],
+    );
+  },
+};
+
+const report = scanProject(files, { customRules: [customRule] });
+```
+
+See [`examples/custom-rule.mjs`](examples/custom-rule.mjs) and [`docs/detection-rules.md`](docs/detection-rules.md).
+
+## Built-in deterministic rules
+
+| Rule | Default severity | Focus |
+|---|---|---|
+| `VF001` | Critical | sensitive automatic public getters |
+| `VF002` | High | sensitive event schemas |
+| `VF003` | Medium | secret-bearing revert text |
+| `VF004` | High | unguarded sensitive reads |
+| `VF005` | High | unguarded sensitive writes |
+| `VF006` | Medium / Critical | low-level and delegate-style calls |
+| `VF007` | Medium | sensitive cross-contract values |
+| `VF008` | Critical / High | public mappings |
+| `VF009` | Critical | unrestricted administrative mutation |
 | `VF010` | Critical | `tx.origin` authorization |
-| `VF011` | High | Sensitive runtime values emitted in events |
-| `VF012` | High | Sensitive plaintext in dynamic calldata |
+| `VF011` | High | sensitive runtime event values |
+| `VF012` | High | sensitive dynamic calldata |
 
-See [`docs/detection-rules.md`](docs/detection-rules.md).
+Semantic-name checks are explicit heuristics with confidence metadata. VeilForge does not pretend that a heuristic is proof of a vulnerability.
 
-## Transparent scoring and triage
+## Readiness and treatment states
 
-| Severity | Penalty |
-|---|---:|
-| Critical | −25 |
-| High | −15 |
-| Medium | −8 |
-| Low | −3 |
+Severity penalties:
 
-The score is clamped to 0–100.
+| Severity | Penalty | Treatment priority |
+|---|---:|---|
+| Critical | −25 | P0 |
+| High | −15 | P1 |
+| Medium | −8 | P2 |
+| Low | −3 | P3 |
 
-| Triage state | Deterministic condition |
-|---|---|
-| `deployment-blocked` | At least one critical finding |
-| `high-risk` | High finding exists or score is below 70 |
-| `review-required` | Medium/low finding exists or score is below 90 |
-| `ready` | No deterministic rule matched |
+Triage states:
 
-This is a prioritization signal, not a deployment guarantee.
+- **Deployment Blocked:** one or more critical findings
+- **High Risk:** at least two high findings or score below 55
+- **Review Required:** one or more non-critical findings
+- **Ready:** no deterministic finding matched
 
-## Export formats
+A `Ready` result still requires manual review and normal security testing.
 
-The web interface exports:
+## Arc Proof Center 2.0
 
-- canonical JSON report
-- Markdown Mission Control report
-- Arc Policy Manifest JSON
-- deterministic Remediation Pack ZIP
-- proof receipt JSON
-
-The ZIP includes the report, treatment plan, exposure chains, policy manifest, proof payload and the source files selected locally by the user.
-
-Schemas:
-
-- [`schemas/report.schema.json`](schemas/report.schema.json)
-- [`schemas/policy-manifest.schema.json`](schemas/policy-manifest.schema.json)
-
-## Arc proof registry
-
-[`contracts/contracts/VeilForgeReportRegistry.sol`](contracts/contracts/VeilForgeReportRegistry.sol) stores:
-
-- project ID
-- source hash
-- report hash
-- readiness score
-- optional report URI
-- submitter
-- timestamp
-- scanner version
-
-It does not store source code or the finding payload.
+Default registry:
 
 ```text
-Chain ID: 5042002
+0xf8b1D03931f2c11B642259d9aB19cfA3351C0Bbc
+```
+
+Arc Testnet:
+
+```text
+Chain ID: 5042002 (0x4CEF52)
 RPC: https://rpc.testnet.arc.network
 Explorer: https://testnet.arcscan.app
-Registry: 0xf8b1D03931f2c11B642259d9aB19cfA3351C0Bbc
+Gas token: USDC
 ```
 
-The app uses this deployed registry by default. `VITE_REGISTRY_ADDRESS` can override it for another deployment.
+The browser discovers installed EVM extension wallets through EIP-6963, falls back to legacy EIP-1193 injection, and encodes this exact ABI order:
 
-See [`docs/arc-proof-registry.md`](docs/arc-proof-registry.md).
+```solidity
+publishReport(
+    bytes32 projectId,
+    bytes32 sourceHash,
+    bytes32 reportHash,
+    uint16 score,
+    string scannerVersion,
+    string reportURI
+)
+```
 
-## Repository architecture
+VeilForge first simulates the proof call, then the selected wallet presents the transaction for user approval. The UI waits for the receipt and only reports success after the transaction is confirmed. Connecting does not automatically open the session panel; the connected address button opens it on demand. No private key is requested or stored by the app.
+
+To override the registry during Vercel build:
 
 ```text
-veilforge/
-├── apps/web/                 React Privacy Mission Control
-├── packages/scanner/        Canonical analyzer and public API
-├── packages/shared/         Arc network constants and registry ABI
-├── contracts/               Hardhat registry contract and tests
-├── schemas/                 Report and policy JSON schemas
-├── examples/                Integration and custom-rule examples
-├── docs/                    Architecture and developer documentation
-├── standalone/              Notice replacing the retired duplicate engine
-├── LICENSE
-├── CONTRIBUTING.md
-└── vercel.json
+VITE_REGISTRY_ADDRESS=0x...
 ```
 
-The old standalone rule subset was intentionally retired in v1.8. It used a separate rule implementation and SHA-256 fingerprints. Keeping it would allow identical source to produce different reports. The canonical web application and CLI now share `packages/scanner` and Keccak-256 hashing.
+## Vercel
+
+The repository contains a root [`vercel.json`](vercel.json):
+
+- Build command: `npm run build:web`
+- Output directory: `dist`
+- Framework preset: none
+
+Use the repository root as the Vercel Root Directory.
+
+## Repository map
+
+```text
+apps/web/                  Browser Mission Control
+packages/analyzer/src/     Canonical deterministic engine
+packages/proof/src/        Arc chain config + ABI encoder + wallet flow
+packages/analyzer/cli.mjs  CLI entrypoint
+schemas/                   Report and policy JSON schemas
+examples/                  Vulnerable, hardened, multi-file, custom-rule examples
+contracts/                 Report Registry reference contract
+scripts/                   Build, validation, manifest, preflight, browser smoke
+showcase/                  Arc Open Source Showcase material
+docs/                      Architecture and integration documentation
+assets/v1.8/               README product screenshots
+```
 
 ## Documentation
 
 - [Architecture](docs/architecture.md)
 - [Analyzer engine](docs/analyzer-engine.md)
 - [Detection rules](docs/detection-rules.md)
-- [Exposure chains](docs/exposure-chains.md)
-- [Policy manifest](docs/policy-manifest.md)
-- [Report schema](docs/report-schema.md)
-- [Arc proof registry](docs/arc-proof-registry.md)
-- [Privacy model](docs/privacy-model.md)
-- [Threat model](docs/threat-model.md)
-- [Integration guide](docs/integration-guide.md)
-- [Showcase submission](docs/showcase-submission.md)
-- [Demo script](docs/demo-script.md)
+- [Arc Policy Manifest](docs/policy-manifest.md)
+- [Arc Proof Registry](docs/arc-proof-registry.md)
+- [Integration examples](docs/integration-examples.md)
+- [Showcase submission](showcase/ARC_OPEN_SOURCE_SHOWCASE.md)
 - [Security policy](SECURITY.md)
+- [Contributing](CONTRIBUTING.md)
 
-## Current limitations
+## Previous releases
 
-- VeilForge is not a compiler, formal verifier or full security auditor.
-- Semantic-name rules are heuristics and are labelled with confidence.
-- Exposure chains represent observed source relationships, not runtime taint analysis.
-- Import resolution and inherited behavior are limited by the parser view of supplied files.
-- Dynamic dispatch, assembly and generated code require manual review.
-- A `ready` result means no current deterministic rule matched; it does not prove privacy.
-- Arc's official documentation currently lists APS as roadmap functionality that is not yet available. Policy recommendations are forward-looking readiness guidance, not executable live APS configuration.
-
-## Contributing
-
-Read [`CONTRIBUTING.md`](CONTRIBUTING.md). Contributions should add explainable deterministic behavior, source evidence and tests. AI-generated or probabilistic runtime findings are outside the product scope.
+- **v1.1 — Remediation Intelligence:** detection-to-remediation workflow, APS-aligned selector guidance, and exportable findings.
+- Older screenshots and demos are historical references; v1.8 is the current showcase release.
 
 ## License
 
-MIT. See [`LICENSE`](LICENSE).
+MIT — see [`LICENSE`](LICENSE).

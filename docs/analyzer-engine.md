@@ -1,51 +1,83 @@
-# Analyzer engine
+# Analyzer Engine
 
-## Public entry point
+## Public API
 
-```ts
-import { scanSources, type SourceFile } from '@veilforge/scanner';
+Import from:
 
-const report = scanSources(files);
+```js
+import {
+  scanProject,
+  compareReports,
+  generatePolicyManifest,
+  formatMarkdownReport,
+  formatTextReport,
+  canonicalSourceHash,
+  canonicalReportHash,
+  parseSolidityFile,
+  functionSelector,
+} from './packages/analyzer/src/index.js';
 ```
 
-`files` must contain at least one item and every item contains a normalized logical path and Solidity source string.
+## `scanProject(files, options)`
 
-## Pipeline
+Input:
 
-1. Normalize paths and line endings.
-2. Parse each file with `@solidity-parser/parser`.
-3. Emit `VF000` if a file cannot be parsed.
-4. Execute built-in rules on parsed files.
-5. Execute optional custom line rules.
-6. Sort findings by severity, path, line and rule ID.
-7. Generate selector policy recommendations.
-8. Calculate project and contract scores.
-9. Determine triage state.
-10. Build observed exposure chains.
-11. Build the ordered treatment plan.
-12. Calculate canonical source and report hashes.
-
-## API surface
-
-```ts
-scanSources(files, options?)
-canonicalSourceHash(files)
-canonicalReportHash(report)
-generatePolicyManifest(report)
-compareReports(previous, current)
-formatTextReport(report)
-formatMarkdownReport(report, projectName?)
-formatTreatmentPlanMarkdown(report)
+```js
+[
+  { path: 'contracts/Payroll.sol', content: 'pragma solidity ...' },
+  { path: 'contracts/Settlement.sol', content: 'pragma solidity ...' },
+]
 ```
 
-## Deterministic custom rules
+Options:
 
-`ScanOptions.customRules` accepts `CustomDetectionRule[]`. Each rule evaluates every normalized source line. The rule callback must be deterministic and must not perform network calls, use time, randomness or mutable external state.
-
-```ts
-const report = scanSources(files, { customRules: [rule] });
+```js
+{ customRules: [] }
 ```
 
-## Scanner versioning
+Output includes:
 
-`SCANNER_VERSION` is `1.8.0`. Change it whenever built-in output logic changes in a way that can affect canonical reports.
+- project score, grade, and status
+- severity totals
+- contract-level scores and statuses
+- findings
+- selector policies
+- exposure chains
+- Treatment Plan 2.0
+- normalized file metadata
+- canonical source and report hashes
+
+## Canonical hashing
+
+VeilForge includes a pure JavaScript Keccak-256 implementation with known-vector tests. It is shared by Node and browser runtimes.
+
+- function selectors use the first four bytes of Keccak-256 of the canonical signature
+- source hash uses normalized sorted source bundles
+- report hash uses canonical key-sorted report serialization
+- project ID is derived from the canonical source hash
+
+## Reuse patterns
+
+### Browser
+
+Copy or serve `packages/analyzer/src/` as ES modules and import `index.js`.
+
+### Node
+
+Use the modules directly from Node 20+ or call the CLI.
+
+### CI
+
+```bash
+node packages/analyzer/cli.mjs scan contracts --format json --output veilforge-report.json
+```
+
+A CI job can fail when:
+
+```js
+if (report.status === 'Deployment Blocked') process.exit(1);
+```
+
+### Custom product
+
+Builders can fork only the analyzer, use the report schema, and render a different UI without changing deterministic output.

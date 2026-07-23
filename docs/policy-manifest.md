@@ -1,34 +1,42 @@
 # Arc Policy Manifest
 
-The Arc Policy Manifest is an exportable, forward-looking selector recommendation document.
+VeilForge generates selector-level privacy recommendations using the same parsed functions used by the report.
+
+## Policies
+
+- **Open:** no sensitive semantics or privileged boundary detected; permissionless intent must still be confirmed
+- **Restricted:** sensitive, administrative, or already guarded selector
+- **Locked:** debug, deprecated, destructive, backdoor-like, or unusually dangerous selector
+
+## Output
 
 ```json
 {
   "schemaVersion": "1.0",
-  "generatedBy": "VeilForge v1.8.0",
+  "generator": "VeilForge 1.8.0",
   "sourceHash": "0x...",
   "reportHash": "0x...",
-  "readinessScore": 72,
-  "triageStatus": "review-required",
-  "selectors": [
+  "projectStatus": "Review Required",
+  "policies": [
     {
-      "contractName": "Payroll",
-      "file": "Payroll.sol",
-      "signature": "getSalary(address)",
-      "policy": "restricted",
+      "contract": "Payroll",
+      "selector": "0x12345678",
+      "signature": "viewMySalary()",
+      "policy": "Restricted",
+      "reason": "...",
       "confidence": "high",
-      "reason": "..."
+      "source": {
+        "file": "Payroll.sol",
+        "startLine": 20,
+        "endLine": 23
+      }
     }
   ]
 }
 ```
 
-## Policies
+The manifest schema is `schemas/arc-policy-manifest.schema.json`.
 
-- `open`: broad access may be intentional
-- `restricted`: an explicit grant or authorization boundary is recommended
-- `locked`: the selector should be unavailable by default
+## Important boundary
 
-The manifest is guidance, not an executable APS configuration. Arc's official documentation currently describes APS as roadmap functionality that is not yet available, and its interfaces may evolve.
-
-Schema: `schemas/policy-manifest.schema.json`.
+The manifest is a recommendation artifact, not a deployed APS configuration. Review all selectors and current Arc privacy documentation before using it in a deployment workflow.
