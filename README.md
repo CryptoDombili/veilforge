@@ -1,8 +1,3 @@
-# VeilForge v3.2 — Privacy Operating System
-
-VeilForge is an open-source, local-first privacy engineering workbench for Solidity projects on Arc.
-
-
 Live
 
 
@@ -39,6 +34,20 @@ Live
 [Watch the VeilForge demo](https://youtu.be/URAFCuYUQy0)
 
 
+
+
+
+
+
+
+
+
+
+
+
+# VeilForge v3.2 — Privacy Operating System
+
+VeilForge is an open-source, local-first privacy engineering workbench for Solidity projects on Arc.
 
 
 
