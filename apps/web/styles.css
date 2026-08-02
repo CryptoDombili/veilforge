@@ -2053,3 +2053,24 @@ body.app-page > .topbar .brand small{color:#61d4b5!important;font-size:8px!impor
 /* The engine keeps its telemetry readable without returning to expensive blend effects. */
 body.app-page .veil-rain{opacity:.68!important}
 @media(max-width:700px){body.app-page .veil-rain{opacity:.62!important}}
+
+/* 1080p desktop uses the same centred operating frame as 2K, without
+   squeezing the scanner title or spreading the navigation to screen edges. */
+@media(min-width:1100px) and (max-width:1999px){
+  body.app-page main,
+  body.app-page > .topbar{
+    width:min(1480px,calc(100% - 64px))!important;
+  }
+  body.app-page .sectionHead{
+    gap:28px;
+  }
+  body.app-page .sectionHead h2{
+    flex:1 1 auto;
+    min-width:0;
+    font-size:clamp(36px,2.1vw,42px);
+    line-height:1.04;
+  }
+  body.app-page .trustBadge{
+    flex:0 0 auto;
+  }
+}

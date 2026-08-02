@@ -20,7 +20,7 @@
     },
     "generator": {
       "type": "string",
-      "const": "VeilForge 3.2.0-preview.1"
+      "const": "VeilForge 3.2.0"
     },
     "sourceHash": {
       "$ref": "#/$defs/hash"

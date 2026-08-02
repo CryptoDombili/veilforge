@@ -1,4 +1,4 @@
-VEILFORGE v3.2 — MAIN BRANCH GITHUB UPLOAD
+VEILFORGE v3.2 FINAL — MAIN BRANCH GITHUB UPLOAD
 
 1. Extract this ZIP on your computer.
 2. Open the extracted folder.

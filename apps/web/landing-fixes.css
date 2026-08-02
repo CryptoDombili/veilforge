@@ -102,7 +102,7 @@ footer>.brand small{
 }
 
 .veil-rain{
-  opacity:.62;
+  opacity:.72;
   mix-blend-mode:normal;
   -webkit-mask-image:none;
   mask-image:none;
@@ -183,7 +183,12 @@ footer>.brand b{
     height:48px!important;
     flex-basis:48px!important;
   }
-  .veil-rain{opacity:.52}
+  .veil-rain{opacity:.64}
+}
+
+/* Hold a stable five-finger air gap below the navigation on desktop. */
+@media(min-width:981px){
+  main>.flow-hero{padding-top:calc(clamp(58px,7vh,88px) + 15px)!important}
 }
 
 @media(prefers-reduced-motion:reduce){

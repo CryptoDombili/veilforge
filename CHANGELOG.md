@@ -10,7 +10,7 @@
 - Added automatic domain rule packs and deterministic source-guided fuzz plans.
 - Expanded browser smoke coverage for all Ascension workspaces and exports.
 
-## v3.2.0-preview.1 — Privacy Operating System foundation
+## v3.2.0 — Privacy Operating System final
 
 - Added No-Code Privacy Intent Studio with source-stable, policy-bound report hashes.
 - Anchored Forge candidates to exact source lines and moved `tx.origin` remediation to mandatory engineering review.

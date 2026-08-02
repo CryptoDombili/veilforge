@@ -12,6 +12,7 @@
     [111, 123, 141],
     [177, 185, 198]
   ];
+  const isEnginePage = document.body.classList.contains('app-page');
 
   let width = 0;
   let height = 0;
@@ -48,7 +49,9 @@
     canvas.height = Math.round(height * ratio);
     context.setTransform(ratio, 0, 0, ratio, 0, 0);
     // Keep the telemetry field spacious like the Privacy OS workspace.
-    density = width < 700 ? 19 : width < 1500 ? 24 : 27;
+    density = isEnginePage
+      ? (width < 700 ? 19 : width < 1500 ? 24 : 27)
+      : (width < 700 ? 17 : width < 1500 ? 21 : 24);
     const count = Math.ceil(width / density);
     streams = Array.from({ length: count }, (_, index) => createStream(index));
     // Two intentional hero lanes: they begin from the open upper canvas areas.

@@ -91,7 +91,7 @@ main>.privacy-flow{order:-1;margin-top:0}
   .flow-hero .hero-copy h1{width:100%;max-width:none;margin:0;white-space:nowrap;font-size:clamp(24px,2.65vw,34px);line-height:1.05;letter-spacing:-.04em}
 }
 
-/* Final system-preview header layout. */
+/* Final system header layout. */
 main>.flow-hero{padding:0 0 34px}
 @media(min-width:981px){
   .flow-hero .hero-copy{display:grid;grid-template-columns:minmax(0,1fr) 360px;grid-template-rows:auto auto;gap:0 90px;align-items:end;min-height:0}
@@ -258,7 +258,7 @@ main>.privacy-flow{order:-1}
 .flow-launch{display:none!important}
 @media(max-width:620px){main>.cta{margin-top:24px;margin-bottom:48px}}
 
-/* Hallmark · studied-DNA: centered mission hero followed by split system preview */
+/* Hallmark · studied-DNA: centered mission hero followed by split system view */
 main>.cta{min-height:560px;margin-top:32px;margin-bottom:96px;padding:78px 24px 54px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-right:0;border-left:0;border-radius:0;background:radial-gradient(circle at 50% 22%,rgba(16,201,151,.09),transparent 36%),linear-gradient(180deg,rgba(7,9,15,.34),rgba(7,9,15,.12))}
 .cta>p{margin:0 0 22px;padding:8px 13px;border:1px solid rgba(54,214,170,.34);border-radius:999px;background:rgba(16,201,151,.06);font-size:9px;letter-spacing:.14em}
 .cta h2{max-width:900px;margin:0;text-wrap:balance;font-size:clamp(52px,6vw,78px);line-height:.98;letter-spacing:-.065em}
@@ -271,7 +271,7 @@ main>.cta{min-height:560px;margin-top:32px;margin-bottom:96px;padding:78px 24px 
 .cta-proof-strip small{margin:0;color:#718094;font-size:9px;line-height:1.4}
 
 main>.flow-hero{padding:0 0 34px}
-.flow-hero .hero-copy:before{content:"PRIVACY SYSTEM PREVIEW";grid-column:1;grid-row:1;display:inline-flex;justify-self:start;margin-bottom:14px;padding:7px 11px;border:1px solid rgba(54,214,170,.3);border-radius:999px;color:var(--mint);background:rgba(16,201,151,.05);font:700 9px/1 var(--font-body);letter-spacing:.13em}
+.flow-hero .hero-copy:before{content:"PRIVACY OPERATING SYSTEM";grid-column:1;grid-row:1;display:inline-flex;justify-self:start;margin-bottom:14px;padding:7px 11px;border:1px solid rgba(54,214,170,.3);border-radius:999px;color:var(--mint);background:rgba(16,201,151,.05);font:700 9px/1 var(--font-body);letter-spacing:.13em}
 .flow-intro-copy{margin:0;color:#9ba7b7;font-size:14px;line-height:1.75}
 @media(min-width:981px){
   .flow-hero .hero-copy{display:grid;grid-template-columns:minmax(0,1fr) 360px;grid-template-rows:auto auto;gap:0 90px;align-items:end}

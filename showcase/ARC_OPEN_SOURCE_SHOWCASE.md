@@ -46,7 +46,7 @@ Arc is built for programmable financial applications where access boundaries, se
 
 ## Release boundary
 
-`3.2.0-preview.1` performs deterministic source-evidence replay. It does not claim full arbitrary EVM execution or formal verification. Forge output requires compilation, regression tests and review before deployment.
+`3.2.0` is the production release of the deterministic source-evidence replay system. It does not claim full arbitrary EVM execution or formal verification. Forge output requires compilation, regression tests and review before deployment.
 
 ## Short announcement
 
