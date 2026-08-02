@@ -23,3 +23,12 @@ test('web build contains canonical engine and proof modules', () => {
   assert.match(proof, /\.\.\/engine\/keccak\.js/);
   assert.doesNotMatch(proof, /\.\.\/\.\.\/analyzer\/src/);
 });
+
+
+test('release does not load the legacy global brand override', () => {
+  for (const file of ['dist/index.html', 'dist/app/index.html']) {
+    const html = fs.readFileSync(path.join(root, file), 'utf8');
+    assert.doesNotMatch(html, /brand-lock\.css/i, `${file} still loads brand-lock.css`);
+  }
+  assert.ok(!fs.existsSync(path.join(root, 'dist/brand-lock.css')), 'legacy brand-lock.css was copied into dist');
+});
