@@ -2110,3 +2110,22 @@ body.app-page .veil-rain{opacity:.68!important}
     overflow:visible!important;
   }
 }
+
+/* v3.2.2 MRI hotfix correction — keep the MRI compact, but scroll its trace cards inside the panel. */
+@media(min-width:1100px){
+  body.app-page .workspace[data-view="mri"]{
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
+    align-self:start;
+  }
+  body.app-page .workspace[data-view="mri"] .mri-list{
+    max-height:min(560px,66vh)!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    overscroll-behavior:contain;
+    scrollbar-gutter:stable;
+    padding-right:6px;
+  }
+}
