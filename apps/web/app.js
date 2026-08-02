@@ -1278,6 +1278,7 @@ function renderWorkspace() {
     bytecode: renderBytecodeTruth,
     prooftest: renderProofLab,
   };
+  elements.workspace.dataset.view = state.activeView;
   elements.workspace.innerHTML = (views[state.activeView] ?? renderTriage)();
 }
 

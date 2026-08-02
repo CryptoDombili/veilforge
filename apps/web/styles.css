@@ -2095,3 +2095,18 @@ body.app-page .veil-rain{opacity:.68!important}
 @media(min-width:1100px) and (max-width:1999px){
   body.app-page > .app-footer{width:min(1480px,calc(100% - 64px))!important}
 }
+
+
+/* v3.2.2 hotfix — Transaction MRI should size to its content instead of inheriting the tall generic workspace canvas. */
+@media(min-width:1100px){
+  body.app-page .workspace[data-view="mri"]{
+    height:auto!important;
+    min-height:0!important;
+    overflow:visible!important;
+    align-self:start;
+  }
+  body.app-page .workspace[data-view="mri"] .mri-list{
+    max-height:none!important;
+    overflow:visible!important;
+  }
+}

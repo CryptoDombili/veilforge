@@ -1,5 +1,5 @@
 ef3be3249e717698887469594461e239eb8c192743cedcc378a353349628d8c7  .gitignore
-fe64817bfe97c7834a44161cc24f5743ceb5c3d2fc2d18ce670e4582b070af4f  apps/web/app.js
+4dbfaf4601b8f757b2fab689745f56aaa965fbb4f7a873b659d79a0e7b1fb746  apps/web/app.js
 832f7077b68344ff68d1633677ca832abc5269f5cc163d1c7f30212ebb8499ba  apps/web/app/index.html
 69bed96d73e32ca7f7d02d0dacfbb90307320576562c4bc148f0e89f98eb95d5  apps/web/assets/veilforge-mark-v2.png
 ec42093dd7a668f8822711344b111f3910c5f0eeb3dbba12371413b715a78236  apps/web/brand-lock.css
@@ -22,7 +22,7 @@ c5be52cd2bd3d787a1dc89cce5be31844c67c1e3296058cc734942567ac0cc64  apps/web/lib/b
 61a94a78e485bb9694ebd3e3eb87790a6c5669b0ffdf44c6d6b4b392b70d750e  apps/web/lib/proof-lab.js
 ed3992a67ffe8299d21cb23043aad78496d919dfbc4f83f1832f821efba6286f  apps/web/lib/unzip.js
 17b5d7d0371cfa69e77100525e0ad0360ccd5b65cf146f0b5e83e7e6c96ac208  apps/web/lib/zip.js
-aebda0c0b7f942f3173149581a92b2dbc9c892081fea34b93755bfe541737b8e  apps/web/styles.css
+3c3922c18d255e1d0823bccda754206fb0338893e7681c207800c2b0e0ca3ded  apps/web/styles.css
 dbe50be8fa2e14e1bd4d9ca5b8a5c00c47b1d4401b2ba6b97f8d4da9dcbaeaf3  assets/v1.8/veilforge-v18-dashboard.png
 d2c3ab73fa7232739aef42bcba29726f1f01c34e4673b83aecb326cd9fea20fa  assets/v1.8/veilforge-v18-hero.png
 5d14177ec7f2ff04e324b47fc773effcef78e0cb5a051f3a4815c6e89a0b6127  assets/v3.2/veilforge-v32-hero.png
