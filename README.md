@@ -2,6 +2,49 @@
 
 VeilForge is an open-source, local-first privacy engineering workbench for Solidity projects on Arc.
 
+
+
+
+[Launch VeilForge](https://veilforge-web.vercel.app)
+
+
+
+
+## Arc Testnet Deployment
+
+**Registry Contract:**  
+[`0xf8b1D03931f2c11B642259d9aB19cfA3351C0Bbc`](https://testnet.arcscan.app/address/0xf8b1D03931f2c11B642259d9aB19cfA3351C0Bbc)
+
+
+
+
+
+**First On-chain Report:**  
+[View transaction on ArcScan](https://testnet.arcscan.app/tx/0x3270d43b814d4083aee3f97377495ff2866d58a43b792d41c5b04beb8d693d4d)
+
+
+
+
+
+**Live App Transaction:**  
+[View live app publication on ArcScan](https://testnet.arcscan.app/tx/0xa3585453549b60d71819df0e4c32d341687e7cf50836cce26e7add7830f5e1a1)
+
+
+
+
+
+## Demo Video
+
+[Watch the VeilForge demo](https://youtu.be/URAFCuYUQy0)
+
+
+
+
+
+
+
+
+
 <p align="center">
   <img src="./assets/v3.2/veilforge-v32-hero.png" alt="VeilForge v3.2 Privacy Operating System" width="100%" />
 </p>
