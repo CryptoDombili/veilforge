@@ -178,6 +178,11 @@ function scanTopLevelSegments(masked, start, end) {
   return segments.filter((segment) => masked.slice(segment.start, segment.end).trim());
 }
 
+function segmentContentOffset(source, segment) {
+  const segmentSource = source.slice(segment.start, segment.end);
+  return segment.start + (segmentSource.length - segmentSource.trimStart().length);
+}
+
 function canonicalParameterType(parameter) {
   let value = compactWhitespace(parameter)
     .replace(/\b(indexed|memory|calldata|storage)\b/g, '')
@@ -261,7 +266,7 @@ function parseFunction(file, contract, source, masked, segment) {
     parameters,
     parameterTypes,
     returns,
-    startLine: lineNumberAtOffset(source, segment.start),
+    startLine: lineNumberAtOffset(source, segmentContentOffset(source, segment)),
     endLine: lineNumberAtOffset(source, segment.end - 1),
     source: original.trim(),
     body: segment.kind === 'block' ? source.slice(segment.headerEnd + 1, segment.end - 1) : '',
@@ -278,7 +283,7 @@ function parseEvent(file, contract, source, segment) {
     contractKind: contract.kind,
     name: match[1],
     parameters: splitTopLevel(match[2]),
-    startLine: lineNumberAtOffset(source, segment.start),
+    startLine: lineNumberAtOffset(source, segmentContentOffset(source, segment)),
     endLine: lineNumberAtOffset(source, segment.end - 1),
     source: original,
   };
@@ -310,7 +315,7 @@ function parseStateVariable(file, contract, source, segment) {
     name,
     visibility,
     typeName,
-    startLine: lineNumberAtOffset(source, segment.start),
+    startLine: lineNumberAtOffset(source, segmentContentOffset(source, segment)),
     endLine: lineNumberAtOffset(source, segment.end - 1),
     source: original,
   };

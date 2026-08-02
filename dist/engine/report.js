@@ -16,6 +16,15 @@ import { parseSolidityFile } from './parser.js';
 import { parseFailureFinding, runBuiltInRules, runCustomRules } from './rules.js';
 import { recommendPolicies } from './policies.js';
 import { buildExposureChains } from './exposure.js';
+import { buildPrivacyGenome } from './genome.js';
+import { buildPrivacyIntent } from './intent.js';
+import { buildAttackLab, buildTransactionMRI } from './attack.js';
+import { buildForgePlan } from './forge.js';
+import { buildPrivacyPassport } from './passport.js';
+import { buildPrivacyDeploymentTwin } from './twin.js';
+import { buildArcDeployRehearsal, buildDeploymentLineage } from './deployment.js';
+import { buildPrivacyGate, buildRulePackSelection } from './gate.js';
+import { buildSourceGuidedFuzzPlan } from './fuzz.js';
 
 function emptySummary() {
   return { critical: 0, high: 0, medium: 0, low: 0, total: 0 };
@@ -167,6 +176,27 @@ export function scanProject(inputFiles, options = {}) {
   const contracts = contractReports(parsedFiles, orderedFindings, policies);
   const sourceHash = canonicalSourceHash(files);
   const status = worstStatus([statusFor(score, summary), ...contracts.map((contract) => contract.status)]);
+  const projectId = stableFingerprint(['veilforge-project', sourceHash]);
+  const privacyGenome = buildPrivacyGenome(parsedFiles, orderedFindings, policies);
+  const privacyIntent = buildPrivacyIntent(privacyGenome, orderedFindings, options.declaredIntent);
+  const attackLab = buildAttackLab(orderedFindings, chains, privacyGenome);
+  const transactionMRI = buildTransactionMRI(orderedFindings, chains);
+  const forgePlan = buildForgePlan(files, orderedFindings);
+  const privacyTwin = buildPrivacyDeploymentTwin({
+    projectId, sourceHash, contracts, policies, findings: orderedFindings, genome: privacyGenome, intent: privacyIntent,
+  });
+  const deploymentLineage = buildDeploymentLineage({
+    projectId, sourceHash, status, intent: privacyIntent, attackLab, forgePlan,
+  });
+  const privacyPassport = buildPrivacyPassport({
+    projectId, sourceHash, score, status, genome: privacyGenome, intent: privacyIntent, attackLab, forgePlan, lineage: deploymentLineage,
+  });
+  const rulePacks = buildRulePackSelection(files);
+  const privacyGate = buildPrivacyGate({ summary, intent: privacyIntent, attackLab, lineage: deploymentLineage, rulePacks });
+  const fuzzPlan = buildSourceGuidedFuzzPlan({ sourceHash, policies, findings: orderedFindings });
+  const arcDeployRehearsal = buildArcDeployRehearsal({
+    sourceHash, reportStatus: status, summary, intent: privacyIntent, lineage: deploymentLineage, privacyTwin,
+  });
 
   const withoutHash = {
     schemaVersion: SCHEMA_VERSION,
@@ -176,8 +206,9 @@ export function scanProject(inputFiles, options = {}) {
       aiApi: false,
       canonicalHash: 'keccak-256',
       ruleCount: 12 + (options.customRules?.length ?? 0),
+      capabilities: ['privacy-genome', 'intent-compiler', 'evidence-replay', 'transaction-mri', 'forge-candidates', 'privacy-passport', 'privacy-deployment-twin', 'deployment-lineage', 'living-passport', 'arc-deploy-rehearsal', 'privacy-ci-gate', 'rule-packs', 'source-guided-fuzz-plan'],
     },
-    projectId: stableFingerprint(['veilforge-project', sourceHash]),
+    projectId,
     score,
     grade: gradeFor(score),
     status,
@@ -188,6 +219,18 @@ export function scanProject(inputFiles, options = {}) {
     policies,
     exposureChains: chains,
     treatmentPlan: treatmentPlanFor(orderedFindings),
+    privacyGenome,
+    privacyIntent,
+    attackLab,
+    transactionMRI,
+    forgePlan,
+    privacyTwin,
+    deploymentLineage,
+    privacyPassport,
+    arcDeployRehearsal,
+    privacyGate,
+    rulePacks,
+    fuzzPlan,
     files: files.map((file) => ({ path: file.path, lines: file.content.split('\n').length })),
     sourceHash,
     disclaimer: DISCLAIMER,

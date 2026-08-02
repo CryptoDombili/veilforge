@@ -4,11 +4,19 @@ function escapeTable(value) {
 
 export function formatTextReport(report) {
   const lines = [
-    `VeilForge Privacy Mission Control v${report.scannerVersion}`,
+    `VeilForge Privacy Operating System v${report.scannerVersion}`,
     `Status: ${report.status}`,
     `Readiness: ${report.score}/100 (${report.grade})`,
     `Findings: ${report.summary.critical} critical, ${report.summary.high} high, ${report.summary.medium} medium, ${report.summary.low} low`,
     `Contracts: ${report.contracts.length}`,
+    `Sensitive assets: ${report.privacyGenome?.metrics?.sensitiveAssets ?? 0}`,
+    `Intent compliance: ${report.privacyIntent?.complianceScore ?? 0}/100`,
+    `Attack defense: ${report.attackLab?.summary?.defenseScore ?? 0}/100`,
+    `Privacy passport: ${report.privacyPassport?.status ?? 'Unavailable'}`,
+    `Privacy twin: ${report.privacyTwin?.readinessScore ?? 0}/100 (${report.privacyTwin?.status ?? 'Unavailable'})`,
+    `Deployment lineage: ${report.deploymentLineage?.state ?? 'Unavailable'}`,
+    `Privacy CI gate: ${report.privacyGate?.status ?? 'Unavailable'}`,
+    `Fuzz plan: ${report.fuzzPlan?.summary?.vectors ?? 0} generated vectors (not executed)`,
     `Source hash: ${report.sourceHash}`,
     `Report hash: ${report.reportHash}`,
     '',
@@ -61,10 +69,18 @@ export function formatMarkdownReport(report, projectName = 'Solidity project') {
     `| Critical findings | ${report.summary.critical} |\n` +
     `| High findings | ${report.summary.high} |\n` +
     `| Exposure chains | ${report.exposureChains.length} |\n` +
-    `| Sensitive selectors | ${report.exposure.sensitiveSelectors} |\n\n` +
+    `| Sensitive selectors | ${report.exposure.sensitiveSelectors} |\n` +
+    `| Sensitive assets | ${report.privacyGenome?.metrics?.sensitiveAssets ?? 0} |\n` +
+    `| Intent compliance | ${report.privacyIntent?.complianceScore ?? 0}/100 |\n` +
+    `| Attack defense | ${report.attackLab?.summary?.defenseScore ?? 0}/100 |\n` +
+    `| Privacy blast radius | ${report.privacyGenome?.metrics?.blastRadius ?? 0}/10 |\n` +
+    `| Privacy Passport | ${report.privacyPassport?.status ?? 'Unavailable'} |\n` +
+    `| Privacy Deployment Twin | ${report.privacyTwin?.readinessScore ?? 0}/100 |\n` +
+    `| Privacy CI Gate | ${report.privacyGate?.status ?? 'Unavailable'} |\n` +
+    `| Fuzz vectors generated | ${report.fuzzPlan?.summary?.vectors ?? 0} |\n\n` +
     `- **Source hash:** \`${report.sourceHash}\`\n` +
     `- **Report hash:** \`${report.reportHash}\`\n\n` +
     `## Contract triage\n\n| Contract | Score | Status | Critical | High |\n|---|---:|---|---:|---:|\n${contractRows}\n\n` +
-    `## Treatment Plan 2.0\n\n${findingSections}\n\n` +
+    `## Treatment Plan 3.2\n\n${findingSections}\n\n` +
     `## Arc policy manifest preview\n\n| Selector | Signature | Policy | Reason |\n|---|---|---|---|\n${policyRows}\n`;
 }
