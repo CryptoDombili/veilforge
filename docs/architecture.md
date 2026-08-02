@@ -14,7 +14,7 @@
 
 `packages/analyzer/src/` contains the parser, rule playbook, policy generator, exposure-chain engine, report builder, comparison logic, canonical serialization and Keccak-256 implementation.
 
-VeilForge v3.2 adds:
+The v3.2 preview adds:
 
 - `genome.js` — sensitive assets, actors, Disclosure Matrix and semantic graph
 - `intent.js` — inferred Privacy Intent YAML and compliance violations
@@ -52,13 +52,13 @@ Finding fingerprints and graph IDs are stable hashes of source-derived identity 
 
 ## Parser boundary
 
-The release uses an inspectable lexical Solidity parser rather than a dependency-heavy compiler package. It recognizes contracts, interfaces, libraries, state variables, events, functions, visibility, modifiers, parameters, returns and balanced blocks.
+The preview uses an inspectable lexical Solidity parser rather than a dependency-heavy compiler package. It recognizes contracts, interfaces, libraries, state variables, events, functions, visibility, modifiers, parameters, returns and balanced blocks.
 
 It is not `solc`. Unsupported or malformed source creates `VF000` and blocks trustworthy analysis.
 
 ## Shadow Evidence boundary
 
-Shadow Evidence Lab maps deterministic source findings into adversarial campaigns. It does not execute arbitrary bytecode or claim full EVM equivalence in this release.
+Shadow Evidence Lab maps deterministic source findings into adversarial campaigns. It does not execute arbitrary bytecode or claim full EVM equivalence in this preview.
 
 ## Forge boundary
 

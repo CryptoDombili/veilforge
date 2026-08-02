@@ -1,4 +1,4 @@
-# VeilForge v3.2 Release Demo Flow
+# VeilForge v3.2 Preview Demo Flow
 
 1. Open the Privacy Operating System and point out local processing and no AI API.
 2. Run the vulnerable payroll demo.

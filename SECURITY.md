@@ -2,7 +2,7 @@
 
 ## Supported release
 
-The actively validated release is `3.2.0`.
+The actively validated release is `3.2.0-preview.1`.
 
 ## Reporting
 
@@ -12,7 +12,7 @@ Report suspected vulnerabilities through a private GitHub security advisory when
 
 VeilForge is an engineering aid, not a formal audit, compiler, symbolic prover or full EVM emulator.
 
-- Shadow Evidence Lab reproduces deterministic source-evidence paths in this release.
+- Shadow Evidence Lab reproduces deterministic source-evidence paths in this preview.
 - Forge Mode produces candidate edits, not deploy-ready assurances.
 - Candidate projects must be compiled, tested and reviewed.
 - Privacy Passports are bound to source hashes; deployment lineage is not yet verified.

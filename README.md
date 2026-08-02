@@ -2,7 +2,7 @@
 
 VeilForge is an open-source, local-first privacy engineering workbench for Solidity projects on Arc.
 
-VeilForge v3.2 expands the original deterministic scanner into a source-bound privacy operating system:
+The v3.2 preview expands the original deterministic scanner into a source-bound privacy operating system:
 
 ### Ascension update
 
@@ -29,9 +29,9 @@ Source code is processed locally. VeilForge does not send Solidity source to an 
 
 ## Current release
 
-**Version:** `3.2.0`
+**Version:** `3.2.0-preview.1`
 
-This is a production release of the deterministic source-analysis platform, not a claim of full compiler-grade or arbitrary EVM analysis. The current Shadow Lab performs deterministic source-evidence replay. Forge Mode produces candidate edits that still require compilation, tests and engineering review before deployment.
+This is a real working preview, not a claim of full compiler-grade or arbitrary EVM analysis. The current Shadow Lab performs deterministic source-evidence replay. Forge Mode produces candidate edits that still require compilation, tests and engineering review before deployment.
 
 ## Core flow
 
@@ -158,7 +158,7 @@ Every deterministic finding can become a source-evidence campaign containing:
 - confidence
 - estimated privacy blast radius
 
-The current release does **not** claim full EVM emulation. That boundary is explicit in the UI and report.
+The current preview does **not** claim full EVM emulation. That boundary is explicit in the UI and report.
 
 ## Forge Mode
 

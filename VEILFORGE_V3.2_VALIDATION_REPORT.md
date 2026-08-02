@@ -1,6 +1,6 @@
-# VeilForge v3.2 Final Validation Report
+# VeilForge v3.2 Preview 1 Validation Report
 
-**Release:** `3.2.0` — Privacy Operating System
+**Release:** `3.2.0-preview.1` — Privacy Operating System
 
 **Final readiness audit:** 2026-08-02
 
@@ -34,4 +34,4 @@
 
 ## Security boundary
 
-Shadow Lab is a deterministic source-evidence replay system in this release, not a full arbitrary EVM emulator. Forge output is a candidate bundle and must be compiled, tested and reviewed before deployment.
+Shadow Lab is a deterministic source-evidence replay system in this preview, not a full arbitrary EVM emulator. Forge output is a candidate bundle and must be compiled, tested and reviewed before deployment.
