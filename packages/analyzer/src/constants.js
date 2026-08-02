@@ -1,4 +1,4 @@
-export const SCANNER_VERSION = '3.2.1';
+export const SCANNER_VERSION = '3.2.2';
 export const SCHEMA_VERSION = '3.2';
 
 export const DISCLAIMER =

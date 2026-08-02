@@ -1,2 +1,2 @@
-export const REGISTRY_ADDRESS = '0xf8b1D03931f2c11B642259d9aB19cfA3351C0Bbc';
-export const BUILD_VERSION = '3.2.1';
+export const REGISTRY_ADDRESS = '0x88B4055eaB061CEa9BdfefF524f65ff461B5401d';
+export const BUILD_VERSION = '3.2.2';

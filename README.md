@@ -8,15 +8,17 @@
 
 ## Arc Testnet Deployment
 
-**Registry Contract:**  
-[`0xf8b1D03931f2c11B642259d9aB19cfA3351C0Bbc`](https://testnet.arcscan.app/address/0xf8b1D03931f2c11B642259d9aB19cfA3351C0Bbc)
+**Publisher-Scoped Registry V2:**  
+[`0x88B4055eaB061CEa9BdfefF524f65ff461B5401d`](https://testnet.arcscan.app/address/0x88B4055eaB061CEa9BdfefF524f65ff461B5401d)
+
+Registry V2 scopes every latest report by `projectId + publisher`, preventing one wallet from overwriting another wallet's record.
 
 
 
 
 
-**VeilForge v3.2 On-chain Proof:**  
-[View successful v3.2 proof transaction on ArcScan](https://testnet.arcscan.app/tx/0x0ed6bd5ae027de5e2558f0bf186a177a8f8ccd3ca878c7c4779d07b298fd3fc9)
+**VeilForge v3.2.1 On-chain Proof (legacy registry):**  
+[View successful v3.2.1 proof transaction on ArcScan](https://testnet.arcscan.app/tx/0x0ed6bd5ae027de5e2558f0bf186a177a8f8ccd3ca878c7c4779d07b298fd3fc9)
 
 
 
@@ -90,7 +92,7 @@ Source code is processed locally. VeilForge does not send Solidity source to an 
 
 ## Current release
 
-**Version:** `3.2.1`
+**Version:** `3.2.2`
 
 This is a production release of the deterministic source-analysis platform, not a claim of full compiler-grade or arbitrary EVM analysis. The current Shadow Lab performs deterministic source-evidence replay. Forge Mode produces candidate edits that still require compilation, tests and engineering review before deployment.
 

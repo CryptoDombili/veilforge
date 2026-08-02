@@ -44,7 +44,7 @@
     },
     "scannerVersion": {
       "type": "string",
-      "const": "3.2.1"
+      "const": "3.2.2"
     },
     "engine": {
       "type": "object",

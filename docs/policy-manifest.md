@@ -13,7 +13,7 @@ VeilForge generates selector-level privacy recommendations using the same parsed
 ```json
 {
   "schemaVersion": "1.0",
-  "generator": "VeilForge 3.2.1",
+  "generator": "VeilForge 3.2.2",
   "sourceHash": "0x...",
   "reportHash": "0x...",
   "projectStatus": "Review Required",

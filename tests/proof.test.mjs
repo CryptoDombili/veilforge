@@ -105,7 +105,7 @@ test('wallet publication simulates, sends, and confirms one transaction', async 
   };
   const response = await publishReport({
     provider,
-    registryAddress: '0xf8b1D03931f2c11B642259d9aB19cfA3351C0Bbc',
+    registryAddress: '0x88B4055eaB061CEa9BdfefF524f65ff461B5401d',
     report,
     reportURI: '',
     pollIntervalMs: 0,
@@ -115,7 +115,7 @@ test('wallet publication simulates, sends, and confirms one transaction', async 
   assert.ok(calls.find((call) => call.method === 'eth_call'));
   const transaction = calls.find((call) => call.method === 'eth_sendTransaction');
   assert.ok(transaction);
-  assert.equal(transaction.params[0].to, '0xf8b1D03931f2c11B642259d9aB19cfA3351C0Bbc');
+  assert.equal(transaction.params[0].to, '0x88B4055eaB061CEa9BdfefF524f65ff461B5401d');
   assert.equal(transaction.params[0].data.slice(0, 10), PUBLISH_REPORT_SELECTOR);
 });
 
@@ -134,7 +134,7 @@ test('wallet publication rejects a mined transaction with failed status', async 
   await assert.rejects(
     publishReport({
       provider,
-      registryAddress: '0xf8b1D03931f2c11B642259d9aB19cfA3351C0Bbc',
+      registryAddress: '0x88B4055eaB061CEa9BdfefF524f65ff461B5401d',
       report,
       pollIntervalMs: 0,
     }),
@@ -151,4 +151,15 @@ test('reference registry source exposes the same publication ABI order', () => {
   assert.match(source, /function\s+publishReport\s*\(\s*bytes32\s+projectId,\s*bytes32\s+sourceHash,\s*bytes32\s+reportHash,\s*uint16\s+score,\s*string\s+calldata\s+scannerVersion,\s*string\s+calldata\s+reportURI\s*\)/s);
   assert.match(source, /error\s+EmptyScannerVersion\s*\(\s*\)/);
   assert.equal(PUBLISH_REPORT_SELECTOR, '0x6133eb3a');
+});
+
+test('Registry V2 scopes latest reports by project and publisher', () => {
+  const source = fs.readFileSync('contracts/VeilForgeReportRegistry.sol', 'utf8');
+  assert.match(source, /REGISTRY_VERSION\s*=\s*"2\.0\.0"/);
+  assert.match(source, /PUBLISHER_SCOPED\s*=\s*true/);
+  assert.match(source, /mapping\s*\(\s*bytes32\s+projectId\s*=>\s*mapping\s*\(\s*address\s+publisher\s*=>\s*ReportRecord\s+latestReport\s*\)\s*\)\s*private\s+reports/s);
+  assert.match(source, /reports\s*\[\s*projectId\s*\]\s*\[\s*msg\.sender\s*\]\s*=\s*ReportRecord/s);
+  assert.match(source, /getLatestReport\s*\(\s*bytes32\s+projectId,\s*address\s+publisher\s*\)/s);
+  assert.match(source, /getMyLatestReport\s*\(\s*bytes32\s+projectId\s*\)/s);
+  assert.match(source, /hasReport\s*\(\s*bytes32\s+projectId,\s*address\s+publisher\s*\)/s);
 });

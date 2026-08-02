@@ -3,8 +3,13 @@ pragma solidity ^0.8.24;
 
 /// @title VeilForgeReportRegistry
 /// @notice Anchors deterministic VeilForge report metadata without storing source code.
-/// @dev The deployed Arc Testnet registry expects scannerVersion before reportURI.
+/// @dev Reports are publisher-scoped: the same projectId can be used by multiple
+///      publishers without allowing one publisher to overwrite another's record.
+///      The publication ABI keeps scannerVersion before reportURI.
 contract VeilForgeReportRegistry {
+    string public constant REGISTRY_VERSION = "2.0.0";
+    bool public constant PUBLISHER_SCOPED = true;
+
     struct ReportRecord {
         bytes32 sourceHash;
         bytes32 reportHash;
@@ -15,7 +20,7 @@ contract VeilForgeReportRegistry {
         uint64 publishedAt;
     }
 
-    mapping(bytes32 projectId => ReportRecord latestReport) private reports;
+    mapping(bytes32 projectId => mapping(address publisher => ReportRecord latestReport)) private reports;
 
     event ReportPublished(
         bytes32 indexed projectId,
@@ -43,7 +48,7 @@ contract VeilForgeReportRegistry {
         if (score > 100) revert InvalidScore(score);
         if (bytes(scannerVersion).length == 0) revert EmptyScannerVersion();
 
-        reports[projectId] = ReportRecord({
+        reports[projectId][msg.sender] = ReportRecord({
             sourceHash: sourceHash,
             reportHash: reportHash,
             score: score,
@@ -56,7 +61,18 @@ contract VeilForgeReportRegistry {
         emit ReportPublished(projectId, sourceHash, reportHash, score, scannerVersion, reportURI, msg.sender);
     }
 
-    function getLatestReport(bytes32 projectId) external view returns (ReportRecord memory) {
-        return reports[projectId];
+    /// @notice Returns a publisher's latest report for a project namespace.
+    function getLatestReport(bytes32 projectId, address publisher) external view returns (ReportRecord memory) {
+        return reports[projectId][publisher];
+    }
+
+    /// @notice Convenience getter for the caller's own project namespace.
+    function getMyLatestReport(bytes32 projectId) external view returns (ReportRecord memory) {
+        return reports[projectId][msg.sender];
+    }
+
+    /// @notice Returns whether a publisher has written a report for the project.
+    function hasReport(bytes32 projectId, address publisher) external view returns (bool) {
+        return reports[projectId][publisher].publishedAt != 0;
     }
 }

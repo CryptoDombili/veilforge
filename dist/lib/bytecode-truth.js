@@ -134,7 +134,7 @@ export function verifyBytecodeTruth({ artifact, targetBytecode, implementationBy
   const matchedAddress = matched === target ? targetAddress : matched ? implementationAddress : null;
   const status = matched?.exact ? 'ARC VERIFIED' : matched?.structural ? 'STRUCTURAL MATCH' : 'MISMATCH';
   return {
-    version: '3.2.1-bytecode-truth',
+    version: '3.2.2-bytecode-truth',
     status,
     verified: Boolean(matched),
     exact: Boolean(matched?.exact),

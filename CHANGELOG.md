@@ -1,5 +1,14 @@
 # Changelog
 
+## v3.2.2 — Publisher-scoped Registry V2
+
+- Deployed and configured Registry V2 on Arc Testnet.
+- Scoped latest reports by `projectId + publisher`.
+- Prevented one wallet from overwriting another wallet's record for the same project ID.
+- Preserved the existing `publishReport` ABI and selector for browser compatibility.
+- Added `getLatestReport(projectId, publisher)`, `getMyLatestReport(projectId)`, and `hasReport(projectId, publisher)`.
+- Updated release documentation, tests, build metadata, and the default registry address.
+
 ## v3.2.1 — Bytecode Truth network binding
 
 - Added a mandatory `eth_chainId` check before any Bytecode Truth runtime query.

@@ -633,7 +633,7 @@ try {
   if ((interactions?.chains ?? 0) < 1) failures.push('exposure chain view');
   if ((interactions?.twinSurfaces ?? 0) < 1 || !String(interactions?.twinRoadmap).includes('not a live APS deployment')) failures.push('privacy deployment twin view');
   if ((interactions?.treatments ?? 0) < 1) failures.push('treatment plan view');
-  if (interactions?.proofCards !== 2 || interactions?.rehearsalChecks !== 6 || interactions?.registry !== '0xf8b1D03931f2c11B642259d9aB19cfA3351C0Bbc') failures.push('proof center and deployment rehearsal view');
+  if (interactions?.proofCards !== 2 || interactions?.rehearsalChecks !== 6 || interactions?.registry !== '0x88B4055eaB061CEa9BdfefF524f65ff461B5401d') failures.push('proof center and deployment rehearsal view');
   if ((interactions?.historyCards ?? 0) < 1) failures.push('local history view');
   if ((interactions?.releaseChecks ?? 0) < 8 || interactions?.releaseDecision !== 'BLOCKED' || interactions?.releaseStages !== 4) failures.push(`release gate view (${interactions?.releaseChecks}/${interactions?.releaseDecision}/${interactions?.releaseStages})`);
   if (interactions?.bytecodeStatus !== 'ARC VERIFIED' || interactions?.bytecodeArtifactName !== 'Payroll.json' || interactions?.bytecodeHashes !== 2) failures.push(`bytecode truth view (${interactions?.bytecodeStatus}/${interactions?.bytecodeArtifactName}/${interactions?.bytecodeHashes})`);
