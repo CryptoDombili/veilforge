@@ -2074,3 +2074,24 @@ body.app-page .veil-rain{opacity:.68!important}
     flex:0 0 auto;
   }
 }
+
+/* v3.2.6 — align the product footer with the top navigation frame. */
+@media(min-width:701px){
+  body.app-page > .app-footer{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+    align-items:center;
+    column-gap:24px;
+    width:min(1680px,calc(100% - 48px))!important;
+    max-width:none!important;
+    margin:0 auto!important;
+    padding-right:0!important;
+    padding-left:0!important;
+  }
+  body.app-page > .app-footer > .brand{justify-self:start}
+  body.app-page > .app-footer > p{justify-self:center;text-align:center}
+  body.app-page > .app-footer > span{justify-self:end;text-align:right}
+}
+@media(min-width:1100px) and (max-width:1999px){
+  body.app-page > .app-footer{width:min(1480px,calc(100% - 64px))!important}
+}
