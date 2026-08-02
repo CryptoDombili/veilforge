@@ -3,9 +3,10 @@
 VeilForge is an open-source, local-first privacy engineering workbench for Solidity projects on Arc.
 
 
+Live
 
 
-[Launch VeilForge](https://veilforge-web.vercel.app)
+[Launch VeilForge](https://veilforge.dev/)
 
 
 
