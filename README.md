@@ -2,6 +2,14 @@
 
 VeilForge is an open-source, local-first privacy engineering workbench for Solidity projects on Arc.
 
+<p align="center">
+  <img src="./assets/v3.2/veilforge-v32-hero.png" alt="VeilForge v3.2 Privacy Operating System" width="100%" />
+</p>
+
+<p align="center">
+  <strong>Local, deterministic privacy engineering for Solidity projects targeting Arc.</strong>
+</p>
+
 VeilForge v3.2 expands the original deterministic scanner into a source-bound privacy operating system:
 
 ### Ascension update
