@@ -102,7 +102,7 @@ footer>.brand small{
 }
 
 .veil-rain{
-  opacity:.72;
+  opacity:.62;
   mix-blend-mode:normal;
   -webkit-mask-image:none;
   mask-image:none;
@@ -183,134 +183,9 @@ footer>.brand b{
     height:48px!important;
     flex-basis:48px!important;
   }
-  .veil-rain{opacity:.64}
-}
-
-/* Hold a stable five-finger air gap below the navigation on desktop. */
-@media(min-width:981px){
-  main>.flow-hero{padding-top:calc(clamp(58px,7vh,88px) + 15px)!important}
+  .veil-rain{opacity:.52}
 }
 
 @media(prefers-reduced-motion:reduce){
   body:after{animation:none}
 }
-
-
-/* v3.2.2 definitive visual correction: exact v1.8 mark + muted CTA system */
-.landing-topbar .logo,
-footer .logo{
-  position:relative!important;
-  width:47px!important;
-  height:47px!important;
-  flex:0 0 47px!important;
-  display:grid!important;
-  place-items:center!important;
-  overflow:visible!important;
-  font-family:Inter,Segoe UI,system-ui,sans-serif!important;
-  font-size:21px!important;
-  font-weight:400!important;
-  line-height:1!important;
-  color:#75f7c8!important;
-  border:1px solid rgba(117,247,200,.35)!important;
-  border-radius:14px!important;
-  background:linear-gradient(145deg,rgba(117,247,200,.12),rgba(155,140,255,.12))!important;
-  box-shadow:0 0 26px rgba(117,247,200,.07)!important;
-}
-.landing-topbar .logo:before,.landing-topbar .logo:after,
-footer .logo:before,footer .logo:after{content:none!important;display:none!important}
-.landing-topbar .brand,footer .brand{gap:12px!important}
-.landing-topbar .brand b,footer .brand b{
-  font-family:Manrope,Inter,Segoe UI,system-ui,sans-serif!important;
-  font-size:18px!important;
-  font-weight:800!important;
-  letter-spacing:-.02em!important;
-}
-.landing-topbar .brand small,footer .brand small{
-  font-family:Manrope,Inter,Segoe UI,system-ui,sans-serif!important;
-  font-size:8.5px!important;
-  font-weight:700!important;
-  letter-spacing:.12em!important;
-  color:#65d9b3!important;
-}
-.landing-topbar .launch.small,
-.flow-hero .hero-actions .launch,
-.cta>.launch{
-  border:1px solid rgba(108,213,178,.28)!important;
-  background:linear-gradient(135deg,#4fc49f,#69d3b0)!important;
-  color:#07130f!important;
-  box-shadow:0 7px 18px rgba(44,170,132,.11)!important;
-  filter:saturate(.88)!important;
-}
-.landing-topbar .launch.small:hover,
-.flow-hero .hero-actions .launch:hover,
-.cta>.launch:hover{
-  background:linear-gradient(135deg,#59caa6,#73d8b8)!important;
-  box-shadow:0 9px 22px rgba(44,170,132,.15)!important;
-  filter:saturate(.92)!important;
-}
-.landing-topbar .ghost-link,
-.flow-hero .hero-actions .secondary{
-  border-color:rgba(220,230,242,.11)!important;
-  background:rgba(8,13,20,.46)!important;
-  color:#d6dde7!important;
-  box-shadow:none!important;
-}
-.landing-topbar .ghost-link:hover,
-.flow-hero .hero-actions .secondary:hover{
-  border-color:rgba(220,230,242,.18)!important;
-  background:rgba(12,18,27,.58)!important;
-}
-.landing-version{
-  border-color:rgba(117,247,200,.2)!important;
-  background:rgba(117,247,200,.035)!important;
-  color:#b5ead8!important;
-}
-@media(max-width:620px){
-  .landing-topbar .logo{width:42px!important;height:42px!important;flex-basis:42px!important;font-size:19px!important}
-  .landing-topbar .brand b{font-size:16px!important}
-}
-
-
-/* v3.2.3 EXACT VISUAL LOCK — screenshot-matched logo and primary CTA color. */
-:root{
-  --vf-cta-start:#10c997;
-  --vf-cta-mid:#36d6aa;
-  --vf-cta-end:#72e5c5;
-  --vf-cta-text:#03130d;
-  --vf-cta-border:rgba(114,229,197,.52);
-  --vf-cta-shadow:0 10px 26px rgba(16,201,151,.16),inset 0 1px rgba(255,255,255,.34);
-}
-/* Blue glass tile + mint diamond on every landing/footer logo. */
-.landing-topbar .logo,footer .logo{
-  position:relative!important;width:54px!important;height:54px!important;flex:0 0 54px!important;
-  display:grid!important;place-items:center!important;overflow:hidden!important;font-size:0!important;color:transparent!important;
-  border:1px solid rgba(91,196,255,.30)!important;border-radius:13px!important;
-  background:linear-gradient(145deg,rgba(25,45,76,.98),rgba(15,29,54,.98))!important;
-  box-shadow:inset 0 1px rgba(255,255,255,.05),0 10px 26px rgba(0,0,0,.22)!important;
-}
-.landing-topbar .logo:before,footer .logo:before,.landing-topbar .logo:after,footer .logo:after{
-  content:""!important;position:absolute!important;display:block!important;left:50%!important;top:50%!important;
-  transform:translate(-50%,-50%) rotate(45deg)!important;
-}
-.landing-topbar .logo:before,footer .logo:before{
-  width:17px!important;height:17px!important;border:2px solid #63f1cf!important;background:rgba(35,167,150,.08)!important;
-  box-shadow:0 0 14px rgba(99,241,207,.36)!important;
-}
-.landing-topbar .logo:after,footer .logo:after{
-  width:6px!important;height:6px!important;background:#baf9e8!important;box-shadow:0 0 8px rgba(186,249,232,.5)!important;
-}
-.landing-topbar .brand b,footer .brand b{font-family:Manrope,Inter,system-ui,sans-serif!important;font-size:20px!important;font-weight:800!important;letter-spacing:-.035em!important;color:#d4dae5!important}
-.landing-topbar .brand small,footer .brand small{font-family:Manrope,Inter,system-ui,sans-serif!important;font-size:8px!important;font-weight:700!important;letter-spacing:.14em!important;color:#61d4b5!important}
-/* Only primary CTA buttons use the exact screenshot mint. Secondary controls stay dark. */
-.landing-topbar .launch.small,.flow-hero .hero-actions .launch,.cta>.launch{
-  border:1px solid var(--vf-cta-border)!important;background:linear-gradient(120deg,var(--vf-cta-start),var(--vf-cta-mid) 52%,var(--vf-cta-end))!important;
-  color:var(--vf-cta-text)!important;box-shadow:var(--vf-cta-shadow)!important;filter:none!important;font-weight:800!important;
-}
-.landing-topbar .launch.small:hover,.flow-hero .hero-actions .launch:hover,.cta>.launch:hover{
-  transform:translateY(-1px)!important;background:linear-gradient(120deg,#20d7a5,#4ae1b7 52%,#8beacf)!important;
-  box-shadow:0 14px 32px rgba(32,215,165,.24),inset 0 1px rgba(255,255,255,.42)!important;
-}
-.landing-topbar .ghost-link,.flow-hero .hero-actions .secondary{
-  border:1px solid rgba(220,230,242,.11)!important;background:rgba(8,13,20,.46)!important;color:#d6dde7!important;box-shadow:none!important;filter:none!important;
-}
-@media(max-width:620px){.landing-topbar .logo{width:48px!important;height:48px!important;flex-basis:48px!important}.landing-topbar .brand b{font-size:17px!important}}
