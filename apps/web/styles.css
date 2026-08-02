@@ -2129,3 +2129,22 @@ body.app-page .veil-rain{opacity:.68!important}
     padding-right:6px;
   }
 }
+
+/* v3.2.2 hotfix — Treatment fits its content while the remediation queue scrolls inside the panel. */
+@media(min-width:1100px){
+  body.app-page .workspace[data-view="treatment"]{
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
+    align-self:start;
+  }
+  body.app-page .workspace[data-view="treatment"] .task-list{
+    max-height:min(540px,64vh)!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    overscroll-behavior:contain;
+    scrollbar-gutter:stable;
+    padding-right:6px;
+  }
+}
