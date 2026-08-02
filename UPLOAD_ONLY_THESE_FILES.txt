@@ -1,4 +1,0 @@
-Upload every file and folder in this directory to the ROOT of the existing GitHub repository.
-Do not upload the outer folder itself.
-This patch contains fewer than 100 files and neutralizes the obsolete brand-lock override.
-Commit message: Fix VeilForge logo and button styling
