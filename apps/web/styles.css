@@ -2149,3 +2149,50 @@ body.app-page > .topbar .versionPill{
   body.app-page > .topbar .logo{width:42px!important;height:42px!important;flex-basis:42px!important;font-size:19px!important}
   body.app-page > .topbar .brand b{font-size:16px!important}
 }
+
+
+/* v3.2.3 EXACT VISUAL LOCK — screenshot-matched logo and primary CTA color. */
+:root{
+  --vf-cta-start:#10c997;
+  --vf-cta-mid:#36d6aa;
+  --vf-cta-end:#72e5c5;
+  --vf-cta-text:#03130d;
+  --vf-cta-border:rgba(114,229,197,.52);
+  --vf-cta-shadow:0 10px 26px rgba(16,201,151,.16),inset 0 1px rgba(255,255,255,.34);
+}
+body.app-page > .topbar .logo,body.app-page > .app-footer .logo{
+  position:relative!important;width:54px!important;height:54px!important;flex:0 0 54px!important;
+  display:grid!important;place-items:center!important;overflow:hidden!important;font-size:0!important;color:transparent!important;
+  border:1px solid rgba(91,196,255,.30)!important;border-radius:13px!important;
+  background:linear-gradient(145deg,rgba(25,45,76,.98),rgba(15,29,54,.98))!important;
+  box-shadow:inset 0 1px rgba(255,255,255,.05),0 10px 26px rgba(0,0,0,.22)!important;
+}
+body.app-page > .topbar .logo:before,body.app-page > .app-footer .logo:before,body.app-page > .topbar .logo:after,body.app-page > .app-footer .logo:after{
+  content:""!important;position:absolute!important;display:block!important;left:50%!important;top:50%!important;
+  transform:translate(-50%,-50%) rotate(45deg)!important;
+}
+body.app-page > .topbar .logo:before,body.app-page > .app-footer .logo:before{
+  width:17px!important;height:17px!important;border:2px solid #63f1cf!important;background:rgba(35,167,150,.08)!important;
+  box-shadow:0 0 14px rgba(99,241,207,.36)!important;
+}
+body.app-page > .topbar .logo:after,body.app-page > .app-footer .logo:after{
+  width:6px!important;height:6px!important;background:#baf9e8!important;box-shadow:0 0 8px rgba(186,249,232,.5)!important;
+}
+body.app-page > .topbar .brand b,body.app-page > .app-footer .brand b{font-family:Manrope,Inter,system-ui,sans-serif!important;font-size:20px!important;font-weight:800!important;letter-spacing:-.035em!important;color:#d4dae5!important}
+body.app-page > .topbar .brand small,body.app-page > .app-footer .brand small{font-family:Manrope,Inter,system-ui,sans-serif!important;font-size:8px!important;font-weight:700!important;letter-spacing:.14em!important;color:#61d4b5!important}
+/* Primary actions only: exactly the mint shown in the supplied screenshots. */
+body.app-page .primary,body.app-page .scan-button.primary,body.app-page button.primary,body.app-page button.scan-button{
+  border:1px solid var(--vf-cta-border)!important;background:linear-gradient(120deg,var(--vf-cta-start),var(--vf-cta-mid) 52%,var(--vf-cta-end))!important;
+  color:var(--vf-cta-text)!important;box-shadow:var(--vf-cta-shadow)!important;filter:none!important;font-weight:800!important;
+}
+body.app-page .primary:hover,body.app-page .scan-button.primary:hover{
+  transform:translateY(-1px)!important;background:linear-gradient(120deg,#20d7a5,#4ae1b7 52%,#8beacf)!important;
+  box-shadow:0 14px 32px rgba(32,215,165,.24),inset 0 1px rgba(255,255,255,.42)!important;
+}
+/* Secondary and navigation controls remain dark exactly like the screenshot. */
+body.app-page .secondary,body.app-page > .topbar .ghost,body.app-page > .topbar .wallet-button,
+body.app-page .soft-button,body.app-page .file-button,body.app-page .nav-button,body.app-page .action-button,body.app-page .text-button{
+  border-color:rgba(220,230,242,.11)!important;background:rgba(8,13,20,.46)!important;color:#d6dde7!important;box-shadow:none!important;filter:none!important;
+}
+body.app-page .nav-button.active{border-color:rgba(117,247,200,.28)!important;background:rgba(117,247,200,.08)!important;color:#bff8e8!important}
+@media(max-width:620px){body.app-page > .topbar .logo{width:48px!important;height:48px!important;flex-basis:48px!important}.topbar .brand b{font-size:17px!important}}

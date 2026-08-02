@@ -4,106 +4,84 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#07090f" />
-  <meta name="description" content="VeilForge v1.8 — deterministic local-first privacy engineering for Solidity projects on Arc." />
-  <title>VeilForge v1.8 — Privacy Mission Control</title>
+  <meta name="description" content="VeilForge v3.2 Ascension — a local-first privacy deployment operating system for Solidity projects on Arc." />
+  <title>VeilForge v3.2 Ascension — Privacy Deployment OS</title>
   <link rel="icon" type="image/png" href="./favicon.png" />
-  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./landing.css?v=32.48" />
+  <link rel="stylesheet" href="./landing-fixes.css?v=32.9" />
+  <script>
+    if (location.hash === '#scanner') location.replace('./app/index.html#scanner');
+  </script>
 </head>
-<body data-ready="false">
+<body>
+  <canvas class="veil-rain" aria-hidden="true"></canvas>
   <div class="starfield starfield-a" aria-hidden="true"></div>
   <div class="starfield starfield-b" aria-hidden="true"></div>
   <div class="starfield starfield-c" aria-hidden="true"></div>
   <div class="ambient a1"></div><div class="ambient a2"></div>
 
-  <nav class="topbar">
-    <a class="brand" href="#top"><span class="logo">◈</span><span><b>VeilForge</b><small class="arcPowered">BUILT FOR ARC</small></span></a>
-    <div class="navlinks"><a href="#scanner">Scanner</a><a href="#architecture">Architecture</a><a href="https://docs.arc.network/arc/concepts/opt-in-privacy" target="_blank" rel="noreferrer">Arc APS docs</a></div>
-    <div class="navActions"><a class="ghost" href="https://github.com/CryptoDombili/veilforge" target="_blank" rel="noreferrer">Open source</a><button id="header-wallet-button" class="wallet-button" type="button" aria-haspopup="dialog" aria-expanded="false"><span class="wallet-dot"></span><span id="header-wallet-label">Connect wallet</span></button><span class="versionPill">v1.8</span></div>
+  <nav class="landing-topbar">
+    <a class="brand" href="#top"><span class="logo">◈</span><span><b>VeilForge</b><small>BUILT FOR ARC</small></span></a>
+    <div class="navlinks"><a href="./app/index.html#scanner">Privacy OS</a><a href="#workflow">Architecture</a><a href="https://docs.arc.network/arc/concepts/opt-in-privacy" target="_blank" rel="noreferrer">Arc APS docs</a></div>
+    <div class="landing-nav-actions"><a class="ghost-link" href="https://github.com/CryptoDombili/veilforge" target="_blank" rel="noreferrer">Open source</a><a class="launch small" href="./app/index.html#scanner">Launch App <span>↗</span></a><span class="landing-version">v3.2</span></div>
   </nav>
 
-  <div id="wallet-backdrop" class="wallet-backdrop" hidden></div>
-  <section id="wallet-menu" class="wallet-menu" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="wallet-menu-title" hidden>
-    <header><div><small>CONNECTED WALLET</small><b id="wallet-menu-title">Arc Testnet session</b></div><button id="wallet-menu-close" class="wallet-menu-close" type="button" aria-label="Close wallet session">×</button></header>
-    <div class="wallet-identity"><span class="wallet-identity-dot"></span><div><b id="wallet-menu-address">—</b><small id="wallet-menu-network">Arc Network Testnet</small></div></div>
-    <div class="wallet-menu-actions"><button id="wallet-copy-address" type="button">Copy address</button><a id="wallet-view-explorer" href="#" target="_blank" rel="noreferrer">View on ArcScan ↗</a><button id="wallet-disconnect" class="danger" type="button">Disconnect wallet</button></div>
-    <p>Disconnecting clears VeilForge’s local wallet session. To revoke site permissions completely, remove VeilForge from your wallet’s connected sites.</p>
-  </section>
-
-  <div id="wallet-picker-backdrop" class="wallet-picker-backdrop" hidden></div>
-  <section id="wallet-picker" class="wallet-picker" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="wallet-picker-title" hidden>
-    <header><div><small>EVM WALLETS</small><b id="wallet-picker-title">Choose a browser wallet</b></div><button id="wallet-picker-close" class="wallet-menu-close" type="button" aria-label="Close wallet selector">×</button></header>
-    <div id="wallet-picker-list" class="wallet-picker-list"></div>
-    <p>VeilForge supports installed EIP-1193 wallets discovered through EIP-6963, with legacy injected-wallet fallback.</p>
-  </section>
-
   <main id="top">
-    <section class="hero">
-      <div>
-        <p class="chip"><i></i> VeilForge v1.8 · Privacy Mission Control →</p>
-        <h1>Find what your Solidity contract will <em>leak</em> before privacy becomes production.</h1>
-        <p class="lead">Deterministic privacy findings, APS-aligned exposure policies and a verifiable report fingerprint — all without sending source code to an AI API.</p>
-        <div class="actions"><button id="heroDemo" class="primary">Scan the payroll demo</button><button id="heroUpload" class="secondary">Upload .sol files</button></div>
-        <div class="trust"><span>✓ No AI API</span><span>✓ Runs locally</span><span>✓ Exact source lines</span><span>✓ Arc-ready proof model</span></div>
+    <section class="hero flow-hero">
+      <div class="hero-copy">
+        <a class="release-badge" href="#product"><i></i> VeilForge v3.2 · ASCENSION UPDATE <span>→</span></a>
+        <h1>Understand, attack<br />and harden your<br />Solidity project <em>before<br />deployment.</em></h1>
+        <p class="flow-intro-copy">Privacy Deployment Twin, attack replay cinema, deterministic Forge, Arc rehearsal and a Living Passport — without sending source code to an AI API.</p>
+        <div class="actions hero-actions"><a class="launch" href="./app/index.html#scanner">Launch the Privacy OS</a><a class="secondary hero-upload" href="./app/index.html#scanner">Upload Solidity project</a></div>
+        <div class="trust hero-trust"><span>✓ No AI API</span><span>✓ Runs locally</span><span>✓ Privacy Genome</span><span>✓ Source-bound Passport</span></div>
       </div>
-      <div class="heroVisual">
-        <div class="grid"></div><div class="scanline"></div>
-        <div class="rings"><div><div><span>⌾</span></div></div></div>
-        <article class="signal s1"><b>VF008</b><span>public mapping</span><em>critical</em></article>
-        <article class="signal s2"><b>POLICY</b><span>getSalary()</span><em>restricted</em></article>
-        <article class="signal s3"><b>ARC PROOF</b><span>deterministic</span><em>ready</em></article>
+
+      <div class="visual ascension-visual" role="img" aria-label="VeilForge v3.2 privacy operating system showing Genome, Shadow and Passport states">
+        <div class="grid"></div><div class="scanline"></div><div class="orbit one"></div><div class="orbit two"></div>
+        <div class="core"><span>◎</span><small>VEILFORGE</small></div>
+        <article class="system-tag genome-tag"><b>GENOME</b><span>17 sensitive assets</span><em>MAPPED</em></article>
+        <article class="system-tag shadow-tag"><b>SHADOW</b><span>attack evidence replay</span><em>LOCAL</em></article>
+        <article class="system-tag passport-tag"><b>PASSPORT</b><span>source-bound proof</span><em>VERIFIABLE</em></article>
       </div>
     </section>
 
-    <section class="features" id="architecture">
-      <article><span>⌘</span><div><b>Deterministic scan</b><p>Explainable rules, exact lines and stable output.</p></div></article>
-      <article><span>◉</span><div><b>Project triage</b><p>Contract readiness, blockers and multi-file analysis.</p></div></article>
-      <article><span>◎</span><div><b>Proof, not source</b><p>Anchor hashes and metadata, never confidential code.</p></div></article>
-      <article><span>⚡</span><div><b>Treatment Plan 2.0</b><p>P0–P3 remediation priorities and safer Solidity patterns.</p></div></article>
+    <section class="product" id="product">
+      <header class="section-head"><p>VEILFORGE V3.2 ASCENSION SYSTEM</p><h2>One mission.<br />Sixteen control surfaces.</h2><span>Move from Project X-Ray and Privacy Genome through Shadow simulation, Forge, Bytecode Truth, Arc rehearsal and release proof without losing the audit trail.</span></header>
+      <div class="cards">
+        <article class="card wide">
+          <div><small>01 · MODEL</small><h3>Build a Privacy Deployment Twin.</h3><p>Trace sensitive state across storage, getters, events and return paths with exact source evidence.</p><ul><li>Multi-contract project intake</li><li>Privacy Genome and intent checks</li><li>Deterministic severity-ranked findings</li></ul></div>
+          <div class="code"><header><i></i><i></i><i></i><span>Payroll.sol</span></header><pre><b>12</b> mapping(address =&gt; uint256) <mark>public salaries</mark>;
+<b>13</b>
+<b>14</b> function getSalary(address user)
+<b>15</b>   external view returns (uint256) {
+<b>16</b>   return <mark>salaries[user]</mark>;
+<b>17</b> }</pre><label>VF008 · PUBLIC STATE EXPOSURE</label></div>
+        </article>
+        <article class="card"><span class="icon">⌘</span><small>02 · ATTACK</small><h3>Replay the failure before production.</h3><p>Use Shadow Lab, MRI and Attack Replay Cinema to understand how an exposure becomes an exploit path.</p></article>
+        <article class="card" id="proof"><span class="icon violet">◇</span><small>03 · PROVE</small><h3>Ship a Living Passport.</h3><p>Rehearse Arc readiness and export reproducible hashes, policies and release evidence — never private source.</p></article>
+      </div>
     </section>
 
-    <section class="scanner" id="scanner">
-      <header class="sectionHead"><div><small>LIVE LOCAL WORKSPACE</small><h2>Privacy readiness, from source to proof.</h2></div><div class="trustBadge"><i></i> LOCAL · DETERMINISTIC</div></header>
+    <section class="workflow" id="workflow">
+      <header><p>DETERMINISTIC BY DESIGN</p><h2>Privacy readiness<br />your team can reproduce.</h2></header>
+      <ol>
+        <li><span>01</span><div><b>Load and map your mission</b><p>Drop Solidity source or a complete project folder; Project X-Ray scopes the contracts deterministically.</p></div></li>
+        <li><span>02</span><div><b>Model and replay</b><p>Map Privacy Genome exposure, declare intent and replay source-backed attack paths.</p></div></li>
+        <li><span>03</span><div><b>Forge, verify and rehearse</b><p>Apply treatments, compare outcomes, verify Bytecode Truth and check the Arc release gate.</p></div></li>
+        <li><span>04</span><div><b>Generate release proof</b><p>Export a Living Passport, reproducible hashes and an Arc-oriented deployment fingerprint.</p></div></li>
+      </ol>
+    </section>
 
-      <div class="missionShell">
-        <aside class="intakePanel panel">
-          <header><div><small>PROJECT INTAKE</small><b>Load a Solidity mission</b></div><span>LOCAL</span></header>
-          <div class="intakeBody">
-            <label class="fieldLabel" for="project-name">Project label</label>
-            <input id="project-name" class="text-input" value="Arc Payroll Mission" autocomplete="off" />
-            <div class="demoGrid">
-              <button class="soft-button" data-demo="vulnerable">Vulnerable demo</button>
-              <button class="soft-button" data-demo="hardened">Hardened demo</button>
-              <button class="soft-button wide" data-demo="multi">Multi-file demo</button>
-            </div>
-            <div id="drop-zone" class="drop-zone" tabindex="0" role="button" aria-label="Drop Solidity files">
-              <strong>Drop .sol files here</strong><span>or select files / a project folder</span>
-              <div class="drop-actions"><label class="file-button">Select files<input id="file-input" type="file" accept=".sol" multiple hidden /></label><label class="file-button">Open folder<input id="folder-input" type="file" accept=".sol" webkitdirectory directory multiple hidden /></label></div>
-            </div>
-            <div class="file-heading"><span>MISSION FILES</span><button id="clear-files" class="text-button">Clear</button></div>
-            <div id="file-list" class="file-list"></div>
-            <button id="scan-button" class="scan-button primary"><span class="scan-pulse"></span>Run deterministic scan</button>
-            <p id="scan-message" class="scan-message">Loading local demo…</p>
-          </div>
-        </aside>
-
-        <section class="missionArea">
-          <div id="mission-summary" class="mission-summary panel"></div>
-          <nav class="mission-nav panel" aria-label="Mission Control sections">
-            <button class="nav-button active" data-view="triage">Triage</button>
-            <button class="nav-button" data-view="chains">Exposure chains</button>
-            <button class="nav-button" data-view="treatment">Treatment plan</button>
-            <button class="nav-button" data-view="compare">Comparison</button>
-            <button class="nav-button" data-view="proof">Proof center</button>
-            <button class="nav-button" data-view="exports">Exports</button>
-            <button class="nav-button" data-view="history">History</button>
-          </nav>
-          <section id="workspace" class="workspace panel" aria-live="polite"></section>
-        </section>
-      </div>
-      <p class="disclaimer">Pre-APS readiness analysis based on Arc's published design. Independent community tool; not an official Circle product or formal audit.</p>
+    <section class="cta">
+      <p>YOUR SOURCE STAYS YOURS</p>
+      <h2>Know the privacy outcome<br />before deployment.</h2>
+      <a class="launch" href="./app/index.html#scanner">Launch VeilForge <span>→</span></a>
+      <small>Run the deterministic engine locally. Share evidence, not source code.</small>
+      <div class="cta-proof-strip"><span><b>Local engine</b><small>Source stays in your browser</small></span><span><b>Exact findings</b><small>Rules resolve to source lines</small></span><span><b>Arc rehearsal</b><small>Verify release readiness</small></span></div>
     </section>
   </main>
-  <footer><div class="brand"><span class="logo">◈</span><span><b>VeilForge</b><small class="arcPowered">BUILT FOR ARC</small></span></div><p>Prepare today for private Solidity tomorrow.</p><span>Arc Testnet · Chain 5042002</span></footer>
-  <script type="module" src="./app.js"></script>
+
+  <footer><a class="brand" href="#top"><span class="logo">◈</span><span><b>VeilForge</b><small>BUILT FOR ARC</small></span></a><p>Model. Attack. Forge. Verify.</p><div><a href="https://github.com/CryptoDombili/veilforge" target="_blank" rel="noreferrer">GitHub ↗</a><a href="./app/index.html#scanner">Launch App</a></div></footer>
+  <script src="./landing-rain.js?v=32.9" defer></script>
 </body>
 </html>
