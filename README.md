@@ -17,8 +17,8 @@ Registry V2 scopes every latest report by `projectId + publisher`, preventing on
 
 
 
-**VeilForge v3.2.1 On-chain Proof (legacy registry):**  
-[View successful v3.2.1 proof transaction on ArcScan](https://testnet.arcscan.app/tx/0x0ed6bd5ae027de5e2558f0bf186a177a8f8ccd3ca878c7c4779d07b298fd3fc9)
+**VeilForge v3.2.2 Registry V2 On-chain Proof:**  
+[View successful v3.2.2 Registry V2 proof transaction on ArcScan](https://testnet.arcscan.app/tx/0x1570613b97c1dc190529b4b0b79a600afb30cfb76148b2c778771c074d3ebe47)
 
 
 
