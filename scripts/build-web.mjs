@@ -10,6 +10,7 @@ const web = path.join(root, 'apps', 'web');
 function copyDirectory(source, destination) {
   fs.mkdirSync(destination, { recursive: true });
   for (const entry of fs.readdirSync(source, { withFileTypes: true })) {
+    if (entry.name === 'brand-lock.css') continue;
     const from = path.join(source, entry.name);
     const to = path.join(destination, entry.name);
     if (entry.isDirectory()) copyDirectory(from, to);
@@ -38,12 +39,12 @@ const configuredAddress = process.env.VITE_REGISTRY_ADDRESS || process.env.VEILF
 if (!validAddress(configuredAddress)) throw new Error('Registry address is invalid. Set VITE_REGISTRY_ADDRESS to a valid EVM address.');
 fs.writeFileSync(
   path.join(dist, 'config.js'),
-  `export const REGISTRY_ADDRESS = '${configuredAddress}';\nexport const BUILD_VERSION = '3.2.0';\n`,
+  `export const REGISTRY_ADDRESS = '${configuredAddress}';\nexport const BUILD_VERSION = '3.2.1';\n`,
 );
 
 const manifest = {
   name: 'VeilForge Privacy Operating System',
-  version: '3.2.0',
+  version: '3.2.1',
   output: 'static-es-modules',
   registryAddress: configuredAddress,
   generatedFiles: [],

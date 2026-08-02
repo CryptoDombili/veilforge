@@ -90,7 +90,7 @@ Source code is processed locally. VeilForge does not send Solidity source to an 
 
 ## Current release
 
-**Version:** `3.2.0`
+**Version:** `3.2.1`
 
 This is a production release of the deterministic source-analysis platform, not a claim of full compiler-grade or arbitrary EVM analysis. The current Shadow Lab performs deterministic source-evidence replay. Forge Mode produces candidate edits that still require compilation, tests and engineering review before deployment.
 

@@ -2,7 +2,7 @@
 
 ## Supported release
 
-The actively validated release is `3.2.0`.
+The actively validated release is `3.2.1`.
 
 ## Reporting
 

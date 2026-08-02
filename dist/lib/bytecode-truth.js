@@ -1,5 +1,33 @@
 export const EIP1967_IMPLEMENTATION_SLOT = '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc';
 
+export function normalizeRpcChainId(value) {
+  if (typeof value === 'bigint') return value >= 0n ? `0x${value.toString(16)}` : null;
+  if (typeof value === 'number') {
+    if (!Number.isSafeInteger(value) || value < 0) return null;
+    return `0x${BigInt(value).toString(16)}`;
+  }
+  if (typeof value !== 'string') return null;
+  const raw = value.trim().toLowerCase();
+  if (!raw) return null;
+  try {
+    const parsed = raw.startsWith('0x') ? BigInt(raw) : BigInt(raw);
+    return parsed >= 0n ? `0x${parsed.toString(16)}` : null;
+  } catch {
+    return null;
+  }
+}
+
+export function assertRpcChainId(actualValue, expectedValue, networkLabel = 'the expected network') {
+  const actual = normalizeRpcChainId(actualValue);
+  const expected = normalizeRpcChainId(expectedValue);
+  if (!actual) throw new Error('RPC returned an invalid chain ID. Verification stopped before reading bytecode.');
+  if (!expected) throw new Error('VeilForge is configured with an invalid expected chain ID.');
+  if (actual !== expected) {
+    throw new Error(`RPC network mismatch: expected ${networkLabel} (${expected}), received ${actual}. Verification stopped before reading bytecode.`);
+  }
+  return actual;
+}
+
 export function normalizeBytecode(value) {
   const raw = typeof value === 'string' ? value : value?.object;
   if (!raw) return '0x';
@@ -106,7 +134,7 @@ export function verifyBytecodeTruth({ artifact, targetBytecode, implementationBy
   const matchedAddress = matched === target ? targetAddress : matched ? implementationAddress : null;
   const status = matched?.exact ? 'ARC VERIFIED' : matched?.structural ? 'STRUCTURAL MATCH' : 'MISMATCH';
   return {
-    version: '3.2-bytecode-truth',
+    version: '3.2.1-bytecode-truth',
     status,
     verified: Boolean(matched),
     exact: Boolean(matched?.exact),

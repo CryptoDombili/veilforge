@@ -84,7 +84,7 @@ test('policy manifest is derived from the canonical report', () => {
 test('v3.2 privacy operating system layers are deterministic and source-bound', () => {
   const report = scanProject([source(vulnerablePath)]);
   assert.equal(report.schemaVersion, '3.2');
-  assert.equal(report.scannerVersion, '3.2.0');
+  assert.equal(report.scannerVersion, '3.2.1');
   assert.ok(report.privacyGenome.metrics.sensitiveAssets > 0);
   assert.ok(report.privacyGenome.graph.nodes.length > 0);
   assert.ok(report.privacyGenome.graph.edges.length > 0);

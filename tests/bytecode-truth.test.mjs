@@ -2,7 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { keccakHex } from '../packages/analyzer/src/index.js';
 import {
+  assertRpcChainId,
   implementationAddressFromStorage,
+  normalizeRpcChainId,
   parseBytecodeArtifact,
   stripSolidityMetadata,
   verifyBytecodeTruth,
@@ -68,4 +70,21 @@ test('Bytecode Truth rejects a mismatched Arc runtime', () => {
   const result = verifyBytecodeTruth({ artifact, targetBytecode: '0x6002600055', targetAddress: '0x5555555555555555555555555555555555555555', hash: keccakHex });
   assert.equal(result.status, 'MISMATCH');
   assert.equal(result.verified, false);
+});
+
+
+test('Bytecode Truth normalizes JSON-RPC chain IDs', () => {
+  assert.equal(normalizeRpcChainId('0x4CEF52'), '0x4cef52');
+  assert.equal(normalizeRpcChainId('5042002'), '0x4cef52');
+  assert.equal(normalizeRpcChainId(5_042_002), '0x4cef52');
+  assert.equal(normalizeRpcChainId('not-a-chain'), null);
+});
+
+test('Bytecode Truth blocks non-Arc RPCs before bytecode verification', () => {
+  assert.equal(assertRpcChainId('0x4CEF52', '0x4cef52', 'Arc Testnet chain 5042002'), '0x4cef52');
+  assert.throws(
+    () => assertRpcChainId('0x1', '0x4cef52', 'Arc Testnet chain 5042002'),
+    /RPC network mismatch: expected Arc Testnet chain 5042002 \(0x4cef52\), received 0x1\. Verification stopped before reading bytecode\./,
+  );
+  assert.throws(() => assertRpcChainId('invalid', '0x4cef52'), /invalid chain ID/);
 });

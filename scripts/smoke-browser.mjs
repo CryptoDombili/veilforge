@@ -464,9 +464,11 @@ try {
       await new Promise((resolve) => setTimeout(resolve, 30));
       document.querySelector('#bytecode-target-address').value = '0x1111111111111111111111111111111111111111';
       const originalFetch = globalThis.fetch;
+      const bytecodeRpcMethods = [];
       globalThis.fetch = async (_url, options) => {
         const request = JSON.parse(options.body);
-        const result = request.method === 'eth_getCode' ? '0x6001600055' : '0x' + '0'.repeat(64);
+        bytecodeRpcMethods.push(request.method);
+        const result = request.method === 'eth_chainId' ? '0x4CEF52' : request.method === 'eth_getCode' ? '0x6001600055' : '0x' + '0'.repeat(64);
         return { ok: true, json: async () => ({ jsonrpc: '2.0', id: request.id, result }) };
       };
       document.querySelector('[data-action="verify-bytecode"]')?.click();
@@ -478,6 +480,20 @@ try {
       const bytecodeStatus = document.querySelector('.bytecode-hero>div:first-child>strong')?.textContent || '';
       const bytecodeArtifactName = document.querySelector('.artifact-card header strong')?.textContent || '';
       const bytecodeHashes = document.querySelectorAll('.truth-hash-row').length;
+      const bytecodeRejectMethods = [];
+      globalThis.fetch = async (_url, options) => {
+        const request = JSON.parse(options.body);
+        bytecodeRejectMethods.push(request.method);
+        return { ok: true, json: async () => ({ jsonrpc: '2.0', id: request.id, result: request.method === 'eth_chainId' ? '0x1' : '0x6001600055' }) };
+      };
+      document.querySelector('[data-action="verify-bytecode"]')?.click();
+      for (let attempt = 0; attempt < 40; attempt += 1) {
+        if (document.querySelector('.bytecode-error')?.textContent.includes('RPC network mismatch')) break;
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      globalThis.fetch = originalFetch;
+      const bytecodeRejectedStatus = document.querySelector('.bytecode-hero>div:first-child>strong')?.textContent || '';
+      const bytecodeRejectError = document.querySelector('.bytecode-error')?.textContent || '';
 
       openView('prooftest');
       const proofReceiptTransfer = new DataTransfer();
@@ -578,6 +594,10 @@ try {
         bytecodeStatus,
         bytecodeArtifactName,
         bytecodeHashes,
+        bytecodeRpcMethods,
+        bytecodeRejectedStatus,
+        bytecodeRejectMethods,
+        bytecodeRejectError,
         proofLabDecision,
         proofLabChecks,
         proofLabReceipt,
@@ -617,6 +637,8 @@ try {
   if ((interactions?.historyCards ?? 0) < 1) failures.push('local history view');
   if ((interactions?.releaseChecks ?? 0) < 8 || interactions?.releaseDecision !== 'BLOCKED' || interactions?.releaseStages !== 4) failures.push(`release gate view (${interactions?.releaseChecks}/${interactions?.releaseDecision}/${interactions?.releaseStages})`);
   if (interactions?.bytecodeStatus !== 'ARC VERIFIED' || interactions?.bytecodeArtifactName !== 'Payroll.json' || interactions?.bytecodeHashes !== 2) failures.push(`bytecode truth view (${interactions?.bytecodeStatus}/${interactions?.bytecodeArtifactName}/${interactions?.bytecodeHashes})`);
+  if (interactions?.bytecodeRpcMethods?.[0] !== 'eth_chainId' || !interactions?.bytecodeRpcMethods?.includes('eth_getCode')) failures.push(`Bytecode Truth RPC order (${JSON.stringify(interactions?.bytecodeRpcMethods)})`);
+  if (interactions?.bytecodeRejectedStatus !== 'UNVERIFIED' || JSON.stringify(interactions?.bytecodeRejectMethods) !== JSON.stringify(['eth_chainId']) || !String(interactions?.bytecodeRejectError).includes('RPC network mismatch')) failures.push(`Bytecode Truth non-Arc rejection (${interactions?.bytecodeRejectedStatus}/${JSON.stringify(interactions?.bytecodeRejectMethods)}/${interactions?.bytecodeRejectError})`);
   if (interactions?.proofLabDecision !== 'BLOCKED' || interactions?.proofLabChecks !== 10 || interactions?.proofLabReceipt !== 'veilforge-proof-results.json') failures.push(`proof lab view (${interactions?.proofLabDecision}/${interactions?.proofLabChecks}/${interactions?.proofLabReceipt})`);
   if (interactions?.gateChecks !== 6 || (interactions?.rulePacks ?? 0) < 2 || Number(interactions?.fuzzVectors) < 1) failures.push('privacy gate, rule packs, and fuzz plan views');
   if (interactions?.exportCards !== 6 || interactions?.downloads?.length !== 11) failures.push(`export actions (${JSON.stringify(interactions?.downloads)})`);

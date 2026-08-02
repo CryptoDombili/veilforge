@@ -49,7 +49,7 @@ test('CLI emits a canonical JSON report for a multi-file directory', () => {
   const result = runNode(['packages/analyzer/cli.mjs', 'scan', 'examples/multi-contract', '--format', 'json']);
   assert.equal(result.status, 0, result.stderr);
   const report = JSON.parse(result.stdout);
-  assert.equal(report.scannerVersion, '3.2.0');
+  assert.equal(report.scannerVersion, '3.2.1');
   assert.equal(report.files.length, 2);
   assert.match(report.reportHash, /^0x[0-9a-f]{64}$/);
 });
@@ -61,7 +61,7 @@ test('CLI writes policy output to the requested file', () => {
     const result = runNode(['packages/analyzer/cli.mjs', 'scan', 'examples/vulnerable-payroll', '--format', 'policy', '--output', output]);
     assert.equal(result.status, 0, result.stderr);
     const manifest = JSON.parse(fs.readFileSync(output, 'utf8'));
-    assert.equal(manifest.generator, 'VeilForge 3.2.0');
+    assert.equal(manifest.generator, 'VeilForge 3.2.1');
     assert.ok(manifest.policies.length > 0);
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });

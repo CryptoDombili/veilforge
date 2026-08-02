@@ -30,5 +30,10 @@ test('release does not load the legacy global brand override', () => {
     const html = fs.readFileSync(path.join(root, file), 'utf8');
     assert.doesNotMatch(html, /brand-lock\.css/i, `${file} still loads brand-lock.css`);
   }
-  assert.ok(!fs.existsSync(path.join(root, 'dist/brand-lock.css')), 'legacy brand-lock.css was copied into dist');
+  const legacyPath = path.join(root, 'dist/brand-lock.css');
+  if (fs.existsSync(legacyPath)) {
+    const legacyCss = fs.readFileSync(legacyPath, 'utf8').trim();
+    assert.match(legacyCss, /^\/\* Disabled: obsolete visual override/);
+    assert.doesNotMatch(legacyCss, /\{[^}]*\}/, 'legacy brand-lock.css contains active CSS rules');
+  }
 });

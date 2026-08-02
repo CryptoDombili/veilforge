@@ -1,15 +1,16 @@
 # VeilForge v3.2 Final Validation Report
 
-**Release:** `3.2.0` — Privacy Operating System
+**Release:** `3.2.1` — Privacy Operating System security patch
 
 **Final readiness audit:** 2026-08-02
 
 ## Final readiness result
 
-- 47/47 deterministic engine, CLI, ZIP/project import, Forge, Proof Lab, Bytecode Truth, Arc wallet and schema tests passed
+- 50/50 deterministic engine, CLI, ZIP/project import, Forge, Proof Lab, Bytecode Truth, Arc wallet and schema tests passed
 - 81 JavaScript modules and 6 JSON files passed static validation
-- production web build completed with 50 generated files
+- production web build completed with 51 generated files
 - Chromium runtime smoke passed with 21 rendered vulnerable-demo findings
+- Bytecode Truth confirmed `eth_chainId` before runtime reads and rejected a non-Arc RPC without calling `eth_getCode`
 - all 16 Privacy OS modules opened successfully with no runtime error or horizontal overflow
 - vulnerable, hardened, multi-contract and cleared-project states produced the expected report, radar and readiness outcomes
 - landing-page anchors and every Launch App route resolved correctly
@@ -26,6 +27,7 @@
 - Forge candidate determinism and input immutability tests
 - CLI and ZIP tests
 - Arc proof encoding and wallet-flow tests
+- Arc Testnet RPC identity binding and non-Arc rejection tests
 - report and policy schema validation
 - static JavaScript and JSON validation
 - real Chromium desktop runtime smoke

@@ -1,5 +1,12 @@
 # Changelog
 
+## v3.2.1 — Bytecode Truth network binding
+
+- Added a mandatory `eth_chainId` check before any Bytecode Truth runtime query.
+- Rejects non-Arc RPC endpoints before `eth_getCode` or ERC-1967 storage reads.
+- Records the verified Arc Testnet chain ID in exported bytecode attestations.
+- Added unit and Chromium smoke coverage for RPC validation order.
+
 ## v3.2 Ascension update
 
 - Added the source-bound Privacy Deployment Twin and explicit APS roadmap labeling.

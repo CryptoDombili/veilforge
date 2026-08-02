@@ -19,6 +19,7 @@ import { looksLikeSolidity, readZipEntries } from './lib/unzip.js';
 import { analyzeProject } from './lib/project-xray.js';
 import {
   EIP1967_IMPLEMENTATION_SLOT,
+  assertRpcChainId,
   implementationAddressFromStorage,
   parseBytecodeArtifact,
   verifyBytecodeTruth,
@@ -1179,7 +1180,7 @@ function renderBytecodeTruth() {
     <section class="bytecode-hero truth-${bytecodeTruthStatusClass(status)}"><div><span>CHAIN IDENTITY</span><strong>${esc(status)}</strong><p>${status === 'ARC VERIFIED' ? 'Full deployed runtime bytecode matches the compiler artifact byte-for-byte.' : status === 'STRUCTURAL MATCH' ? 'Executable runtime matches after Solidity metadata and immutable slots are normalized.' : status === 'MISMATCH' ? 'The Arc runtime does not match this compiler artifact.' : 'Load an artifact and verify a deployed Arc contract.'}</p></div><div class="truth-seal"><b>${result?.verified ? '✓' : '?'}</b><span>${result?.matchedKind ? esc(result.matchedKind) : 'awaiting proof'}</span></div></section>
     <div class="bytecode-layout">
       ${artifactCard}
-      <section class="bytecode-card verify-card"><header><span>LIVE ARC QUERY</span><strong>Runtime bytecode</strong></header><div class="bytecode-fields"><label><span>Contract address</span><input id="bytecode-target-address" class="text-input" placeholder="0x…" value="${esc(result?.targetAddress || state.deploymentEvidence.contractAddress || '')}"></label><label><span>RPC endpoint</span><input id="bytecode-rpc-url" class="text-input" value="${esc(result?.rpcUrl || ARC_TESTNET.rpcUrls[0])}"></label></div><button class="action-button primary verify-bytecode-button" data-action="verify-bytecode" ${artifact ? '' : 'disabled'}>Verify on Arc</button><small>Reads eth_getCode and the ERC-1967 implementation slot. No wallet or transaction is required.</small></section>
+      <section class="bytecode-card verify-card"><header><span>LIVE ARC QUERY</span><strong>Runtime bytecode</strong></header><div class="bytecode-fields"><label><span>Contract address</span><input id="bytecode-target-address" class="text-input" placeholder="0x…" value="${esc(result?.targetAddress || state.deploymentEvidence.contractAddress || '')}"></label><label><span>RPC endpoint</span><input id="bytecode-rpc-url" class="text-input" value="${esc(result?.rpcUrl || ARC_TESTNET.rpcUrls[0])}"></label></div><button class="action-button primary verify-bytecode-button" data-action="verify-bytecode" ${artifact ? '' : 'disabled'}>Verify on Arc</button><small>Checks eth_chainId first, then reads eth_getCode and the ERC-1967 implementation slot. No wallet or transaction is required.</small></section>
     </div>
     ${proxy}
     ${hashRows ? `<section class="truth-hashes"><header><span>CRYPTOGRAPHIC RECEIPT</span><strong>Keccak-256 fingerprints</strong></header>${hashRows}</section>` : ''}
@@ -1211,8 +1212,13 @@ async function verifyArcBytecode() {
   const rpcUrl = document.querySelector('#bytecode-rpc-url')?.value.trim();
   if (!/^0x[0-9a-fA-F]{40}$/.test(targetAddress || '')) throw new Error('Enter a valid deployed contract address.');
   if (!/^https?:\/\//i.test(rpcUrl || '')) throw new Error('Enter a valid Arc RPC URL.');
-  setMessage('Reading live Arc runtime bytecode…');
+  state.bytecodeTruth.verification = null;
+  state.bytecodeTruth.error = null;
+  setMessage('Confirming Arc Testnet before reading runtime bytecode…');
   try {
+    const rpcChainId = await bytecodeRpcCall(rpcUrl, 'eth_chainId', []);
+    const chainIdHex = assertRpcChainId(rpcChainId, ARC_TESTNET.chainIdHex, `${ARC_TESTNET.chainName} chain ${ARC_TESTNET.chainId}`);
+    setMessage('Arc Testnet confirmed. Reading live runtime bytecode…');
     const targetBytecode = await bytecodeRpcCall(rpcUrl, 'eth_getCode', [targetAddress, 'latest']);
     let implementationAddress = null;
     try {
@@ -1221,7 +1227,7 @@ async function verifyArcBytecode() {
     } catch { implementationAddress = null; }
     const implementationBytecode = implementationAddress ? await bytecodeRpcCall(rpcUrl, 'eth_getCode', [implementationAddress, 'latest']) : null;
     const verification = verifyBytecodeTruth({ artifact, targetBytecode, implementationBytecode, targetAddress, implementationAddress, hash: keccakHex });
-    state.bytecodeTruth.verification = { ...verification, rpcUrl, chainId: ARC_TESTNET.chainId, verifiedAt: new Date().toISOString(), sourceHash: state.report?.sourceHash || null, reportHash: state.report?.reportHash || null };
+    state.bytecodeTruth.verification = { ...verification, rpcUrl, chainId: ARC_TESTNET.chainId, chainIdHex, verifiedAt: new Date().toISOString(), sourceHash: state.report?.sourceHash || null, reportHash: state.report?.reportHash || null };
     state.bytecodeTruth.error = null;
     renderWorkspace();
     setMessage(verification.verified ? `${verification.status}: Arc runtime identity proven.` : 'Bytecode mismatch detected.', verification.verified ? 'success' : 'error');
