@@ -1,5 +1,31 @@
 # Changelog
 
+## v3.2 Ascension update
+
+- Added the source-bound Privacy Deployment Twin and explicit APS roadmap labeling.
+- Added Attack Replay Cinema frames to every deterministic evidence campaign.
+- Added revisioned deployment lineage, stale-source detection, and locally linked Living Passport evidence.
+- Added Arc Deploy Rehearsal checks for network, USDC gas, source gate, intent, lineage, and APS availability.
+- Added Privacy CI Gate, `--gate` CLI behavior, GitHub Actions workflow export, and CI evidence bundles.
+- Added automatic domain rule packs and deterministic source-guided fuzz plans.
+- Expanded browser smoke coverage for all Ascension workspaces and exports.
+
+## v3.2.0 — Privacy Operating System final
+
+- Added No-Code Privacy Intent Studio with source-stable, policy-bound report hashes.
+- Anchored Forge candidates to exact source lines and moved `tx.origin` remediation to mandatory engineering review.
+- Renamed Shadow Lab claims to source-evidence mapping and clarified Passport gates as source checks.
+- Added cross-platform build, local serving, ZIP validation and Chromium discovery.
+- Added Privacy Genome with sensitive assets, actors, semantic graph and Disclosure Matrix.
+- Added deterministic Privacy Intent YAML and code-to-intent compliance scoring.
+- Added Shadow Evidence Lab adversarial campaigns with explicit non-EVM boundary.
+- Added Transaction MRI traces.
+- Added Forge Mode candidate patch planning and downloadable candidate project bundles.
+- Added source-bound Privacy Passport.
+- Expanded canonical JSON and ZIP exports with all v3.2 evidence.
+- Added v3.2 browser workspaces and responsive layouts.
+- Expanded the test suite and Chromium smoke coverage.
+
 ## v1.8.15 — Release-state integrity and wallet isolation
 
 - Invalidate stale reports immediately when source files are replaced or cleared.
@@ -78,8 +104,8 @@
 
 - Replaced duplicate analyzers with one canonical ES-module engine.
 - Added multi-file project scans and contract-level triage.
-- Added deterministic exposure chains and Treatment Plan 2.0.
-- Added report comparison, local history, Proof Center 2.0, exports, schemas, CLI, examples, and showcase documentation.
+- Added deterministic exposure chains and Treatment Plan 3.2.
+- Added report comparison, local history, Proof Center 3.2, exports, schemas, CLI, examples, and showcase documentation.
 - Replaced the fragile dependency graph with a zero-dependency static build.
 - Added Node tests, static validation, and Chromium runtime smoke testing.
 

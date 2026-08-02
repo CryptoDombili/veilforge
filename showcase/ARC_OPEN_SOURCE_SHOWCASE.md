@@ -1,75 +1,53 @@
-# Arc Open Source Showcase — VeilForge v1.8
+# Arc Open Source Showcase — VeilForge v3.2
 
 ## Project
 
-**VeilForge v1.8 — Privacy Mission Control**
+**VeilForge v3.2 — Privacy Operating System**
 
-VeilForge is a local-first, deterministic privacy-readiness workbench for Solidity projects targeting Arc. It helps builders identify disclosure paths before deployment, plan remediations, produce selector-level policy recommendations, and anchor report hashes on Arc Testnet.
+VeilForge is a local-first privacy engineering workbench for Solidity projects on Arc. It maps sensitive assets and disclosure boundaries, compiles an inferred privacy intent, reproduces source-evidence attack paths, creates Transaction MRI traces, prepares deterministic candidate hardening edits and generates a source-bound Privacy Passport.
 
-## Why it matters for Arc builders
+## Why it matters for Arc
 
-Privacy is not only a feature added at deployment time. Contract storage, getters, events, calldata, selectors, and cross-contract calls can all create disclosure paths. VeilForge turns those paths into an inspectable engineering workflow:
+Arc is built for programmable financial applications where access boundaries, sensitive payment data, operator permissions and deployment assurance matter. VeilForge gives builders a reproducible pre-deployment workflow without sending confidential source code to a remote AI service.
 
-```text
-Storage → Function → Event → Selector → Policy
-```
+## Main modules
 
-The project does not upload source code to an AI service. Analysis happens locally and identical source bundles produce identical canonical hashes and findings.
+1. Privacy Genome
+2. Disclosure Matrix
+3. Privacy Intent Compiler
+4. Shadow Evidence Lab
+5. Transaction MRI
+6. Forge Mode
+7. Privacy Passport
+8. Arc Policy Manifest
+9. Arc Testnet proof publication
 
-## Reusable open-source components
+## Trust model
 
-- deterministic analyzer engine
-- lexical Solidity project parser
-- built-in privacy detection rule playbook
-- custom-rule interface
-- selector extraction and policy recommendation generator
-- deterministic exposure-chain generator
-- project and contract readiness scoring
-- P0–P3 Treatment Plan generator
-- scan-comparison engine
-- canonical source and report hashing
-- JSON and Markdown report generators
-- Arc Policy Manifest generator and schema
-- report JSON schema
-- CLI and programmatic examples
-- dependency-free deterministic ZIP exporter
-- EIP-1193 Arc wallet integration
-- Arc Report Registry ABI encoder and reference contract
+- source remains local
+- no AI API
+- deterministic canonical report
+- exact source evidence
+- source-bound hashes
+- explicit wallet confirmation
+- candidate patches are never mislabeled as deploy-ready
 
 ## Demo flow
 
-1. Open Privacy Mission Control.
-2. Load the vulnerable payroll demo.
-3. Review the project triage, contract score, disclosure findings, and exposure chains.
-4. Open Treatment Plan 2.0 and inspect P0–P3 actions.
-5. Compare the vulnerable baseline with the hardened payroll example.
-6. Export the report, policy manifest, or remediation pack.
-7. Open Proof Center 2.0 and publish only project, source, and report hashes to Arc Testnet.
-8. Load the multi-contract example to demonstrate project-level triage.
+1. Run the vulnerable payroll project.
+2. Show Privacy Genome and Disclosure Matrix.
+3. Show policy violations in Intent.
+4. Replay an evidence campaign in Shadow Lab.
+5. Follow the disclosure in Transaction MRI.
+6. Review Forge candidates and manual-review boundaries.
+7. Compare with the hardened project.
+8. Show the source-bound Privacy Passport.
+9. Publish the canonical report proof on Arc Testnet.
 
-## Trust and safety boundaries
+## Release boundary
 
-- No AI API
-- No remote source-code upload
-- No private-key collection
-- No claim that a deterministic readiness scan replaces an audit
-- Only hashes and selected metadata are published onchain
-- Semantic detection is clearly labeled as heuristic where applicable
+`3.2.0` is the production release of the deterministic source-evidence replay system. It does not claim full arbitrary EVM execution or formal verification. Forge output requires compilation, regression tests and review before deployment.
 
-## Technical profile
+## Short announcement
 
-- Browser-native JavaScript modules
-- Node.js CLI and validation scripts
-- No npm runtime or development dependencies
-- Canonical Keccak-256 hashing
-- Static Vercel deployment
-- Arc Testnet EIP-1193 integration
-- MIT licensed
-
-## Suggested showcase description
-
-> VeilForge v1.8 is an open-source Privacy Mission Control for Solidity projects on Arc. It performs deterministic local analysis, maps disclosure chains from storage to selector policy, generates remediation plans and reusable manifests, and anchors only report hashes on Arc Testnet. The analyzer, rules, hashing, policy generator, schemas, CLI, custom-rule interface, and proof integration are designed for other builders to fork and import.
-
-## Suggested short post
-
-> VeilForge v1.8 — Privacy Mission Control is now an open-source, project-level privacy engineering workbench for Arc. Multi-file triage, deterministic exposure chains, P0–P3 treatment plans, scan comparison, policy manifests, reusable analyzer modules, and hash-only Arc proofs. No AI API. Source stays local.
+> VeilForge v3.2 is now a Privacy Operating System for Solidity on Arc: Privacy Genome, Disclosure Matrix, Intent Compliance, Shadow Evidence Lab, Transaction MRI, deterministic Forge candidates, source-bound Privacy Passport and hash-only Arc proofs. Source stays local. No AI API.

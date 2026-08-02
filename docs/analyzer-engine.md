@@ -43,7 +43,7 @@ Output includes:
 - findings
 - selector policies
 - exposure chains
-- Treatment Plan 2.0
+- Treatment Plan 3.2
 - normalized file metadata
 - canonical source and report hashes
 

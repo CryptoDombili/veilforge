@@ -1,29 +1,20 @@
 # Security Policy
 
-## Scope
+## Supported release
 
-VeilForge is privacy-readiness tooling, not a formal smart-contract audit. Reports are prioritization signals and must not replace manual review, compiler checks, tests, audits, or operational controls.
+The actively validated release is `3.2.0`.
 
-## Reporting a vulnerability
+## Reporting
 
-Do not publish an exploitable issue or user secret in a public GitHub issue. Contact the repository owner privately through the contact method listed on the GitHub profile and include:
+Report suspected vulnerabilities through a private GitHub security advisory when possible. Do not publish exploitable details before a fix is available.
 
-- affected version and file
-- reproduction steps
-- impact
-- suggested remediation, when known
+## Product boundaries
 
-Do not include seed phrases, private keys, production credentials, or private source code that you are not authorized to share.
+VeilForge is an engineering aid, not a formal audit, compiler, symbolic prover or full EVM emulator.
 
-## Trust boundaries
-
-- Solidity analysis runs locally.
-- Browser history is stored in localStorage on the current device.
-- Exported ZIP files may contain the source files selected by the user.
-- Arc proof publication is optional and stores hashes and metadata only.
-- The app relies on the connected EIP-1193 wallet to display and approve transactions.
-- Registry addresses and Arc network configuration must be verified before publication.
-
-## Supported version
-
-Security fixes target the latest tagged release. Historical demos may remain available for comparison but are not supported deployment branches.
+- Shadow Evidence Lab reproduces deterministic source-evidence paths in this release.
+- Forge Mode produces candidate edits, not deploy-ready assurances.
+- Candidate projects must be compiled, tested and reviewed.
+- Privacy Passports are bound to source hashes; deployment lineage is not yet verified.
+- Arc proof publication stores canonical hashes and metadata, never Solidity source.
+- VeilForge never requests private keys.

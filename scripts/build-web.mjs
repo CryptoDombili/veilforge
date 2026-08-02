@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import { pathToFileURL } from 'node:url';
 
 const root = process.cwd();
 const dist = path.join(root, 'dist');
@@ -32,17 +33,17 @@ fs.writeFileSync(
   fs.readFileSync(proofPath, 'utf8').replace("../../analyzer/src/keccak.js", "../engine/keccak.js"),
 );
 
-const sourceConfig = await import(path.toNamespacedPath(path.join(web, 'config.js')));
+const sourceConfig = await import(pathToFileURL(path.join(web, 'config.js')).href);
 const configuredAddress = process.env.VITE_REGISTRY_ADDRESS || process.env.VEILFORGE_REGISTRY_ADDRESS || sourceConfig.REGISTRY_ADDRESS;
 if (!validAddress(configuredAddress)) throw new Error('Registry address is invalid. Set VITE_REGISTRY_ADDRESS to a valid EVM address.');
 fs.writeFileSync(
   path.join(dist, 'config.js'),
-  `export const REGISTRY_ADDRESS = '${configuredAddress}';\nexport const BUILD_VERSION = '1.8.15';\n`,
+  `export const REGISTRY_ADDRESS = '${configuredAddress}';\nexport const BUILD_VERSION = '3.2.0';\n`,
 );
 
 const manifest = {
-  name: 'VeilForge Privacy Mission Control',
-  version: '1.8.15',
+  name: 'VeilForge Privacy Operating System',
+  version: '3.2.0',
   output: 'static-es-modules',
   registryAddress: configuredAddress,
   generatedFiles: [],

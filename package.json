@@ -1,9 +1,9 @@
 {
   "name": "veilforge",
-  "version": "1.8.15",
+  "version": "3.2.0",
   "private": true,
   "type": "module",
-  "description": "VeilForge Privacy Mission Control \u2014 deterministic, local-first privacy engineering for Solidity projects on Arc.",
+  "description": "VeilForge Privacy Operating System \u2014 deterministic, local-first privacy engineering for Solidity projects on Arc.",
   "license": "MIT",
   "engines": {
     "node": ">=20"
@@ -11,6 +11,7 @@
   "scripts": {
     "build": "npm run build:web",
     "build:web": "node scripts/build-web.mjs",
+    "serve": "node scripts/serve.mjs",
     "test": "node --test tests/*.test.mjs",
     "typecheck": "node scripts/typecheck.mjs",
     "smoke:browser": "node scripts/smoke-browser.mjs",

@@ -1,6 +1,6 @@
 # VeilForge Report Registry reference
 
-`VeilForgeReportRegistry.sol` is the reference contract for Proof Center 2.0. It stores only hashes, a readiness score, optional report URI, scanner version, publisher, and timestamp. Solidity source code and full reports are never sent to the registry.
+`VeilForgeReportRegistry.sol` is the reference contract for Proof Center 3.2. It stores only hashes, a readiness score, optional report URI, scanner version, publisher, and timestamp. Solidity source code and full reports are never sent to the registry.
 
 The canonical publication ABI is:
 
@@ -10,8 +10,8 @@ publishReport(
     bytes32 sourceHash,
     bytes32 reportHash,
     uint16 score,
-    string reportURI,
-    string scannerVersion
+    string scannerVersion,
+    string reportURI
 )
 ```
 

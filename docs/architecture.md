@@ -1,109 +1,88 @@
-# VeilForge v1.8 Architecture
+# VeilForge v3.2 Architecture
 
 ## Design goals
 
 1. local source processing
-2. deterministic output
-3. one canonical analyzer for every surface
-4. small, inspectable dependency boundary
-5. reusable components for Arc builders
-6. explicit proof payloads and wallet approval
+2. deterministic and reproducible output
+3. one canonical analyzer for web, CLI and exports
+4. explicit security boundaries
+5. source-bound privacy evidence
+6. zero runtime package dependencies
+7. reusable modules for Arc builders
 
-## Components
+## Canonical analyzer
 
-### Canonical analyzer
+`packages/analyzer/src/` contains the parser, rule playbook, policy generator, exposure-chain engine, report builder, comparison logic, canonical serialization and Keccak-256 implementation.
 
-`packages/analyzer/src/` contains the source parser, rule playbook, policy generator, exposure-chain generator, report builder, comparison logic, canonical serialization, and Keccak-256 implementation.
+VeilForge v3.2 adds:
 
-The browser and CLI import these modules directly. No alternate rule subset exists.
+- `genome.js` — sensitive assets, actors, Disclosure Matrix and semantic graph
+- `intent.js` — inferred Privacy Intent YAML and compliance violations
+- `attack.js` — Shadow Evidence campaigns and Transaction MRI traces
+- `forge.js` — deterministic candidate patch planning and candidate application
+- `passport.js` — source-bound Privacy Passport
 
-### Browser Mission Control
-
-`apps/web/` is a static ES-module application. It supports file and folder intake, demo projects, triage, exposure chains, remediation, comparison, local history, proof publication, and exports.
-
-The build script copies the canonical modules into `dist/engine/` instead of bundling a separate implementation.
-
-### CLI
-
-`packages/analyzer/cli.mjs` reads one Solidity file or recursively collects `.sol` files from a directory. Output formats are text, JSON, Markdown, and Arc Policy Manifest JSON.
-
-### Proof module
-
-`packages/proof/src/registry.js` provides:
-
-- current Arc Testnet chain configuration
-- EIP-3085 wallet network parameters
-- deterministic ABI encoding for `publishReport`
-- EIP-6963 multi-provider discovery with EIP-1193 fallback, chain switching, and transaction submission
-
-The module never requests a private key.
+The browser and CLI import the same modules. No alternate browser-only rule set exists.
 
 ## Data flow
 
-```mermaid
-flowchart TD
-    A[Solidity source files] --> B[Normalize paths and line endings]
-    B --> C[Parse contracts, state, functions and events]
-    C --> D[Built-in and optional custom rules]
-    C --> E[Selector extraction and policy generator]
-    D --> F[Contract and project triage]
-    D --> G[Exposure-chain generator]
-    D --> H[Treatment Plan 2.0]
-    E --> G
-    F --> I[Canonical report]
-    G --> I
-    H --> I
-    B --> J[Canonical source hash]
-    I --> K[Canonical report hash]
-    I --> L[Web, CLI and exports]
-    J --> M[Optional Arc proof payload]
-    K --> M
+```text
+Normalized Solidity files
+        ↓
+Lexical Solidity parser
+        ↓
+Rules + selector policies + exposure chains
+        ↓
+Privacy Genome
+        ↓
+Privacy Intent + Shadow Evidence + Transaction MRI
+        ↓
+Forge Plan + Privacy Passport
+        ↓
+Canonical report hash
+        ↓
+Web / CLI / exports / optional Arc proof
 ```
 
 ## Determinism
 
-The canonical source hash sorts normalized paths and joins each file as:
+The source hash sorts normalized paths and joins each file with stable separators. The report hash uses recursively key-sorted JSON. No timestamp, random value, browser state, wallet state or network response enters the canonical report.
 
-```text
-path + NUL + normalized content + RECORD_SEPARATOR
-```
-
-The report hash uses recursively key-sorted JSON serialization. No generation timestamp, random value, browser state, project label, or network response is part of the canonical report.
-
-Finding fingerprints use rule ID, normalized path, contract name, and compact evidence. This allows comparison to survive many line-number changes.
+Finding fingerprints and graph IDs are stable hashes of source-derived identity fields.
 
 ## Parser boundary
 
-v1.8 uses an inspectable lexical Solidity parser rather than a dependency-heavy AST package. It recognizes:
+The release uses an inspectable lexical Solidity parser rather than a dependency-heavy compiler package. It recognizes contracts, interfaces, libraries, state variables, events, functions, visibility, modifiers, parameters, returns and balanced blocks.
 
-- contracts, interfaces, and libraries
-- top-level state declarations
-- events
-- constructors, functions, fallback, and receive
-- visibility, mutability, modifiers, parameters, returns, and canonical signatures
-- balanced braces, parentheses, brackets, comments, and quoted strings
+It is not `solc`. Unsupported or malformed source creates `VF000` and blocks trustworthy analysis.
 
-Unsupported or malformed source creates `VF000` and blocks deployment. The parser is not a compiler and should not replace `solc`.
+## Shadow Evidence boundary
+
+Shadow Evidence Lab maps deterministic source findings into adversarial campaigns. It does not execute arbitrary bytecode or claim full EVM equivalence in this release.
+
+## Forge boundary
+
+Forge Mode only applies narrow string-preserving candidate transformations when the exact evidence is available. Every candidate is marked for compilation and regression testing. Unsafe transformations remain manual.
 
 ## Build pipeline
 
 `npm run build:web`:
 
-1. removes the prior `dist/`
-2. copies the browser files
-3. copies the canonical analyzer modules
-4. copies the proof module and rewrites only its build-relative Keccak import
-5. copies demo Solidity fixtures
-6. injects a validated registry address into `dist/config.js`
+1. removes the previous `dist/`
+2. copies browser files
+3. copies canonical analyzer modules
+4. copies proof modules and rewrites the build-relative Keccak import
+5. copies demo fixtures
+6. injects the validated registry address and build version
 7. writes a build manifest
 8. verifies required output files
 
 ## Runtime security
 
-- no source upload endpoint exists
-- no analytics SDK is included
-- no remote JavaScript or CSS is loaded
+- no source upload endpoint
+- no analytics SDK
+- no remote JavaScript or CSS
 - local history can be cleared
-- export downloads are generated in memory
-- proof publishing requires a wallet confirmation
-- report URI is optional and user-controlled
+- downloads are generated in memory
+- proof publication requires wallet confirmation
+- private keys remain inside the wallet

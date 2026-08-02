@@ -27,7 +27,7 @@ function collectSolidityFiles(target) {
 }
 
 function usage() {
-  console.log('Usage: node packages/analyzer/cli.mjs scan <file-or-directory> [--format text|json|markdown|policy] [--output file]');
+  console.log('Usage: node packages/analyzer/cli.mjs scan <file-or-directory> [--format text|json|markdown|policy] [--output file] [--gate]');
 }
 
 const args = process.argv.slice(2);
@@ -50,6 +50,10 @@ if (args[0] !== 'scan' || !args[1]) {
 
     if (output) fs.writeFileSync(path.resolve(output), rendered);
     else process.stdout.write(rendered);
+    if (args.includes('--gate') && report.privacyGate.status !== 'passed') {
+      console.error(`VeilForge Privacy Gate failed: ${report.privacyGate.failed} required check(s) did not pass.`);
+      process.exitCode = 2;
+    }
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;

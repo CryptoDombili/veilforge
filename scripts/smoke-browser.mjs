@@ -6,7 +6,7 @@ import process from 'node:process';
 
 const root = process.cwd();
 const dist = path.join(root, 'dist');
-if (!fs.existsSync(path.join(dist, 'index.html'))) throw new Error('dist/index.html is missing. Run npm run build:web first.');
+if (!fs.existsSync(path.join(dist, 'app', 'index.html'))) throw new Error('dist/app/index.html is missing. Run npm run build:web first.');
 
 const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
@@ -26,11 +26,24 @@ const moduleOrder = [
   'engine/rules.js',
   'engine/policies.js',
   'engine/exposure.js',
+  'engine/genome.js',
+  'engine/intent.js',
+  'engine/attack.js',
+  'engine/forge.js',
+  'engine/twin.js',
+  'engine/deployment.js',
+  'engine/gate.js',
+  'engine/fuzz.js',
+  'engine/passport.js',
   'engine/compare.js',
   'engine/report.js',
   'engine/format.js',
   'proof/registry.js',
   'lib/zip.js',
+  'lib/unzip.js',
+  'lib/project-xray.js',
+  'lib/bytecode-truth.js',
+  'lib/proof-lab.js',
   'config.js',
   'app.js',
 ];
@@ -55,13 +68,36 @@ globalThis.fetch = async (input) => {
 `;
 const bundle = [fetchShim, ...moduleOrder.map((file) => `\n// ---- ${file} ----\n${stripModuleSyntax(fs.readFileSync(path.join(dist, file), 'utf8'))}`)].join('\n');
 const css = fs.readFileSync(path.join(dist, 'styles.css'), 'utf8');
-let html = fs.readFileSync(path.join(dist, 'index.html'), 'utf8')
-  .replace(/<link[^>]+href="\.\/styles\.css"[^>]*>/, `<style>${css.replaceAll('</style', '<\/style')}</style>`)
-  .replace(/<script\s+type="module"\s+src="\.\/app\.js"><\/script>/, '');
+let html = fs.readFileSync(path.join(dist, 'app', 'index.html'), 'utf8')
+  .replace(/<link[^>]+href="\.\/styles\.css(?:\?[^\"]*)?"[^>]*>/, `<style>${css.replaceAll('</style', '<\/style')}</style>`)
+  .replace(/<script\s+type="module"\s+src="\.\/app\.js(?:\?[^\"]*)?"><\/script>/, '');
 html = html.replace('</body>', `<script type="module">${bundle.replaceAll('</script', '<\\/script')}</script></body>`);
 
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'veilforge-chromium-'));
-const chromium = process.env.CHROMIUM_BIN || '/usr/lib/chromium/chromium';
+function findChromium() {
+  const candidates = [
+    process.env.CHROMIUM_BIN,
+    process.platform === 'win32' && process.env.PROGRAMFILES && path.join(process.env.PROGRAMFILES, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+    process.platform === 'win32' && process.env['PROGRAMFILES(X86)'] && path.join(process.env['PROGRAMFILES(X86)'], 'Google', 'Chrome', 'Application', 'chrome.exe'),
+    process.platform === 'win32' && process.env.LOCALAPPDATA && path.join(process.env.LOCALAPPDATA, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+    process.platform === 'win32' && process.env.PROGRAMFILES && path.join(process.env.PROGRAMFILES, 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
+    process.platform === 'win32' && process.env['PROGRAMFILES(X86)'] && path.join(process.env['PROGRAMFILES(X86)'], 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
+    process.platform === 'darwin' && '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    process.platform === 'darwin' && '/Applications/Chromium.app/Contents/MacOS/Chromium',
+    '/usr/bin/google-chrome',
+    '/usr/bin/google-chrome-stable',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+    '/usr/lib/chromium/chromium',
+  ].filter(Boolean);
+  const executable = candidates.find((candidate) => fs.existsSync(candidate));
+  if (!executable) {
+    throw new Error('Chrome, Edge, or Chromium was not found. Set CHROMIUM_BIN to the browser executable path.');
+  }
+  return executable;
+}
+
+const chromium = findChromium();
 const child = spawn(chromium, [
   '--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage',
   '--ozone-platform=headless', '--remote-debugging-port=0', `--user-data-dir=${profile}`, 'about:blank',
@@ -148,6 +184,10 @@ try {
     expression: `(async () => {
       const star = getComputedStyle(document.querySelector('.starfield-a'));
       const list = document.querySelector('.finding-list');
+      const workspaceScroller = document.querySelector('.workspace');
+      const missionNav = document.querySelector('.mission-nav');
+      const missionNavRows = new Set([...missionNav.querySelectorAll('.nav-button')].map((button) => Math.round(button.getBoundingClientRect().top))).size;
+      const missionNavLabels = [...missionNav.querySelectorAll('.nav-button')].map((button) => button.textContent.trim());
       globalThis.__walletMethodsKeplr = [];
       globalThis.__walletMethodsMetaMask = [];
       globalThis.__walletMethodsPhantom = [];
@@ -257,6 +297,14 @@ try {
         listClientHeight: list?.clientHeight || 0,
         listScrollHeight: list?.scrollHeight || 0,
         listOverflow: list ? getComputedStyle(list).overflowY : '',
+        workspaceOverflow: workspaceScroller ? getComputedStyle(workspaceScroller).overflowY : '',
+        workspaceClientHeight: workspaceScroller?.clientHeight || 0,
+        workspaceScrollHeight: workspaceScroller?.scrollHeight || 0,
+        missionNavRows,
+        missionNavLabels,
+        missionNavOverflowX: getComputedStyle(missionNav).overflowX,
+        missionNavClientWidth: missionNav.clientWidth,
+        missionNavScrollWidth: missionNav.scrollWidth,
         connectedLabel,
         walletPickerOpen,
         walletChoiceNames,
@@ -286,11 +334,14 @@ try {
   if (snapshot?.ready !== 'true') failures.push('runtime ready marker');
   if (!/^0x[0-9a-f]{64}$/.test(snapshot?.reportHash ?? '')) failures.push('canonical report hash');
   if (snapshot?.projectStatus !== 'Deployment Blocked') failures.push('project status');
-  if (!String(snapshot?.title).includes('Privacy Mission Control')) failures.push('document title');
+  if (!String(snapshot?.title).includes('Privacy Deployment OS')) failures.push('document title');
   if ((snapshot?.findings ?? 0) < 1) failures.push('rendered findings');
   if (snapshot?.runtimeError) failures.push(`runtime error: ${snapshot.runtimeError}`);
   if ((uiFixes?.starOpacity ?? 0) < 0.5 || (uiFixes?.starZ ?? -1) < 0) failures.push('visible starfield layer');
-  if (uiFixes?.listOverflow !== 'auto' || (uiFixes?.listClientHeight ?? 0) > 630 || (uiFixes?.listScrollHeight ?? 0) <= (uiFixes?.listClientHeight ?? 0)) failures.push(`bounded findings scroll area (${uiFixes?.listOverflow}, ${uiFixes?.listClientHeight}/${uiFixes?.listScrollHeight})`);
+  if (uiFixes?.listOverflow !== 'visible' || uiFixes?.workspaceOverflow !== 'auto' || (uiFixes?.workspaceScrollHeight ?? 0) <= (uiFixes?.workspaceClientHeight ?? 0)) failures.push(`single natural results scroller (${uiFixes?.listOverflow}/${uiFixes?.workspaceOverflow}, ${uiFixes?.workspaceClientHeight}/${uiFixes?.workspaceScrollHeight})`);
+  if (uiFixes?.missionNavRows !== 2 || (uiFixes?.missionNavScrollWidth ?? Infinity) > (uiFixes?.missionNavClientWidth ?? 0) + 2 || ['auto', 'scroll'].includes(uiFixes?.missionNavOverflowX)) failures.push(`two-row mission navigation (${uiFixes?.missionNavRows} rows, ${uiFixes?.missionNavOverflowX}, ${uiFixes?.missionNavClientWidth}/${uiFixes?.missionNavScrollWidth})`);
+  const expectedMissionFlow = ['Command','Genome','Intent','Shadow Lab','MRI','Twin','Treatment','Forge','Compare','Proof Lab','Bytecode Truth','Passport','Arc Proof','Release Gate','Exports','History'];
+  if (JSON.stringify(uiFixes?.missionNavLabels) !== JSON.stringify(expectedMissionFlow)) failures.push(`ordered mission flow (${JSON.stringify(uiFixes?.missionNavLabels)})`);
   const expectedWalletNames = ['Keplr EVM', 'MetaMask', 'Phantom', 'Rabby Wallet', 'Zerion'];
   if (!uiFixes?.walletPickerOpen || JSON.stringify(uiFixes?.walletChoiceNames) !== JSON.stringify(expectedWalletNames)) failures.push(`canonical wallet chooser (${JSON.stringify(uiFixes?.walletChoiceNames)})`);
   if ((uiFixes?.walletChoiceNames || []).filter((name) => name.includes('Rabby')).length !== 1) failures.push(`duplicate Rabby entry (${JSON.stringify(uiFixes?.walletChoiceNames)})`);
@@ -329,6 +380,16 @@ try {
   if (!mobile?.topbarVisible || !mobile?.uploadVisible || !mobile?.missionVisible) failures.push('mobile critical controls');
   if ((mobile?.scrollWidth ?? Infinity) > (mobile?.viewport ?? 0) + 2) failures.push(`mobile horizontal overflow (${mobile?.scrollWidth}px > ${mobile?.viewport}px)`);
 
+  const workspaceScreenshotPath = process.env.VEILFORGE_WORKSPACE_SCREENSHOT;
+  if (workspaceScreenshotPath) {
+    await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
+    await cdp.send('Runtime.evaluate', { expression: `document.querySelector('#wallet-menu-close')?.click(); document.querySelector('[data-view=\"genome\"]')?.click(); document.querySelector('#scanner')?.scrollIntoView({ block: 'start' });` });
+    await sleep(250);
+    const shot = await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+    fs.writeFileSync(path.resolve(workspaceScreenshotPath), Buffer.from(shot.data, 'base64'));
+    await cdp.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  }
+
   const mobileScreenshotPath = process.env.VEILFORGE_MOBILE_SCREENSHOT;
   if (mobileScreenshotPath) {
     const shot = await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
@@ -339,15 +400,96 @@ try {
   const interactionResult = await cdp.send('Runtime.evaluate', {
     expression: `(async () => {
       const openView = (name) => document.querySelector('[data-view="' + name + '"]')?.click();
+      const bounded = (selector) => {
+        const element = document.querySelector(selector);
+        if (!element) return { selector, present: false };
+        const style = getComputedStyle(element);
+        return { selector, present: true, overflowY: style.overflowY, maxHeight: style.maxHeight, gutter: style.scrollbarGutter };
+      };
+      const boundedRegions = [];
+      openView('triage');
+      boundedRegions.push(bounded('.contract-grid'));
+      openView('genome');
+      const genomeAssets = document.querySelectorAll('.genome-asset').length;
+      const genomeMatrix = document.querySelectorAll('.disclosure-matrix tbody tr').length;
+      boundedRegions.push(bounded('.genome-assets'), bounded('.genome-graph'), bounded('.matrix-scroll'));
+      openView('intent');
+      const intentDocument = document.querySelector('.intent-document pre')?.textContent || '';
+      const intentStudio = document.querySelectorAll('[data-testid="intent-studio"]').length;
+      const intentPolicyControls = document.querySelectorAll('#intent-public-observer, #intent-external-contract, #intent-record-owner, .intent-control-list input').length;
+      boundedRegions.push(bounded('.intent-violations'));
+      openView('shadow');
+      const attackCards = document.querySelectorAll('.attack-card').length;
+      const replayFrames = document.querySelectorAll('.cinema-frame').length;
+      document.querySelector('[data-action="play-attack-replay"]')?.click();
+      boundedRegions.push(bounded('.attack-list'));
+      openView('mri');
+      const mriCards = document.querySelectorAll('.mri-card').length;
+      boundedRegions.push(bounded('.mri-list'));
+      openView('forge');
+      const forgeCards = document.querySelectorAll('.forge-card').length;
+      boundedRegions.push(bounded('.forge-list'));
+      openView('passport');
+      const passportId = document.querySelector('.passport-top code')?.textContent || '';
+      const lineageStages = document.querySelectorAll('.lineage-stage').length;
+      boundedRegions.push(bounded('.passport-card ul'));
       openView('chains');
       const chains = document.querySelectorAll('.chain-card').length;
+      const twinSurfaces = document.querySelectorAll('.twin-surface').length;
+      const twinRoadmap = document.querySelector('.twin-roadmap')?.textContent || '';
+      boundedRegions.push(bounded('.twin-surface-list'), bounded('.twin-trust ul'), bounded('.chain-list'));
       openView('treatment');
       const treatments = document.querySelectorAll('.task-card').length;
+      boundedRegions.push(bounded('.task-list'));
       openView('proof');
       const proofCards = document.querySelectorAll('.proof-card').length;
+      const rehearsalChecks = document.querySelectorAll('.rehearsal-check').length;
       const registry = document.querySelector('#registry-address')?.value;
+      boundedRegions.push(bounded('.rehearsal-checks'));
       openView('history');
       const historyCards = document.querySelectorAll('.history-card').length;
+      boundedRegions.push(bounded('.history-list'));
+      openView('release');
+      const releaseChecks = document.querySelectorAll('.release-check').length;
+      const releaseDecision = document.querySelector('.release-hero>div:first-child>strong')?.textContent || '';
+      const releaseStages = document.querySelectorAll('.release-stage').length;
+      boundedRegions.push(bounded('.release-checks'), bounded('.release-actions'));
+
+      openView('bytecode');
+      const bytecodeArtifactTransfer = new DataTransfer();
+      bytecodeArtifactTransfer.items.add(new File([JSON.stringify({ contractName: 'Payroll', sourceName: 'contracts/Payroll.sol', deployedBytecode: '0x6001600055' })], 'Payroll.json', { type: 'application/json' }));
+      const bytecodeArtifactInput = document.querySelector('#bytecode-artifact-input');
+      bytecodeArtifactInput.files = bytecodeArtifactTransfer.files;
+      bytecodeArtifactInput.dispatchEvent(new Event('change', { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      document.querySelector('#bytecode-target-address').value = '0x1111111111111111111111111111111111111111';
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = async (_url, options) => {
+        const request = JSON.parse(options.body);
+        const result = request.method === 'eth_getCode' ? '0x6001600055' : '0x' + '0'.repeat(64);
+        return { ok: true, json: async () => ({ jsonrpc: '2.0', id: request.id, result }) };
+      };
+      document.querySelector('[data-action="verify-bytecode"]')?.click();
+      for (let attempt = 0; attempt < 40; attempt += 1) {
+        if (document.querySelector('.bytecode-hero>div:first-child>strong')?.textContent === 'ARC VERIFIED') break;
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      globalThis.fetch = originalFetch;
+      const bytecodeStatus = document.querySelector('.bytecode-hero>div:first-child>strong')?.textContent || '';
+      const bytecodeArtifactName = document.querySelector('.artifact-card header strong')?.textContent || '';
+      const bytecodeHashes = document.querySelectorAll('.truth-hash-row').length;
+
+      openView('prooftest');
+      const proofReceiptTransfer = new DataTransfer();
+      proofReceiptTransfer.items.add(new File([JSON.stringify({ framework: 'Foundry', compilation: { success: true }, tests: { total: 42, passed: 42, failed: 0 }, fuzz: { runs: 10000, failures: 0 } })], 'veilforge-proof-results.json', { type: 'application/json' }));
+      const proofReceiptInput = document.querySelector('#proof-lab-receipt-input');
+      proofReceiptInput.files = proofReceiptTransfer.files;
+      proofReceiptInput.dispatchEvent(new Event('change', { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 35));
+      const proofLabDecision = document.querySelector('.proof-lab-hero>div:first-child>strong')?.textContent || '';
+      const proofLabChecks = document.querySelectorAll('.proof-lab-check').length;
+      const proofLabReceipt = document.querySelector('.proof-lab-console header strong')?.textContent || '';
+      boundedRegions.push(bounded('.proof-lab-checks'));
 
       globalThis.__veilforgeDownloads = [];
       URL.createObjectURL = (blob) => {
@@ -358,9 +500,22 @@ try {
       HTMLAnchorElement.prototype.click = function click() {
         globalThis.__veilforgeDownloads.push(this.download);
       };
+      openView('prooftest');
+      document.querySelector('[data-action="download-proof-kit"]')?.click();
+      document.querySelector('[data-action="export-proof-attestation"]')?.click();
+      openView('intent');
+      document.querySelector('[data-action="export-intent"]')?.click();
+      openView('forge');
+      document.querySelector('[data-action="export-forge-zip"]')?.click();
+      openView('passport');
+      document.querySelector('[data-action="export-passport"]')?.click();
       openView('exports');
       const exportCards = document.querySelectorAll('.export-card').length;
-      for (const action of ['export-json', 'export-markdown', 'export-policy', 'export-zip']) {
+      const gateChecks = document.querySelectorAll('.gate-check').length;
+      const rulePacks = document.querySelectorAll('.rule-pack').length;
+      const fuzzVectors = document.querySelector('.fuzz-panel strong')?.textContent || '';
+      boundedRegions.push(bounded('.gate-check-grid'), bounded('.rule-pack-list'), bounded('.export-grid'));
+      for (const action of ['export-json', 'export-markdown', 'export-policy', 'export-ci-kit', 'export-lineage', 'export-zip']) {
         document.querySelector('[data-action="' + action + '"]')?.click();
       }
       await new Promise((resolve) => setTimeout(resolve, 20));
@@ -374,6 +529,7 @@ try {
       const comparedStatus = document.body.dataset.projectStatus;
       const compareCards = document.querySelectorAll('.compare-card').length;
       const resolvedText = document.querySelector('.compare-card:nth-child(2) strong')?.textContent;
+      boundedRegions.push(bounded('.mini-finding-list'));
 
       openView('history');
       const historyOpenButtons = [...document.querySelectorAll('[data-action="history-open"]')];
@@ -383,23 +539,52 @@ try {
       const restoredHistoryLabel = document.querySelector('#project-name')?.value || '';
       const restoredHistoryView = document.querySelector('[data-view="triage"]')?.classList.contains('active') || false;
 
+      const reportHashBeforeFileChange = document.body.dataset.reportHash || '';
       const replacement = new DataTransfer();
       replacement.items.add(new File(['// SPDX-License-Identifier: MIT\\npragma solidity ^0.8.24; contract Fresh {}'], 'Fresh.sol', { type: 'text/plain' }));
       const fileInput = document.querySelector('#file-input');
       fileInput.files = replacement.files;
       fileInput.dispatchEvent(new Event('change', { bubbles: true }));
-      await new Promise((resolve) => setTimeout(resolve, 50));
-      const reportInvalidatedAfterFileChange = !document.body.dataset.reportHash
-        && document.querySelector('#mission-summary')?.textContent.includes('Mission awaiting scan')
-        && document.querySelector('#file-list')?.textContent.includes('Fresh.sol');
+      await new Promise((resolve) => setTimeout(resolve, 120));
+      const reportUpdatedAfterFileChange = Boolean(document.body.dataset.reportHash)
+        && document.body.dataset.reportHash !== reportHashBeforeFileChange
+        && !document.querySelector('#mission-summary')?.textContent.includes('Mission awaiting scan')
+        && document.querySelector('#file-list')?.textContent.includes('Fresh.sol')
+        && document.querySelectorAll('.severity-dot').length === 0;
 
       return {
+        genomeAssets,
+        genomeMatrix,
+        intentDocument,
+        intentStudio,
+        intentPolicyControls,
+        attackCards,
+        replayFrames,
+        mriCards,
+        forgeCards,
+        passportId,
+        lineageStages,
         chains,
+        twinSurfaces,
+        twinRoadmap,
         treatments,
         proofCards,
+        rehearsalChecks,
         registry,
         historyCards,
+        releaseChecks,
+        releaseDecision,
+        releaseStages,
+        bytecodeStatus,
+        bytecodeArtifactName,
+        bytecodeHashes,
+        proofLabDecision,
+        proofLabChecks,
+        proofLabReceipt,
         exportCards,
+        gateChecks,
+        rulePacks,
+        fuzzVectors,
         downloads: globalThis.__veilforgeDownloads,
         comparedStatus,
         compareCards,
@@ -407,7 +592,8 @@ try {
         restoredHistoryFile,
         restoredHistoryLabel,
         restoredHistoryView,
-        reportInvalidatedAfterFileChange,
+        reportUpdatedAfterFileChange,
+        boundedRegions,
         runtimeError: document.body.dataset.runtimeError || null
       };
     })()`,
@@ -415,14 +601,33 @@ try {
     returnByValue: true,
   });
   const interactions = interactionResult.result?.value;
+  if ((interactions?.genomeAssets ?? 0) < 1 || (interactions?.genomeMatrix ?? 0) < 1) failures.push('privacy genome view');
+  if (!String(interactions?.intentDocument).includes('require_deployment_lineage: true')) failures.push('privacy intent view');
+  if (interactions?.intentStudio !== 1 || interactions?.intentPolicyControls !== 7) failures.push(`no-code privacy intent studio (${interactions?.intentStudio}/${interactions?.intentPolicyControls})`);
+  if ((interactions?.attackCards ?? 0) < 1) failures.push('shadow evidence lab view');
+  if ((interactions?.replayFrames ?? 0) < 2) failures.push('attack replay cinema');
+  if ((interactions?.mriCards ?? 0) < 1) failures.push('transaction MRI view');
+  if ((interactions?.forgeCards ?? 0) < 1) failures.push('forge mode view');
+  if (!/^0x[0-9a-f]{64}$/.test(String(interactions?.passportId))) failures.push('privacy passport view');
+  if (interactions?.lineageStages !== 6) failures.push(`living deployment lineage (${interactions?.lineageStages})`);
   if ((interactions?.chains ?? 0) < 1) failures.push('exposure chain view');
+  if ((interactions?.twinSurfaces ?? 0) < 1 || !String(interactions?.twinRoadmap).includes('not a live APS deployment')) failures.push('privacy deployment twin view');
   if ((interactions?.treatments ?? 0) < 1) failures.push('treatment plan view');
-  if (interactions?.proofCards !== 2 || interactions?.registry !== '0xf8b1D03931f2c11B642259d9aB19cfA3351C0Bbc') failures.push('proof center view');
+  if (interactions?.proofCards !== 2 || interactions?.rehearsalChecks !== 6 || interactions?.registry !== '0xf8b1D03931f2c11B642259d9aB19cfA3351C0Bbc') failures.push('proof center and deployment rehearsal view');
   if ((interactions?.historyCards ?? 0) < 1) failures.push('local history view');
-  if (interactions?.exportCards !== 4 || interactions?.downloads?.length !== 4) failures.push('export actions');
+  if ((interactions?.releaseChecks ?? 0) < 8 || interactions?.releaseDecision !== 'BLOCKED' || interactions?.releaseStages !== 4) failures.push(`release gate view (${interactions?.releaseChecks}/${interactions?.releaseDecision}/${interactions?.releaseStages})`);
+  if (interactions?.bytecodeStatus !== 'ARC VERIFIED' || interactions?.bytecodeArtifactName !== 'Payroll.json' || interactions?.bytecodeHashes !== 2) failures.push(`bytecode truth view (${interactions?.bytecodeStatus}/${interactions?.bytecodeArtifactName}/${interactions?.bytecodeHashes})`);
+  if (interactions?.proofLabDecision !== 'BLOCKED' || interactions?.proofLabChecks !== 10 || interactions?.proofLabReceipt !== 'veilforge-proof-results.json') failures.push(`proof lab view (${interactions?.proofLabDecision}/${interactions?.proofLabChecks}/${interactions?.proofLabReceipt})`);
+  if (interactions?.gateChecks !== 6 || (interactions?.rulePacks ?? 0) < 2 || Number(interactions?.fuzzVectors) < 1) failures.push('privacy gate, rule packs, and fuzz plan views');
+  if (interactions?.exportCards !== 6 || interactions?.downloads?.length !== 11) failures.push(`export actions (${JSON.stringify(interactions?.downloads)})`);
+  if (!interactions?.downloads?.some((name) => name.endsWith('-veilforge-ci-gate.zip')) || !interactions?.downloads?.some((name) => name.endsWith('-deployment-lineage.json'))) failures.push('Ascension export filenames');
+  if (!interactions?.downloads?.some((name) => name.endsWith('-privacy-intent.yaml')) || !interactions?.downloads?.some((name) => name.endsWith('-veilforge-forge-candidates.zip')) || !interactions?.downloads?.some((name) => name.endsWith('-privacy-passport.json'))) failures.push('v3.2 export filenames');
+  if (!interactions?.downloads?.some((name) => name.endsWith('-veilforge-proof-lab.zip')) || !interactions?.downloads?.some((name) => name.endsWith('-proof-of-fix.json'))) failures.push('Proof Lab export filenames');
   if (interactions?.comparedStatus !== 'Ready' || interactions?.compareCards !== 4 || Number(interactions?.resolvedText) < 1) failures.push('scan comparison flow');
   if (!String(interactions?.restoredHistoryFile).includes('Payroll.sol') || interactions?.restoredHistoryLabel !== 'Arc Payroll Mission' || !interactions?.restoredHistoryView) failures.push(`history source restoration (${interactions?.restoredHistoryLabel}, ${interactions?.restoredHistoryFile})`);
-  if (!interactions?.reportInvalidatedAfterFileChange) failures.push('file replacement invalidates stale report');
+  if (!interactions?.reportUpdatedAfterFileChange) failures.push('file replacement automatically refreshes the report and radar');
+  const unboundedRegions = (interactions?.boundedRegions || []).filter((region) => !region.present || !['auto', 'scroll'].includes(region.overflowY) || region.maxHeight === 'none');
+  if (unboundedRegions.length || (interactions?.boundedRegions?.length ?? 0) < 19) failures.push(`bounded long-content regions (${JSON.stringify(unboundedRegions)})`);
   if (interactions?.runtimeError) failures.push(`interaction runtime error: ${interactions.runtimeError}`);
   if (cdp.exceptions.length) failures.push(`browser exceptions after interactions: ${cdp.exceptions.join('; ')}`);
 

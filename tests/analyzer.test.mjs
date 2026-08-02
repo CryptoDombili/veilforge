@@ -24,6 +24,8 @@ test('same source produces the same canonical report', () => {
   assert.match(first.sourceHash, /^0x[0-9a-f]{64}$/);
   assert.match(first.reportHash, /^0x[0-9a-f]{64}$/);
   assert.ok(first.findings.some((finding) => finding.ruleId === 'VF010'));
+  assert.ok(first.findings.some((finding) => finding.ruleId === 'VF008' && finding.evidence.includes('salaryOf') && finding.startLine === 10));
+  assert.ok(first.findings.some((finding) => finding.ruleId === 'VF009' && finding.functionName === 'setEmployeeSalary' && finding.startLine === 24));
   assert.ok(first.exposureChains.every((chain) => chain.nodes.map((node) => node.type).join('>') === 'Storage>Function>Event>Selector>Policy'));
 });
 
@@ -77,4 +79,43 @@ test('policy manifest is derived from the canonical report', () => {
   assert.equal(manifest.sourceHash, report.sourceHash);
   assert.equal(manifest.policies.length, report.policies.length);
   assert.ok(manifest.policies.every((policy) => /^0x[0-9a-f]{8}$/.test(policy.selector)));
+});
+
+test('v3.2 privacy operating system layers are deterministic and source-bound', () => {
+  const report = scanProject([source(vulnerablePath)]);
+  assert.equal(report.schemaVersion, '3.2');
+  assert.equal(report.scannerVersion, '3.2.0');
+  assert.ok(report.privacyGenome.metrics.sensitiveAssets > 0);
+  assert.ok(report.privacyGenome.graph.nodes.length > 0);
+  assert.ok(report.privacyGenome.graph.edges.length > 0);
+  assert.ok(report.privacyIntent.document.includes('require_deployment_lineage: true'));
+  assert.equal(report.attackLab.summary.attempts, report.findings.length);
+  assert.equal(report.attackLab.summary.mapped, report.findings.length);
+  assert.equal(report.transactionMRI.traces.length, report.findings.length);
+  assert.equal(report.forgePlan.summary.total, report.findings.length);
+  assert.equal(report.privacyPassport.sourceHash, report.sourceHash);
+  assert.match(report.privacyPassport.passportId, /^0x[0-9a-f]{64}$/);
+  assert.equal(report.privacyTwin.sourceHash, report.sourceHash);
+  assert.equal(report.deploymentLineage.sourceHash, report.sourceHash);
+  assert.equal(report.arcDeployRehearsal.twinId, report.privacyTwin.twinId);
+  assert.ok(report.engine.capabilities.includes('privacy-ci-gate'));
+});
+
+test('declared privacy intent changes policy compliance without changing the source hash', () => {
+  const files = [{ path: 'Intent.sol', content: 'pragma solidity ^0.8.24; contract Intent { uint256 public salary; }' }];
+  const strict = scanProject(files, { declaredIntent: { defaults: { publicObserver: 'denied', externalContract: 'denied', recordOwner: 'allowed' } } });
+  const permissive = scanProject(files, { declaredIntent: { defaults: { publicObserver: 'allowed', externalContract: 'allowed', recordOwner: 'allowed' } } });
+  assert.equal(strict.sourceHash, permissive.sourceHash);
+  assert.notEqual(strict.reportHash, permissive.reportHash);
+  assert.ok(strict.privacyIntent.violations.length > permissive.privacyIntent.violations.length);
+  assert.equal(permissive.privacyIntent.declarationSource, 'user-declared');
+  assert.match(permissive.privacyIntent.document, /public_observer: allowed/);
+});
+
+test('hardened example earns an active privacy passport', () => {
+  const report = scanProject([source(hardenedPath)]);
+  assert.equal(report.attackLab.summary.mapped, 0);
+  assert.equal(report.privacyIntent.complianceScore, 100);
+  assert.equal(report.privacyPassport.status, 'Active');
+  assert.equal(report.privacyPassport.deploymentGate, 'Source checks passed');
 });

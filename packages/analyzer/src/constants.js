@@ -1,5 +1,5 @@
-export const SCANNER_VERSION = '1.8.0';
-export const SCHEMA_VERSION = '1.8';
+export const SCANNER_VERSION = '3.2.0';
+export const SCHEMA_VERSION = '3.2';
 
 export const DISCLAIMER =
   "Pre-APS readiness analysis based on Arc's published privacy design. VeilForge is an independent community tool, not an official Circle product or a formal security audit.";

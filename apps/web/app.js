@@ -3,6 +3,9 @@ import {
   formatMarkdownReport,
   generatePolicyManifest,
   scanProject,
+  applyForgeCandidates,
+  evaluateDeploymentEvidence,
+  keccakHex,
 } from './engine/index.js';
 import {
   ARC_TESTNET,
@@ -12,14 +15,32 @@ import {
   publishReport,
 } from './proof/registry.js';
 import { createZip } from './lib/zip.js';
+import { looksLikeSolidity, readZipEntries } from './lib/unzip.js';
+import { analyzeProject } from './lib/project-xray.js';
+import {
+  EIP1967_IMPLEMENTATION_SLOT,
+  implementationAddressFromStorage,
+  parseBytecodeArtifact,
+  verifyBytecodeTruth,
+} from './lib/bytecode-truth.js';
+import { buildProofLabSnapshot, parseProofLabReceipt } from './lib/proof-lab.js';
 import { REGISTRY_ADDRESS } from './config.js';
 
-const HISTORY_KEY = 'veilforge:v1.8:scan-history';
+const HISTORY_KEY = 'veilforge:v3.2:scan-history';
 const MAX_HISTORY = 12;
-const WALLET_DISCONNECTED_KEY = 'veilforge:v1.8:wallet-disconnected';
+const WALLET_DISCONNECTED_KEY = 'veilforge:v3.2:wallet-disconnected';
+const INTENT_KEY = 'veilforge:v3.2:privacy-intent';
+const DEPLOYMENT_EVIDENCE_KEY = 'veilforge:v3.2:deployment-evidence';
+let detectorClearTimer = null;
+const DEFAULT_INTENT_DECLARATION = Object.freeze({
+  defaults: Object.freeze({ publicObserver: 'denied', externalContract: 'restricted', recordOwner: 'allowed' }),
+  controls: Object.freeze({ requireLeastPrivilege: true, requireRevocationPath: true, prohibitSensitiveRevertData: true, requireDeploymentLineage: true }),
+});
 
 const state = {
   files: [],
+  projectFiles: [],
+  projectXray: null,
   report: null,
   baseline: null,
   activeView: 'triage',
@@ -28,6 +49,12 @@ const state = {
   walletProviderInfo: null,
   history: readHistory(),
   filters: { query: '', severity: 'all', policy: 'all' },
+  intentDeclaration: readIntentDeclaration(),
+  deploymentEvidence: readDeploymentEvidence(),
+  activeReplayId: null,
+  replayTimer: null,
+  bytecodeTruth: { artifact: null, artifactFileName: '', verification: null, error: null },
+  proofLab: { receipt: null, receiptFileName: '', snapshot: null, error: null },
 };
 
 const elements = {
@@ -41,6 +68,9 @@ const elements = {
   scanMessage: document.querySelector('#scan-message'),
   missionSummary: document.querySelector('#mission-summary'),
   workspace: document.querySelector('#workspace'),
+  scanVisualizer: document.querySelector('#scan-visualizer'),
+  detectorFindings: document.querySelector('#detector-findings'),
+  detectorSeveritySummary: document.querySelector('#detector-severity-summary'),
   walletButton: document.querySelector('#header-wallet-button'),
   walletLabel: document.querySelector('#header-wallet-label'),
   walletBackdrop: document.querySelector('#wallet-backdrop'),
@@ -90,6 +120,36 @@ function safeStorageSet(key, value) {
 
 function safeStorageRemove(key) {
   try { localStorage.removeItem(key); } catch {}
+}
+
+function readDeploymentEvidence() {
+  try {
+    const value = JSON.parse(safeStorageGet(DEPLOYMENT_EVIDENCE_KEY) || 'null');
+    return value && typeof value === 'object' ? value : {};
+  } catch {
+    return {};
+  }
+}
+
+function readIntentDeclaration() {
+  try {
+    const value = JSON.parse(safeStorageGet(INTENT_KEY) || 'null');
+    return {
+      defaults: {
+        publicObserver: ['allowed', 'denied'].includes(value?.defaults?.publicObserver) ? value.defaults.publicObserver : DEFAULT_INTENT_DECLARATION.defaults.publicObserver,
+        externalContract: ['allowed', 'restricted', 'denied'].includes(value?.defaults?.externalContract) ? value.defaults.externalContract : DEFAULT_INTENT_DECLARATION.defaults.externalContract,
+        recordOwner: ['allowed', 'restricted'].includes(value?.defaults?.recordOwner) ? value.defaults.recordOwner : DEFAULT_INTENT_DECLARATION.defaults.recordOwner,
+      },
+      controls: {
+        requireLeastPrivilege: value?.controls?.requireLeastPrivilege !== false,
+        requireRevocationPath: value?.controls?.requireRevocationPath !== false,
+        prohibitSensitiveRevertData: value?.controls?.prohibitSensitiveRevertData !== false,
+        requireDeploymentLineage: value?.controls?.requireDeploymentLineage !== false,
+      },
+    };
+  } catch {
+    return structuredClone(DEFAULT_INTENT_DECLARATION);
+  }
 }
 
 function shortAddress(address) {
@@ -513,12 +573,20 @@ function saveCurrentToHistory() {
 }
 
 async function readBrowserFiles(fileList) {
-  const entries = await Promise.all([...fileList]
-    .filter((file) => file.name.toLowerCase().endsWith('.sol'))
-    .map(async (file) => ({
-      path: (file.webkitRelativePath || file.name).replaceAll('\\', '/'),
-      content: await file.text(),
-    })));
+  const entries = [];
+  for (const file of [...fileList]) {
+    const path = (file.webkitRelativePath || file.name).replaceAll('\\', '/');
+    if (/(^|\/)(?:node_modules|\.git|out|cache|artifacts|dist|build)(\/|$)/i.test(path)) continue;
+    const isZip = file.name.toLowerCase().endsWith('.zip') || /(?:application\/zip|application\/x-zip-compressed)/i.test(file.type);
+    if (isZip) {
+      entries.push(...await readZipEntries(file));
+      continue;
+    }
+    if (file.size > 12 * 1024 * 1024) continue;
+    const content = await file.text();
+    if (!file.name.toLowerCase().endsWith('.sol') && !looksLikeSolidity(content)) continue;
+    entries.push({ path: path.toLowerCase().endsWith('.sol') ? path : `${path}.sol`, content });
+  }
   return entries.sort((a, b) => a.path.localeCompare(b.path));
 }
 
@@ -534,8 +602,16 @@ function invalidateCurrentReport() {
 function setFiles(files, { invalidateReport = true, announce = true } = {}) {
   const unique = new Map();
   for (const file of cloneSourceFiles(files)) unique.set(file.path, file);
-  state.files = [...unique.values()].sort((a, b) => a.path.localeCompare(b.path));
+  state.projectFiles = [...unique.values()].sort((a, b) => a.path.localeCompare(b.path));
+  state.projectXray = state.projectFiles.length ? analyzeProject(state.projectFiles) : null;
+  state.files = state.projectXray?.scopeFiles ?? [];
+  if (invalidateReport) {
+    state.bytecodeTruth.verification = null;
+    state.bytecodeTruth.error = null;
+    state.proofLab = { receipt: null, receiptFileName: '', snapshot: null, error: null };
+  }
   if (invalidateReport && state.report) invalidateCurrentReport();
+  if (!state.files.length) clearDetectorSeveritySummary();
   renderFileList();
   if (announce) {
     setMessage(state.files.length ? `${state.files.length} Solidity file${state.files.length === 1 ? '' : 's'} ready. Run a fresh scan.` : 'Add at least one Solidity file.');
@@ -547,7 +623,8 @@ function renderFileList() {
     elements.fileList.innerHTML = '<div class="empty-files">No Solidity files loaded.</div>';
     return;
   }
-  elements.fileList.innerHTML = state.files.map((file) => `
+  const scopeNote = state.projectXray ? `<div class="scope-note"><span>${state.files.length} in scan scope</span><small>${state.projectXray.excluded.length} excluded</small></div>` : '';
+  elements.fileList.innerHTML = scopeNote + state.files.map((file) => `
     <div class="file-item" title="${esc(file.path)}">
       <span>${esc(file.path)}</span>
       <small>${esc(fileSize(file.content))}</small>
@@ -595,20 +672,20 @@ function renderSummary() {
   elements.missionSummary.innerHTML = `
     <div class="summary-grid">
       <div class="score-orbit" style="--score:${report.score};--score-color:${scoreColor(report)}">
-        <div class="score-value"><strong>${report.score}</strong><span>Readiness / 100</span></div>
+        <div class="score-value"><strong>${report.score}</strong><span>Readiness</span></div>
       </div>
       <div class="status-block">
         <span class="status-chip ${statusClass(report.status)}">${esc(report.status)}</span>
         <h2>${esc(elements.projectName.value || 'Solidity mission')}</h2>
         <p>${report.status === 'Ready'
           ? 'No deterministic privacy rule matched. Keep manual review and deployment controls in place.'
-          : `${report.treatmentPlan.filter((task) => task.requiredBeforeDeploy).length} required treatment action${report.treatmentPlan.filter((task) => task.requiredBeforeDeploy).length === 1 ? '' : 's'} detected before deployment.`}</p>
+          : `${report.summary.critical} critical, ${report.summary.high} high and ${report.attackLab.summary.mapped} source-evidence path${report.attackLab.summary.mapped === 1 ? '' : 's'} require review.`}</p>
       </div>
       <div class="metric-grid">
-        <div class="metric-card"><span>Critical</span><strong>${report.summary.critical}</strong></div>
-        <div class="metric-card"><span>High</span><strong>${report.summary.high}</strong></div>
-        <div class="metric-card"><span>Contracts</span><strong>${report.contracts.length}</strong></div>
-        <div class="metric-card"><span>Exposure chains</span><strong>${report.exposureChains.length}</strong></div>
+        <div class="metric-card"><span>Intent compliance</span><strong>${report.privacyIntent.complianceScore}</strong></div>
+        <div class="metric-card"><span>Attack defense</span><strong>${report.attackLab.summary.defenseScore}</strong></div>
+        <div class="metric-card"><span>Sensitive assets</span><strong>${report.privacyGenome.metrics.sensitiveAssets}</strong></div>
+        <div class="metric-card"><span>Blast radius</span><strong>${report.privacyGenome.metrics.blastRadius}</strong></div>
       </div>
     </div>
     <div class="hash-line">
@@ -626,12 +703,35 @@ function workspaceHeader(eyebrow, title, description, actions = '') {
 }
 
 function emptyWorkspace(title = 'Run a scan first', text = 'Mission Control will populate after deterministic analysis completes.') {
-  return `${workspaceHeader('Mission Control', title, text)}<div class="empty-state"><div><strong>${esc(title)}</strong><span>${esc(text)}</span></div></div>`;
+  return `${renderProjectXray()}${workspaceHeader('Mission Control', title, text)}<div class="empty-state"><div><strong>${esc(title)}</strong><span>${esc(text)}</span></div></div>`;
+}
+
+function renderProjectXray() {
+  const xray = state.projectXray;
+  if (!xray) return '';
+  const roles = xray.files.reduce((counts, file) => ({ ...counts, [file.role]: (counts[file.role] || 0) + 1 }), {});
+  const nodes = xray.files.slice(0, 12).map((file) => `
+    <article class="xray-node role-${esc(file.role)}" title="${esc(file.path)}">
+      <span>${esc(file.role)}</span><strong>${esc(file.path.split('/').at(-1))}</strong><small>${file.imports.length} import${file.imports.length === 1 ? '' : 's'}</small>
+    </article>`).join('');
+  const entries = xray.entryContracts.slice(0, 6).map((item) => `<span title="${esc(item.file)}">${esc(item.name)}</span>`).join('');
+  return `<section class="project-xray">
+    <header><div><span>PROJECT X-RAY</span><strong>${esc(xray.framework)}</strong></div><em>${state.files.length}/${xray.files.length} scoped</em></header>
+    <div class="xray-metrics">
+      <div><span>Deployable</span><strong>${xray.entryContracts.length}</strong></div>
+      <div><span>Imports</span><strong>${xray.imports}</strong></div>
+      <div><span>Dependencies</span><strong>${(roles.interface || 0) + (roles.library || 0) + (roles.abstract || 0) + (roles.supporting || 0)}</strong></div>
+      <div><span>Excluded</span><strong>${xray.excluded.length}</strong></div>
+    </div>
+    <div class="xray-map">${nodes}</div>
+    <footer><div><small>ENTRY CONTRACTS</small>${entries || '<span>Source-only project</span>'}</div><p>${xray.upgradeable ? 'Upgradeable architecture signal detected.' : 'Static contract architecture detected.'}${xray.externalImports.length ? ` ${xray.externalImports.length} external import${xray.externalImports.length === 1 ? '' : 's'} mapped.` : ''}</p></footer>
+  </section>`;
 }
 
 function renderTriage() {
   const report = state.report;
   if (!report) return emptyWorkspace();
+  const xrayPanel = renderProjectXray();
   const contractCards = report.contracts.map((contract) => `
     <article class="contract-card">
       <div class="contract-top">
@@ -670,13 +770,176 @@ function renderTriage() {
       </div>
     </details>`).join('') : '<div class="empty-state"><div><strong>No matching findings</strong><span>Adjust the filters or review the Ready result.</span></div></div>';
 
-  return workspaceHeader('Project triage', 'Contract readiness dashboard', 'Contract-level deployment states and deterministic findings.', `<span class="status-chip ${statusClass(report.status)}">${esc(report.status)}</span>`) +
+  return xrayPanel + workspaceHeader('Project triage', 'Contract readiness dashboard', 'Contract-level deployment states and deterministic findings.', `<span class="status-chip ${statusClass(report.status)}">${esc(report.status)}</span>`) +
     `<div class="contract-grid">${contractCards || '<div class="contract-card"><h4>No implementation contract parsed</h4></div>'}</div>` +
     `<div class="filter-row">
       <input id="finding-query" class="text-input" placeholder="Search rule, contract, file or evidence" value="${esc(state.filters.query)}" />
       <select id="severity-filter" class="select-input"><option value="all">All severities</option>${['critical','high','medium','low'].map((item) => `<option value="${item}" ${state.filters.severity === item ? 'selected' : ''}>${item}</option>`).join('')}</select>
       <select id="policy-filter" class="select-input"><option value="all">All policies</option>${['Open','Restricted','Locked'].map((item) => `<option value="${item}" ${state.filters.policy === item ? 'selected' : ''}>${item}</option>`).join('')}</select>
     </div><div class="finding-list">${findingCards}</div>`;
+}
+
+
+function renderGenome() {
+  const report = state.report;
+  if (!report) return emptyWorkspace();
+  const genome = report.privacyGenome;
+  const assets = genome.assets.slice(0, 14).map((asset) => `
+    <article class="genome-asset">
+      <span class="asset-kind kind-${esc(asset.kind)}">${esc(asset.kind)}</span>
+      <div><strong>${esc(asset.label)}</strong><small>${esc(asset.contractName)} · ${esc(asset.file)}:${asset.line}</small></div>
+      <em>${esc(asset.sensitivity)}</em>
+    </article>`).join('');
+  const matrix = genome.disclosureMatrix.slice(0, 12).map((row) => `
+    <tr><th><strong>${esc(row.asset)}</strong><small>${esc(row.sensitivity)}</small></th>${row.channels.slice(0, 5).map((entry) => `<td><span class="matrix-state matrix-${entry.status.toLowerCase().replaceAll(' ', '-')}">${esc(entry.status)}</span></td>`).join('')}</tr>`).join('');
+  const actorHeaders = genome.actors.slice(0, 5).map((actor) => `<th title="${esc(actor.description)}">${esc(actor.label)}</th>`).join('');
+  const graphNodes = genome.graph.nodes.filter((node) => ['contract','function','asset','finding','policy'].includes(node.type)).slice(0, 24).map((node) => `
+    <div class="genome-node node-${esc(node.type)} risk-${esc(node.risk)}"><span>${esc(node.type)}</span><strong>${esc(node.label)}</strong><small>${esc(node.file)}:${node.line}</small></div>`).join('');
+  return workspaceHeader('Privacy Genome', 'The project’s privacy anatomy', 'Sensitive assets, actors, semantic relationships and disclosure boundaries derived from the canonical source model.', `<span class="status-chip ${genome.metrics.publicExposures ? 'status-blocked' : 'status-ready'}">${genome.metrics.nodes} nodes · ${genome.metrics.edges} edges</span>`) + `
+    <div class="os-metrics">
+      <div><span>Sensitive assets</span><strong>${genome.metrics.sensitiveAssets}</strong><small>storage, calldata and event payloads</small></div>
+      <div><span>Public exposures</span><strong>${genome.metrics.publicExposures}</strong><small>actor-to-asset disclosure paths</small></div>
+      <div><span>Identity linkability</span><strong>${genome.metrics.identityLinkability}%</strong><small>deterministic correlation estimate</small></div>
+      <div><span>Blast radius</span><strong>${genome.metrics.blastRadius}/10</strong><small>project-wide disclosure pressure</small></div>
+    </div>
+    <div class="genome-layout">
+      <section class="os-panel"><div class="os-panel-head"><div><span>ASSET REGISTRY</span><strong>Protected data surface</strong></div><em>${genome.assets.length} mapped</em></div><div class="genome-assets">${assets || '<div class="empty-state"><div><strong>No sensitive asset inferred</strong><span>Review names and policies manually.</span></div></div>'}</div></section>
+      <section class="os-panel"><div class="os-panel-head"><div><span>SEMANTIC GRAPH</span><strong>Source relationships</strong></div><em>${genome.graph.edges.length} edges</em></div><div class="genome-graph">${graphNodes || '<div class="empty-state"><div><strong>No graph node</strong></div></div>'}</div></section>
+    </div>
+    <section class="os-panel matrix-panel"><div class="os-panel-head"><div><span>WHO CAN SEE WHAT?</span><strong>Disclosure Matrix</strong></div><em>Evidence-derived</em></div><div class="matrix-scroll"><table class="disclosure-matrix"><thead><tr><th>Protected asset</th>${actorHeaders}</tr></thead><tbody>${matrix || '<tr><td colspan="6">No sensitive asset mapped.</td></tr>'}</tbody></table></div></section>`;
+}
+
+function renderIntent() {
+  const report = state.report;
+  if (!report) return emptyWorkspace();
+  const intent = report.privacyIntent;
+  const violations = intent.violations.map((item) => `<article class="intent-violation severity-frame-${item.severity}"><span>${esc(item.severity)}</span><div><strong>${esc(item.asset)} → ${esc(item.actor)}</strong><p>${esc(item.rule)}</p></div></article>`).join('');
+  const declaration = state.intentDeclaration;
+  const option = (value, label, selected) => `<option value="${value}" ${value === selected ? 'selected' : ''}>${label}</option>`;
+  return workspaceHeader('Privacy Intent Studio', 'Declare privacy rules without writing code', 'Choose the intended disclosure boundaries, then compile them into the canonical report and compare the source against your declaration.', `<button class="action-button primary" data-action="export-intent">Download intent YAML</button>`) + `
+    <section class="os-panel intent-studio" data-testid="intent-studio">
+      <div class="os-panel-head"><div><span>NO-CODE POLICY</span><strong>Disclosure defaults and required controls</strong></div><em>${intent.declarationSource === 'user-declared' ? 'Declared' : 'Default profile'}</em></div>
+      <div class="intent-studio-grid">
+        <label><span>Public observer</span><select id="intent-public-observer" class="select-input">${option('denied', 'Denied', declaration.defaults.publicObserver)}${option('allowed', 'Allowed', declaration.defaults.publicObserver)}</select><small>Can an unauthenticated observer read the protected value?</small></label>
+        <label><span>External contract</span><select id="intent-external-contract" class="select-input">${option('restricted', 'Restricted', declaration.defaults.externalContract)}${option('denied', 'Denied', declaration.defaults.externalContract)}${option('allowed', 'Allowed', declaration.defaults.externalContract)}</select><small>How may integrations cross the privacy boundary?</small></label>
+        <label><span>Record owner</span><select id="intent-record-owner" class="select-input">${option('allowed', 'Allowed', declaration.defaults.recordOwner)}${option('restricted', 'Restricted', declaration.defaults.recordOwner)}</select><small>What is the subject allowed to see about their record?</small></label>
+        <div class="intent-control-list">
+          <label><input id="intent-least-privilege" type="checkbox" ${declaration.controls.requireLeastPrivilege ? 'checked' : ''}/><span>Require least privilege</span></label>
+          <label><input id="intent-revocation" type="checkbox" ${declaration.controls.requireRevocationPath ? 'checked' : ''}/><span>Require revocation path</span></label>
+          <label><input id="intent-revert-data" type="checkbox" ${declaration.controls.prohibitSensitiveRevertData ? 'checked' : ''}/><span>Prohibit sensitive revert data</span></label>
+          <label><input id="intent-lineage" type="checkbox" ${declaration.controls.requireDeploymentLineage ? 'checked' : ''}/><span>Require deployment lineage</span></label>
+        </div>
+      </div>
+      <div class="intent-studio-actions"><p>Applying this policy creates a new deterministic report hash; the Solidity source hash remains unchanged.</p><button class="action-button primary" data-action="apply-intent">Apply policy and rescan</button></div>
+    </section>
+    <div class="intent-layout">
+      <section class="intent-score-card ${intent.complianceScore >= 90 ? 'intent-good' : intent.complianceScore >= 70 ? 'intent-review' : 'intent-bad'}">
+        <span>INTENT COMPLIANCE</span><strong>${intent.complianceScore}</strong><em>/100</em><h4>${esc(intent.status)}</h4><p>${intent.declaredAssets} protected assets compiled under the ${esc(intent.profile)} profile.</p>
+      </section>
+      <section class="os-panel intent-document"><div class="os-panel-head"><div><span>PRIVACY-INTENT.YAML</span><strong>Machine-readable contract</strong></div><em>Local</em></div><pre>${esc(intent.document)}</pre></section>
+    </div>
+    <section class="os-panel"><div class="os-panel-head"><div><span>POLICY VIOLATIONS</span><strong>Code-to-intent mismatches</strong></div><em>${intent.violations.length}</em></div><div class="intent-violations">${violations || '<div class="empty-state"><div><strong>Intent aligned</strong><span>No deterministic policy mismatch was found.</span></div></div>'}</div></section>`;
+}
+
+function renderShadow() {
+  const report = state.report;
+  if (!report) return emptyWorkspace();
+  const lab = report.attackLab;
+  const selected = lab.campaigns.find((campaign) => campaign.id === state.activeReplayId) || lab.campaigns[0];
+  if (selected && !state.activeReplayId) state.activeReplayId = selected.id;
+  const replayOptions = lab.campaigns.map((campaign) => `<option value="${esc(campaign.id)}" ${campaign.id === selected?.id ? 'selected' : ''}>${String(campaign.sequence).padStart(2, '0')} · ${esc(campaign.ruleId)} · ${esc(campaign.title)}</option>`).join('');
+  const cinema = selected ? `
+    <section class="replay-cinema" data-replay-id="${esc(selected.id)}">
+      <div class="cinema-toolbar"><div><span>ATTACK REPLAY CINEMA</span><strong>${esc(selected.title)}</strong><small>${esc(selected.objective)}</small></div><div><select id="attack-replay-select" class="select-input">${replayOptions}</select><button class="action-button primary" data-action="play-attack-replay">Play replay</button></div></div>
+      <div class="cinema-track">${selected.replay.frames.map((frame) => `<article class="cinema-frame signal-${esc(frame.signal)}" data-frame="${frame.frame}"><b>${String(frame.frame).padStart(2, '0')}</b><div><span>${esc(frame.phase)}</span><strong>${esc(frame.headline)}</strong><small>${esc(frame.telemetry)}</small></div></article>`).join('')}</div>
+      <div class="cinema-outcome"><span>OUTCOME</span><strong>${esc(selected.replay.outcome)}</strong><small>Source-evidence animation · no bytecode execution</small></div>
+    </section>` : '';
+  const campaigns = lab.campaigns.map((campaign) => `
+    <details class="attack-card severity-frame-${campaign.severity}">
+      <summary><div class="attack-index">${String(campaign.sequence).padStart(2, '0')}</div><div><strong>${esc(campaign.title)}</strong><small>${esc(campaign.ruleId)} · ${esc(campaign.contractName)} · ${esc(campaign.file)}:${campaign.line}</small></div><span>${esc(campaign.status)}</span><em>${campaign.blastRadius}/10</em></summary>
+      <div class="attack-body"><p>${esc(campaign.objective)}</p><div class="attack-steps">${campaign.steps.map((step) => `<div><span>${esc(step.phase)}</span><strong>${esc(step.label)}</strong><small>${esc(step.detail)}</small></div>`).join('')}</div></div>
+    </details>`).join('');
+  return workspaceHeader('Shadow Evidence Lab', 'Adversarial paths mapped from source evidence', 'Every campaign is deterministic and tied to a finding. This release does not execute bytecode or claim full EVM emulation.', `<span class="status-chip ${lab.summary.mapped ? 'status-blocked' : 'status-ready'}">Defense ${lab.summary.defenseScore}/100</span>`) + `
+    ${cinema}
+    <div class="os-metrics shadow-metrics"><div><span>Generated scenarios</span><strong>${lab.summary.attempts}</strong><small>finding-bound campaigns</small></div><div><span>Evidence paths</span><strong>${lab.summary.mapped}</strong><small>source-mapped privacy paths</small></div><div><span>Maximum blast</span><strong>${lab.summary.maximumBlastRadius}/10</strong><small>worst campaign</small></div><div><span>Mode</span><strong class="mode-label">LOCAL</strong><small>no bytecode execution</small></div></div>
+    <div class="lab-notice">${esc(lab.disclaimer)}</div>
+    <div class="attack-list">${campaigns || '<div class="empty-state"><div><strong>No adversarial path mapped</strong><span>The current deterministic evidence set is clear.</span></div></div>'}</div>`;
+}
+
+function renderMRI() {
+  const report = state.report;
+  if (!report) return emptyWorkspace();
+  const traces = report.transactionMRI.traces.map((trace) => `
+    <article class="mri-card severity-frame-${trace.severity}">
+      <header><div><span>${esc(trace.channel)}</span><strong>${esc(trace.title)}</strong><small>${esc(trace.file)}:${trace.line}</small></div><em>${esc(trace.severity)}</em></header>
+      <div class="mri-timeline">${trace.stages.map((stage) => `<div class="mri-stage"><b>${String(stage.order).padStart(2, '0')}</b><div><span>${esc(stage.phase)} · ${esc(stage.visibility)}</span><strong>${esc(stage.title)}</strong><small>${esc(stage.detail)}</small></div></div>`).join('')}</div>
+    </article>`).join('');
+  return workspaceHeader('Transaction MRI', 'Trace the disclosure from entry point to policy boundary', 'A source-level execution narrative for every deterministic privacy finding.') + `<div class="mri-list">${traces || '<div class="empty-state"><div><strong>No disclosure trace</strong><span>No deterministic finding produced an MRI path.</span></div></div>'}</div>`;
+}
+
+function renderForge() {
+  const report = state.report;
+  if (!report) return emptyWorkspace();
+  const forge = report.forgePlan;
+  const patches = forge.patches.map((patch) => `
+    <article class="forge-card ${patch.supported ? 'forge-ready' : 'forge-review'}">
+      <header><div><span>${esc(patch.ruleId)} · ${esc(patch.transformation)}</span><strong>${esc(patch.title)}</strong><small>${esc(patch.file)}:${patch.line}</small></div><em>${esc(patch.status)}</em></header>
+      <div class="forge-diff"><div><span>BEFORE</span><pre>${esc(patch.before)}</pre></div><div><span>${patch.supported ? 'CANDIDATE PATCH' : 'ENGINEERING GUIDANCE'}</span><pre>${esc(patch.after)}</pre></div></div>
+      <p>${esc(patch.behaviorChange)}</p><footer>${patch.verification.map((item) => `<span>✓ ${esc(item)}</span>`).join('')}</footer>
+    </article>`).join('');
+  return workspaceHeader('Forge Mode', 'Deterministic hardening candidates', 'Safe, narrow transformations are packaged as reviewable candidates. VeilForge refuses generic mutations when behavior cannot be preserved confidently.', `<button class="action-button primary" data-action="export-forge-zip">Download candidate project ZIP</button>`) + `
+    <div class="os-metrics"><div><span>Total findings</span><strong>${forge.summary.total}</strong><small>forge queue</small></div><div><span>Candidate ready</span><strong>${forge.summary.candidateReady}</strong><small>narrow deterministic edits</small></div><div><span>Engineering review</span><strong>${forge.summary.engineeringReview}</strong><small>unsafe to auto-mutate</small></div><div><span>Source files</span><strong>${forge.sourceFiles.length}</strong><small>candidate bundle scope</small></div></div>
+    <div class="forge-warning">Candidate patches can change ABI or caller semantics. The downloaded project is intentionally labeled for review and must be compiled and tested before deployment.</div>
+    <div class="forge-list">${patches || '<div class="empty-state"><div><strong>No patch required</strong><span>The deterministic rule set found no hardening task.</span></div></div>'}</div>`;
+}
+
+function renderPassport() {
+  const report = state.report;
+  if (!report) return emptyWorkspace();
+  const passport = report.privacyPassport;
+  const lineage = report.deploymentLineage;
+  const evidence = state.deploymentEvidence || {};
+  const evidenceStatus = evaluateDeploymentEvidence(lineage, evidence);
+  const pillars = Object.entries(passport.pillars).map(([name, value]) => `<div><span>${esc(name.replace(/([A-Z])/g, ' $1'))}</span><strong>${typeof value === 'number' ? `${value}/100` : esc(value)}</strong></div>`).join('');
+  const claims = passport.claims.map((claim) => `<li>${esc(claim)}</li>`).join('');
+  const lineageStages = lineage.stages.map((stage, index) => `<div class="lineage-stage lineage-${esc(stage.status)}"><b>${String(index + 1).padStart(2, '0')}</b><div><span>${esc(stage.status)}</span><strong>${esc(stage.label)}</strong><small title="${esc(stage.evidence)}">${esc(stage.evidence)}</small></div></div>`).join('');
+  return workspaceHeader('Verifiable Privacy Passport', 'A source-bound privacy identity for the project', 'The passport is generated from the exact canonical source hash and automatically reflects current privacy evidence.', `<button class="action-button primary" data-action="export-passport">Download passport JSON</button>`) + `
+    <section class="passport-card passport-${passport.status.toLowerCase()}">
+      <div class="passport-top"><div><span>VEILFORGE PRIVACY PASSPORT</span><h4>${esc(elements.projectName.value || 'Solidity project')}</h4><code>${esc(passport.passportId)}</code></div><div class="passport-seal"><span>◈</span><strong>${esc(passport.status)}</strong><small>Gate: ${esc(passport.deploymentGate)}</small></div></div>
+      <div class="passport-pillars">${pillars}</div>
+      <div class="passport-evidence"><div><span>Sensitive assets</span><strong>${passport.evidence.sensitiveAssets}</strong></div><div><span>Public exposures</span><strong>${passport.evidence.publicExposures}</strong></div><div><span>Mapped paths</span><strong>${passport.evidence.mappedCampaigns}</strong></div><div><span>Candidate patches</span><strong>${passport.evidence.candidatePatches}</strong></div></div>
+      <div class="passport-hash"><span>Bound source hash</span><code>${esc(passport.sourceHash)}</code></div>
+      <ul>${claims}</ul>
+    </section>
+    <section class="living-lineage os-panel">
+      <div class="os-panel-head"><div><span>DEPLOYMENT LINEAGE</span><strong>Living Passport revision ${passport.revision}</strong></div><em class="evidence-${evidenceStatus.valid ? 'linked' : evidenceStatus.status === 'Stale' ? 'stale' : 'unlinked'}">${esc(evidenceStatus.status)}</em></div>
+      <div class="lineage-grid">${lineageStages}</div>
+      <div class="deployment-linker">
+        <div class="deployment-linker-copy"><span>LOCAL EVIDENCE LINK</span><strong>${esc(evidenceStatus.reason)}</strong><small>Linking does not claim RPC or explorer verification. It creates a deterministic local attestation.</small>${evidenceStatus.attestationId ? `<code>${esc(evidenceStatus.attestationId)}</code>` : ''}</div>
+        <div class="deployment-fields">
+          <input id="deployment-address" class="text-input" placeholder="Contract address 0x…" value="${esc(evidence.contractAddress || '')}" />
+          <input id="deployment-tx" class="text-input" placeholder="Deployment transaction 0x…" value="${esc(evidence.transactionHash || '')}" />
+          <input id="deployment-bytecode" class="text-input" placeholder="Bytecode hash 0x…" value="${esc(evidence.bytecodeHash || '')}" />
+          <div><button class="action-button primary" data-action="link-deployment-evidence">Link local evidence</button>${Object.keys(evidence).length ? '<button class="action-button" data-action="clear-deployment-evidence">Clear</button>' : ''}</div>
+        </div>
+      </div>
+    </section>`;
+}
+
+function renderPrivacyTwin(report) {
+  const twin = report.privacyTwin;
+  const surfaces = twin.surfaces.slice(0, 16).map((surface) => `
+    <article class="twin-surface">
+      <header><div><span>${esc(surface.contractName)}</span><strong>${esc(surface.signature)}</strong></div><em class="policy-${surface.recommendation.toLowerCase()}">${esc(surface.recommendation)}</em></header>
+      <div class="twin-compare"><div><span>PUBLIC ARC</span><p>${esc(surface.publicEvm)}</p></div><div><span>APS READINESS MODEL</span><p>${esc(surface.apsSimulation)}</p></div></div>
+      <footer>${esc(surface.adaptation)}</footer>
+    </article>`).join('');
+  const trusts = twin.trustRequirements.map((item) => `<li><strong>${esc(item.contractName)} · ${esc(item.file)}:${item.line}</strong><span>${esc(item.status)}</span><small>${esc(item.reason)}</small></li>`).join('');
+  return workspaceHeader('Privacy Deployment Twin', 'Public Arc and APS readiness, side by side', 'A deterministic digital twin of the current source against Arc’s published privacy design.', `<span class="status-chip ${twin.readinessScore >= 90 ? 'status-ready' : 'status-review'}">Twin ${twin.readinessScore}/100</span>`) + `
+    <div class="twin-roadmap"><div><span>${esc(twin.availability.label)}</span><strong>Honest model, not a live APS deployment</strong><p>${esc(twin.availability.statement)}</p></div><code>${esc(shortHash(twin.twinId))}</code></div>
+    <div class="os-metrics"><div><span>Selectors modeled</span><strong>${twin.summary.selectors}</strong><small>public vs confidential boundary</small></div><div><span>Restricted</span><strong>${twin.summary.restricted}</strong><small>explicit grants required</small></div><div><span>Locked</span><strong>${twin.summary.locked}</strong><small>blocked by policy</small></div><div><span>Trust decisions</span><strong>${twin.summary.trustDecisions}</strong><small>cross-contract review</small></div></div>
+    <div class="twin-surface-list">${surfaces || '<div class="empty-state"><div><strong>No callable surface modeled</strong></div></div>'}</div>
+    ${trusts ? `<section class="os-panel twin-trust"><div class="os-panel-head"><div><span>TRUST DOMAIN PLAN</span><strong>Explicit cross-contract decisions</strong></div><em>${twin.summary.trustDecisions}</em></div><ul>${trusts}</ul></section>` : ''}`;
 }
 
 function renderChains() {
@@ -692,7 +955,7 @@ function renderChains() {
         ${chain.nodes.map((node) => `<div class="chain-node ${node.detected ? '' : 'muted'}" title="${esc(node.detail)}"><span>${esc(node.type)}</span><strong>${esc(node.label)}</strong><small>${esc(node.detail)}</small></div>`).join('')}
       </div>
     </article>`).join('');
-  return workspaceHeader('Deterministic exposure chains', 'Storage → Function → Event → Selector → Policy', 'Every chain is generated from parsed source evidence and policy rules—never from a model.') +
+  return renderPrivacyTwin(report) + workspaceHeader('Deterministic exposure chains', 'Storage → Function → Event → Selector → Policy', 'Every chain is generated from parsed source evidence and policy rules—never from a model.') +
     `<div class="chain-list">${chains || '<div class="empty-state"><div><strong>No exposure chain detected</strong><span>The current source has no deterministic finding chain.</span></div></div>'}</div>`;
 }
 
@@ -706,7 +969,7 @@ function renderTreatment() {
       <div class="task-meta"><span>${task.requiredBeforeDeploy ? 'Required before deploy' : 'Engineering follow-up'}</span><span>Policy: ${esc(task.suggestedPolicy)}</span><span>Status: ${esc(task.status)}</span></div>
     </article>`).join('');
   const counts = ['P0','P1','P2','P3'].map((priority) => `${priority}: ${report.treatmentPlan.filter((task) => task.priority === priority).length}`).join(' · ');
-  return workspaceHeader('Treatment Plan 2.0', 'Prioritized remediation queue', `${counts}. P0 and P1 items are marked as required before deployment.`) +
+  return workspaceHeader('Treatment Plan 3.2', 'Prioritized remediation queue', `${counts}. P0 and P1 items are marked as required before deployment.`) +
     `<div class="task-list">${tasks || '<div class="empty-state"><div><strong>No treatment task</strong><span>The deterministic rule set did not create a remediation item.</span></div></div>'}</div>`;
 }
 
@@ -744,7 +1007,13 @@ function renderProof() {
   const report = state.report;
   if (!report) return emptyWorkspace();
   const payload = buildProofPayload(report, '');
-  return workspaceHeader('Proof Center 2.0', 'Anchor hashes on Arc Testnet', 'Only source hash, report hash, score, URI, version, submitter, and timestamp are written onchain.') + `
+  const rehearsal = report.arcDeployRehearsal;
+  const rehearsalChecks = rehearsal.checks.map((check) => `<div class="rehearsal-check check-${esc(check.status)}"><span>${check.status === 'pass' ? '✓' : check.status === 'roadmap' ? '◇' : '!'}</span><div><strong>${esc(check.label)}</strong><small title="${esc(check.detail)}">${esc(check.detail)}</small></div><em>${esc(check.status)}</em></div>`).join('');
+  return workspaceHeader('Proof Center 3.2', 'Anchor hashes on Arc Testnet', 'Only source hash, report hash, score, URI, version, submitter, and timestamp are written onchain.') + `
+    <section class="deploy-rehearsal os-panel">
+      <div class="os-panel-head"><div><span>ARC DEPLOY REHEARSAL</span><strong>Stop unsafe deployments before the wallet opens</strong></div><em class="${rehearsal.blocking ? 'status-blocked' : 'status-ready'}">${esc(rehearsal.status)}</em></div>
+      <div class="rehearsal-body"><div class="rehearsal-checks">${rehearsalChecks}</div><div class="rehearsal-plan"><span>TRANSACTION PLAN</span><ol>${rehearsal.transactionPlan.map((step) => `<li>${esc(step)}</li>`).join('')}</ol><div class="roadmap-tag">APS: ${esc(rehearsal.apsMode)}</div></div></div>
+    </section>
     <div class="proof-layout">
       <section class="proof-card">
         <h4>Arc proof transaction</h4>
@@ -776,14 +1045,21 @@ function renderProof() {
 
 function renderExports() {
   if (!state.report) return emptyWorkspace();
+  const gate = state.report.privacyGate;
+  const gateChecks = gate.checks.map((check) => `<div class="gate-check ${check.pass ? 'gate-pass' : 'gate-fail'}"><span>${check.pass ? '✓' : '!'}</span><div><strong>${esc(check.label)}</strong><small>${esc(String(check.actual))} / target ${esc(String(check.expected))}</small></div></div>`).join('');
+  const packs = state.report.rulePacks.map((pack) => `<article class="rule-pack"><span>ACTIVE PACK</span><strong>${esc(pack.label)}</strong><small>${pack.matchedTerms.length ? `Matched: ${esc(pack.matchedTerms.join(', '))}` : 'Universal baseline'}</small><p>${esc(pack.controls.join(' · '))}</p></article>`).join('');
   const cards = [
-    ['Canonical JSON', 'Full deterministic report with triage, findings, chains, treatment, policies, and hashes.', 'export-json', 'Download JSON'],
+    ['Canonical Privacy OS JSON', 'Genome, intent, attacks, MRI, forge plan, passport, findings, policies and hashes.', 'export-json', 'Download JSON'],
     ['Markdown report', 'Reviewer-friendly executive summary and remediation evidence.', 'export-markdown', 'Download Markdown'],
     ['Arc Policy Manifest', 'Selector-level Open, Restricted, and Locked recommendations.', 'export-policy', 'Download manifest'],
-    ['Remediation Pack ZIP', 'Report, policy manifest, treatment plan, proof payload, and local source bundle.', 'export-zip', 'Download ZIP'],
+    ['Privacy CI Gate Kit', 'GitHub workflow, deterministic gate result, active rule packs and source-guided fuzz plan.', 'export-ci-kit', 'Download CI kit'],
+    ['Deployment Lineage', 'Portable lineage, Privacy Twin and Arc deployment rehearsal artifacts.', 'export-lineage', 'Download lineage JSON'],
+    ['Privacy OS Pack ZIP', 'Complete report, genome, intent, attacks, MRI, forge, passport, proof and source bundle.', 'export-zip', 'Download ZIP'],
   ];
   return workspaceHeader('Deterministic exports', 'Portable privacy engineering outputs', 'Every export is generated locally from the same canonical report.') +
-    `<div class="export-grid">${cards.map(([title, text, action, button]) => `<article class="export-card"><h4>${title}</h4><p>${text}</p><button class="action-button primary" data-action="${action}">${button}</button></article>`).join('')}</div>`;
+    `<section class="gate-console os-panel"><div class="os-panel-head"><div><span>PRIVACY CI GATE</span><strong>Merge decision: ${esc(gate.status.toUpperCase())}</strong></div><em class="${gate.status === 'passed' ? 'status-ready' : 'status-blocked'}">${gate.failed} failed</em></div><div class="gate-check-grid">${gateChecks}</div></section>
+    <section class="ops-grid"><div class="rule-pack-panel"><div class="ops-heading"><span>DOMAIN RULE PACKS</span><strong>${state.report.rulePacks.length} active profiles</strong></div><div class="rule-pack-list">${packs}</div></div><div class="fuzz-panel"><span>SOURCE-GUIDED FUZZ PLAN</span><strong>${state.report.fuzzPlan.summary.vectors}</strong><em>vectors</em><p>${state.report.fuzzPlan.summary.campaigns} selector campaigns generated. Execution remains compiler-backed and explicit.</p><code>${esc(state.report.fuzzPlan.recommendedCommand)}</code></div></section>
+    <div class="export-grid">${cards.map(([title, text, action, button]) => `<article class="export-card"><h4>${title}</h4><p>${text}</p><button class="action-button primary" data-action="${action}">${button}</button></article>`).join('')}</div>`;
 }
 
 function renderHistory() {
@@ -797,15 +1073,204 @@ function renderHistory() {
     `<div class="history-list">${items || '<div class="empty-state"><div><strong>No saved scan</strong><span>Completed scans will appear here without uploading source code.</span></div></div>'}</div>`;
 }
 
+function buildReleaseGateSnapshot() {
+  const report = state.report;
+  const xray = state.projectXray;
+  const evidence = evaluateDeploymentEvidence({ report, evidence: state.deploymentEvidence });
+  const bytecodeTruth = state.bytecodeTruth.verification;
+  const proofLab = state.report ? currentProofLabSnapshot() : null;
+  const checks = [
+    { id: 'scope', label: 'Project scan scope', detail: `${state.files.length} source file${state.files.length === 1 ? '' : 's'} selected`, status: state.files.length ? 'pass' : 'block' },
+    { id: 'entry', label: 'Deployable entry contract', detail: xray ? `${xray.entryContracts.length} detected` : 'Project source inventory unavailable', status: xray?.entryContracts.length ? 'pass' : 'review' },
+    ...(report?.privacyGate?.checks || []).map((check) => ({ id: `privacy-${check.id}`, label: check.label, detail: `${check.actual} / target ${check.expected}`, status: check.pass ? 'pass' : 'block' })),
+    { id: 'passport', label: 'Source-bound Privacy Passport', detail: report?.privacyPassport?.status || 'Unavailable', status: report?.privacyPassport?.status === 'Active' ? 'pass' : report?.privacyPassport ? 'block' : 'review' },
+    { id: 'imports', label: 'External dependency review', detail: xray?.externalImports.length ? `${xray.externalImports.length} external import${xray.externalImports.length === 1 ? '' : 's'} require compiler resolution` : 'No unresolved external import signal', status: xray?.externalImports.length ? 'review' : 'pass' },
+    { id: 'evidence', label: 'Arc deployment evidence', detail: evidence.status, status: evidence.valid ? 'pass' : 'review' },
+    { id: 'bytecode-truth', label: 'Source-to-chain bytecode identity', detail: bytecodeTruth?.status || 'Verification not run', status: bytecodeTruth?.verified ? 'pass' : bytecodeTruth ? 'block' : 'review' },
+    { id: 'proof-of-fix', label: 'Executable Proof of Fix', detail: proofLab?.decision || 'Proof Lab not evaluated', status: proofLab?.decision === 'FIX PROVEN' ? 'pass' : proofLab?.decision === 'BLOCKED' ? 'block' : 'review' },
+  ];
+  const blocked = checks.filter((check) => check.status === 'block').length;
+  const review = checks.filter((check) => check.status === 'review').length;
+  const decision = blocked ? 'BLOCKED' : review ? 'REVIEW' : 'READY';
+  const actions = [];
+  if (report?.summary?.critical) actions.push({ priority: 'P0', title: `Resolve ${report.summary.critical} critical finding${report.summary.critical === 1 ? '' : 's'}`, owner: 'Security' });
+  if (report?.summary?.high) actions.push({ priority: 'P1', title: `Treat ${report.summary.high} high finding${report.summary.high === 1 ? '' : 's'}`, owner: 'Engineering' });
+  if ((report?.privacyIntent?.complianceScore || 0) < 90) actions.push({ priority: 'P1', title: 'Raise intent compliance to at least 90', owner: 'Privacy' });
+  if (xray?.externalImports.length) actions.push({ priority: 'P2', title: 'Compile and resolve external dependency imports', owner: 'Build' });
+  if (!evidence.valid) actions.push({ priority: 'P3', title: 'Link Arc deployment evidence after broadcast', owner: 'Release' });
+  if (!bytecodeTruth?.verified) actions.push({ priority: bytecodeTruth ? 'P0' : 'P3', title: bytecodeTruth ? 'Resolve Arc bytecode mismatch' : 'Verify deployed bytecode against compiler artifact', owner: 'Release' });
+  if (proofLab?.decision !== 'FIX PROVEN') actions.push({ priority: proofLab?.decision === 'BLOCKED' ? 'P0' : 'P2', title: 'Complete compiler-backed Proof of Fix evidence', owner: 'QA' });
+  if (!actions.length) actions.push({ priority: 'PASS', title: 'All deterministic release controls passed', owner: 'Release' });
+  return {
+    version: '3.2-release-gate',
+    decision,
+    blocked,
+    review,
+    passed: checks.filter((check) => check.status === 'pass').length,
+    project: elements.projectName.value || 'Solidity project',
+    sourceHash: report?.sourceHash || null,
+    reportHash: report?.reportHash || null,
+    framework: xray?.framework || 'Unavailable',
+    checks,
+    actions,
+    ciCommand: 'node packages/analyzer/cli.mjs scan contracts --format json --output veilforge-report.json --gate',
+  };
+}
+
+function currentProofLabSnapshot() {
+  return buildProofLabSnapshot({
+    report: state.report,
+    projectXray: state.projectXray,
+    artifact: state.bytecodeTruth.artifact,
+    bytecodeVerification: state.bytecodeTruth.verification,
+    receipt: state.proofLab.receipt,
+    receiptName: state.proofLab.receiptFileName,
+    hash: keccakHex,
+  });
+}
+
+function renderProofLab() {
+  if (!state.report) return emptyWorkspace('Run a scan before Proof Lab', 'Proof Lab binds compiler, regression, fuzz, storage-layout and Arc bytecode evidence to the active source hash.');
+  const proof = currentProofLabSnapshot();
+  state.proofLab.snapshot = proof;
+  const checks = proof.checks.map((check, index) => `<article class="proof-lab-check lab-${check.status}"><b>${String(index + 1).padStart(2, '0')}</b><span>${check.status === 'pass' ? '✓' : check.status === 'block' ? '!' : '·'}</span><div><strong>${esc(check.label)}</strong><small>${esc(check.detail)}</small></div><em>${esc(check.status)}</em></article>`).join('');
+  const receipt = proof.receipt;
+  const statusClassName = proof.decision === 'FIX PROVEN' ? 'proven' : proof.decision === 'BLOCKED' ? 'blocked' : 'evidence';
+  const runbook = [
+    ['01', 'Baseline', 'Canonical scan and findings frozen', Boolean(state.report)],
+    ['02', 'Forge', 'Candidate patch scope prepared', state.report.forgePlan.summary.candidateReady > 0 || state.report.forgePlan.summary.total === 0],
+    ['03', 'Execute', receipt ? `${receipt.framework} receipt imported` : 'Run the exported Proof Kit locally', Boolean(receipt)],
+    ['04', 'Verify', state.bytecodeTruth.verification?.verified ? 'Arc bytecode identity proven' : 'Bytecode Truth required', Boolean(state.bytecodeTruth.verification?.verified)],
+    ['05', 'Attest', proof.decision, proof.decision === 'FIX PROVEN'],
+  ].map(([number, title, detail, done]) => `<div class="proof-lab-stage ${done ? 'stage-done' : ''}"><b>${number}</b><div><strong>${esc(title)}</strong><small>${esc(detail)}</small></div><span>${done ? '✓' : '—'}</span></div>`).join('');
+  return workspaceHeader('Proof Lab', 'Executable Proof of Fix', 'Turn a proposed remediation into compiler-backed evidence. VeilForge imports real Foundry/Hardhat results; it never invents a passing test.', `<button class="action-button" data-action="download-proof-kit">Download Proof Kit</button><label class="action-button proof-receipt-upload">Import test receipt<input id="proof-lab-receipt-input" type="file" accept=".json,application/json"></label><button class="action-button primary" data-action="export-proof-attestation">Download attestation</button>`) + `
+    <section class="proof-lab-hero proof-${statusClassName}"><div><span>PROOF OF FIX</span><strong>${esc(proof.decision)}</strong><p>${proof.blocked} blocked · ${proof.review} evidence required · ${proof.passed} passed</p></div><div class="proof-lab-id"><span>PROOF ID</span><code>${esc(shortHash(proof.proofId, 14, 10))}</code></div></section>
+    <div class="proof-lab-stages">${runbook}</div>
+    <div class="proof-lab-grid"><section><header><span>EXECUTABLE CONTROL MATRIX</span><strong>${proof.checks.length} deterministic checks</strong></header><div class="proof-lab-checks">${checks}</div></section><section class="proof-lab-console"><header><span>TEST RECEIPT</span><strong>${receipt ? esc(state.proofLab.receiptFileName) : 'Awaiting execution'}</strong></header>${receipt ? `<div class="proof-lab-metrics"><div><span>Compile</span><strong>${receipt.compilationPassed ? 'PASS' : 'FAIL'}</strong></div><div><span>Tests</span><strong>${receipt.tests.passed}/${receipt.tests.total}</strong></div><div><span>Fuzz</span><strong>${receipt.fuzz.runs}</strong></div><div><span>Storage</span><strong>${receipt.storageLayoutSafe == null ? 'N/A' : receipt.storageLayoutSafe ? 'SAFE' : 'FAIL'}</strong></div></div>` : '<p>Download the kit, run the Foundry or Hardhat command in the project, then import its JSON receipt here.</p>'}<div class="proof-command"><span>FOUNDRY</span><code>${esc(proof.commands.foundry)}</code><button data-action="copy-proof-command" data-command="foundry">Copy</button></div><div class="proof-command"><span>HARDHAT</span><code>${esc(proof.commands.hardhat)}</code><button data-action="copy-proof-command" data-command="hardhat">Copy</button></div></section></div>
+    ${state.proofLab.error ? `<p class="proof-lab-error">${esc(state.proofLab.error)}</p>` : ''}
+    <p class="proof-lab-honesty">A JSON receipt proves what the imported runner reported and is bound to this local attestation. Maximum assurance requires the receipt source hash plus ARC VERIFIED Bytecode Truth.</p>`;
+}
+
+function bytecodeTruthStatusClass(status) {
+  if (status === 'ARC VERIFIED') return 'verified';
+  if (status === 'STRUCTURAL MATCH') return 'structural';
+  if (status === 'MISMATCH') return 'mismatch';
+  return 'unverified';
+}
+
+function renderBytecodeTruth() {
+  const truth = state.bytecodeTruth;
+  const artifact = truth.artifact;
+  const result = truth.verification;
+  const status = result?.status || 'UNVERIFIED';
+  const hashRows = [
+    ['Compiler artifact', result?.artifactHash],
+    ['Arc target', result?.targetHash],
+    ['Proxy implementation', result?.implementationHash],
+  ].filter(([, value]) => value).map(([label, value]) => `<div class="truth-hash-row"><span>${esc(label)}</span><code>${esc(value)}</code></div>`).join('');
+  const artifactCard = artifact ? `
+    <section class="bytecode-card artifact-card"><header><span>COMPILER ARTIFACT</span><strong>${esc(truth.artifactFileName)}</strong></header>
+      <div class="truth-facts"><div><span>Contract</span><strong>${esc(artifact.contractName)}</strong></div><div><span>Source</span><strong>${esc(artifact.sourceName)}</strong></div><div><span>Compiler</span><strong>${esc(artifact.compilerVersion)}</strong></div><div><span>Optimizer</span><strong>${artifact.optimizer ? `${artifact.optimizer.enabled ? 'On' : 'Off'} · ${artifact.optimizer.runs} runs` : 'Unknown'}</strong></div></div>
+      <button class="action-button" data-action="clear-bytecode-artifact">Remove artifact</button>
+    </section>` : `
+    <section class="bytecode-card artifact-card empty-artifact"><span>COMPILER ARTIFACT</span><strong>Foundry or Hardhat JSON</strong><p>Upload a build artifact containing deployed runtime bytecode. Source code never leaves this browser.</p></section>`;
+  const proxy = result?.implementationAddress ? `<div class="proxy-route"><span>ERC-1967 PROXY ROUTE</span><code>${esc(result.targetAddress)}</code><b>→</b><code>${esc(result.implementationAddress)}</code></div>` : '';
+  return workspaceHeader('Bytecode Truth', 'Prove source-to-chain identity', 'Compare a Foundry or Hardhat compiler artifact with live runtime bytecode on Arc. Exact, metadata-aware and ERC-1967 proxy verification are performed locally.', `<label class="action-button bytecode-upload">Load artifact<input id="bytecode-artifact-input" type="file" accept=".json,application/json"></label>${result ? '<button class="action-button primary" data-action="export-bytecode-attestation">Download attestation</button>' : ''}`) + `
+    <section class="bytecode-hero truth-${bytecodeTruthStatusClass(status)}"><div><span>CHAIN IDENTITY</span><strong>${esc(status)}</strong><p>${status === 'ARC VERIFIED' ? 'Full deployed runtime bytecode matches the compiler artifact byte-for-byte.' : status === 'STRUCTURAL MATCH' ? 'Executable runtime matches after Solidity metadata and immutable slots are normalized.' : status === 'MISMATCH' ? 'The Arc runtime does not match this compiler artifact.' : 'Load an artifact and verify a deployed Arc contract.'}</p></div><div class="truth-seal"><b>${result?.verified ? '✓' : '?'}</b><span>${result?.matchedKind ? esc(result.matchedKind) : 'awaiting proof'}</span></div></section>
+    <div class="bytecode-layout">
+      ${artifactCard}
+      <section class="bytecode-card verify-card"><header><span>LIVE ARC QUERY</span><strong>Runtime bytecode</strong></header><div class="bytecode-fields"><label><span>Contract address</span><input id="bytecode-target-address" class="text-input" placeholder="0x…" value="${esc(result?.targetAddress || state.deploymentEvidence.contractAddress || '')}"></label><label><span>RPC endpoint</span><input id="bytecode-rpc-url" class="text-input" value="${esc(result?.rpcUrl || ARC_TESTNET.rpcUrls[0])}"></label></div><button class="action-button primary verify-bytecode-button" data-action="verify-bytecode" ${artifact ? '' : 'disabled'}>Verify on Arc</button><small>Reads eth_getCode and the ERC-1967 implementation slot. No wallet or transaction is required.</small></section>
+    </div>
+    ${proxy}
+    ${hashRows ? `<section class="truth-hashes"><header><span>CRYPTOGRAPHIC RECEIPT</span><strong>Keccak-256 fingerprints</strong></header>${hashRows}</section>` : ''}
+    ${truth.error ? `<p class="bytecode-error">${esc(truth.error)}</p>` : ''}
+    <div class="truth-legend"><div><b>Exact</b><span>Entire deployed bytecode, including compiler metadata, is identical.</span></div><div><b>Structural</b><span>Executable runtime is identical after metadata and immutable normalization.</span></div><div><b>Scope</b><span>Artifact-to-chain identity proof; it does not replace a formal security audit.</span></div></div>`;
+}
+
+async function bytecodeRpcCall(rpcUrl, method, params) {
+  const response = await fetch(rpcUrl, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: Date.now(), method, params }) });
+  if (!response.ok) throw new Error(`Arc RPC returned HTTP ${response.status}.`);
+  const payload = await response.json();
+  if (payload.error) throw new Error(payload.error.message || `Arc RPC ${method} failed.`);
+  return payload.result;
+}
+
+async function loadBytecodeArtifact(file) {
+  if (!file) return;
+  if (file.size > 12 * 1024 * 1024) throw new Error('Artifact is too large (12 MB maximum).');
+  const artifact = parseBytecodeArtifact(await file.text(), file.name);
+  state.bytecodeTruth = { artifact, artifactFileName: file.name, verification: null, error: null };
+  renderWorkspace();
+  setMessage(`${artifact.contractName} compiler artifact loaded.`, 'success');
+}
+
+async function verifyArcBytecode() {
+  const artifact = state.bytecodeTruth.artifact;
+  if (!artifact) throw new Error('Load a Foundry or Hardhat artifact first.');
+  const targetAddress = document.querySelector('#bytecode-target-address')?.value.trim();
+  const rpcUrl = document.querySelector('#bytecode-rpc-url')?.value.trim();
+  if (!/^0x[0-9a-fA-F]{40}$/.test(targetAddress || '')) throw new Error('Enter a valid deployed contract address.');
+  if (!/^https?:\/\//i.test(rpcUrl || '')) throw new Error('Enter a valid Arc RPC URL.');
+  setMessage('Reading live Arc runtime bytecode…');
+  try {
+    const targetBytecode = await bytecodeRpcCall(rpcUrl, 'eth_getCode', [targetAddress, 'latest']);
+    let implementationAddress = null;
+    try {
+      const slot = await bytecodeRpcCall(rpcUrl, 'eth_getStorageAt', [targetAddress, EIP1967_IMPLEMENTATION_SLOT, 'latest']);
+      implementationAddress = implementationAddressFromStorage(slot);
+    } catch { implementationAddress = null; }
+    const implementationBytecode = implementationAddress ? await bytecodeRpcCall(rpcUrl, 'eth_getCode', [implementationAddress, 'latest']) : null;
+    const verification = verifyBytecodeTruth({ artifact, targetBytecode, implementationBytecode, targetAddress, implementationAddress, hash: keccakHex });
+    state.bytecodeTruth.verification = { ...verification, rpcUrl, chainId: ARC_TESTNET.chainId, verifiedAt: new Date().toISOString(), sourceHash: state.report?.sourceHash || null, reportHash: state.report?.reportHash || null };
+    state.bytecodeTruth.error = null;
+    renderWorkspace();
+    setMessage(verification.verified ? `${verification.status}: Arc runtime identity proven.` : 'Bytecode mismatch detected.', verification.verified ? 'success' : 'error');
+  } catch (error) {
+    state.bytecodeTruth.error = error instanceof Error ? error.message : String(error);
+    renderWorkspace();
+    throw error;
+  }
+}
+
+function renderReleaseGate() {
+  if (!state.report) return emptyWorkspace('Run a scan before release gating', 'Release Gate combines Project X-Ray, privacy findings, intent, passport and Arc deployment evidence.');
+  const gate = buildReleaseGateSnapshot();
+  const checks = gate.checks.map((check) => `<article class="release-check release-${check.status}"><span>${check.status === 'pass' ? '✓' : check.status === 'block' ? '!' : '•'}</span><div><strong>${esc(check.label)}</strong><small>${esc(check.detail)}</small></div><em>${esc(check.status)}</em></article>`).join('');
+  const actions = gate.actions.map((item, index) => `<article class="release-action"><b>${String(index + 1).padStart(2, '0')}</b><span class="priority-${esc(item.priority)}">${esc(item.priority)}</span><div><strong>${esc(item.title)}</strong><small>${esc(item.owner)}</small></div></article>`).join('');
+  const stages = [
+    ['Project', state.projectXray ? 'pass' : 'review', state.projectXray?.framework || 'Source inventory'],
+    ['Privacy', state.report.privacyGate.status === 'passed' ? 'pass' : 'block', `${state.report.privacyGate.failed} failed controls`],
+    ['Passport', state.report.privacyPassport.status === 'Active' ? 'pass' : 'block', state.report.privacyPassport.status],
+    ['Arc release', gate.decision === 'READY' ? 'pass' : gate.decision === 'BLOCKED' ? 'block' : 'review', gate.decision],
+  ].map(([label, status, detail], index) => `<div class="release-stage stage-${status}"><b>${String(index + 1).padStart(2, '0')}</b><span>${esc(label)}</span><small>${esc(detail)}</small></div>`).join('');
+  return workspaceHeader('Release Gate', 'Can this project ship?', 'One deterministic decision assembled from source scope, privacy controls, passport validity and Arc evidence.', `<button class="action-button" data-action="copy-release-command">Copy CI command</button><button class="action-button primary" data-action="export-release-gate">Download gate JSON</button>`) + `
+    <section class="release-hero decision-${gate.decision.toLowerCase()}">
+      <div><span>FINAL DECISION</span><strong>${esc(gate.decision)}</strong><p>${gate.blocked ? `${gate.blocked} blocking control${gate.blocked === 1 ? '' : 's'} must pass before deployment.` : gate.review ? `${gate.review} review item${gate.review === 1 ? '' : 's'} remain before release.` : 'All deterministic release controls passed.'}</p></div>
+      <div class="release-score"><strong>${gate.passed}</strong><span>passed</span><small>${gate.checks.length} total checks</small></div>
+    </section>
+    <div class="release-stages">${stages}</div>
+    <div class="release-grid"><section><header><span>CONTROL MATRIX</span><strong>${gate.blocked} blocked · ${gate.review} review</strong></header><div class="release-checks">${checks}</div></section><section><header><span>SHIP LIST</span><strong>Ordered next actions</strong></header><div class="release-actions">${actions}</div></section></div>
+    <div class="release-command"><span>CI ENFORCEMENT</span><code>${esc(gate.ciCommand)}</code></div>`;
+}
+
 function renderWorkspace() {
   const views = {
     triage: renderTriage,
+    genome: renderGenome,
+    intent: renderIntent,
+    shadow: renderShadow,
+    mri: renderMRI,
+    forge: renderForge,
     chains: renderChains,
     treatment: renderTreatment,
     compare: renderCompare,
     proof: renderProof,
+    passport: renderPassport,
     exports: renderExports,
     history: renderHistory,
+    release: renderReleaseGate,
+    bytecode: renderBytecodeTruth,
+    prooftest: renderProofLab,
   };
   elements.workspace.innerHTML = (views[state.activeView] ?? renderTriage)();
 }
@@ -820,18 +1285,79 @@ function renderAll() {
   }
 }
 
+function renderDetectorSeveritySummary(report) {
+  if (!elements.detectorSeveritySummary) return;
+  const severityOrbits = [
+    { severity: 'critical', orbit: 108, offset: -90 },
+    { severity: 'high', orbit: 76, offset: -74 },
+    { severity: 'medium', orbit: 45, offset: -48 },
+  ];
+  const dots = severityOrbits.flatMap(({ severity, orbit, offset }) => {
+    const count = report.findings.filter((finding) => finding.severity === severity).length;
+    return Array.from({ length: count }, (_, index) => ({
+      severity,
+      orbit,
+      angle: offset + ((360 / Math.max(count, 1)) * index),
+    }));
+  });
+  elements.detectorSeveritySummary.innerHTML = dots.map(({ severity, orbit, angle }) => `<span class="severity-dot severity-${severity}" style="--orbit:${orbit}px;--angle:${angle}deg" title="${severity}"></span>`).join('');
+  elements.detectorSeveritySummary.setAttribute('aria-label', `${report.summary.total} findings: ${severityOrbits.map(({ severity }) => `${report.findings.filter((finding) => finding.severity === severity).length} ${severity}`).join(', ')}.`);
+}
+
+function clearDetectorSeveritySummary() {
+  if (detectorClearTimer) clearTimeout(detectorClearTimer);
+  if (elements.detectorFindings) elements.detectorFindings.innerHTML = '';
+  if (!elements.detectorSeveritySummary) return;
+  elements.detectorSeveritySummary.innerHTML = '';
+  elements.detectorSeveritySummary.setAttribute('aria-label', 'No findings displayed.');
+}
+
+async function loadFilesAndScan(fileList) {
+  try {
+    setMessage('Inspecting the contract or project locally…');
+    const files = await readBrowserFiles(fileList);
+    if (!files.length) {
+      setFiles([], { announce: false });
+      setMessage('No Solidity contracts found. Upload a contract file, a ZIP project, or a project folder containing Solidity source.', 'error');
+      return;
+    }
+    setFiles(files, { announce: false });
+    runScan();
+  } catch (error) {
+    setFiles([], { announce: false });
+    setMessage(error instanceof Error ? error.message : String(error), 'error');
+  }
+}
+
 function runScan() {
   if (!state.files.length) {
+    clearDetectorSeveritySummary();
     setMessage('Add at least one Solidity file before scanning.', 'error');
     return;
   }
   elements.scanButton.disabled = true;
   elements.scanButton.classList.add('scanning');
+  elements.scanVisualizer?.classList.add('active');
+  elements.scanVisualizer?.setAttribute('aria-hidden', 'false');
+  if (detectorClearTimer) clearTimeout(detectorClearTimer);
+  if (elements.detectorFindings) elements.detectorFindings.innerHTML = '';
   setMessage('Running local deterministic analysis…');
   try {
-    state.report = scanProject(state.files);
+    state.report = scanProject(state.files, { declaredIntent: state.intentDeclaration });
     saveCurrentToHistory();
     renderAll();
+    renderDetectorSeveritySummary(state.report);
+    if (elements.detectorFindings) {
+      const detected = state.report.findings.filter((finding) => finding.severity === 'critical').slice(0, 4);
+      elements.detectorFindings.innerHTML = detected.map((finding, index) => `<article style="--delay:${index * 140}ms"><span>CRITICAL</span><b>${esc(finding.ruleId)}</b><small>${esc(finding.title)}</small></article>`).join('');
+      detectorClearTimer = setTimeout(() => {
+        elements.detectorFindings?.classList.add('clearing');
+        setTimeout(() => {
+          if (elements.detectorFindings) elements.detectorFindings.innerHTML = '';
+          elements.detectorFindings?.classList.remove('clearing');
+        }, 450);
+      }, 4600);
+    }
     setMessage(`${state.report.status}: ${state.report.summary.total} finding${state.report.summary.total === 1 ? '' : 's'}, report ${shortHash(state.report.reportHash)}.`, 'success');
   } catch (error) {
     console.error(error);
@@ -857,7 +1383,7 @@ function download(name, data, mime = 'application/octet-stream') {
 }
 
 function exportName(extension) {
-  return `${slugify(elements.projectName.value)}-veilforge-v1.8.${extension}`;
+  return `${slugify(elements.projectName.value)}-veilforge-v3.2.${extension}`;
 }
 
 function exportJson() {
@@ -872,6 +1398,18 @@ function exportPolicy() {
   download(`${slugify(elements.projectName.value)}-arc-policy-manifest.json`, JSON.stringify(generatePolicyManifest(state.report), null, 2), 'application/json');
 }
 
+function exportCiKit() {
+  const project = slugify(elements.projectName.value);
+  const entries = [
+    { name: '.github/workflows/veilforge-privacy-gate.yml', data: state.report.privacyGate.workflow },
+    { name: 'veilforge/privacy-gate.json', data: JSON.stringify(state.report.privacyGate, null, 2) },
+    { name: 'veilforge/rule-packs.json', data: JSON.stringify(state.report.rulePacks, null, 2) },
+    { name: 'veilforge/source-guided-fuzz-plan.json', data: JSON.stringify(state.report.fuzzPlan, null, 2) },
+    { name: 'README.md', data: `# VeilForge Privacy CI Gate\n\nCopy the workflow and VeilForge analyzer into your repository. The gate fails with exit code 2 when required privacy checks do not pass. The fuzz artifact is a source-guided plan and must be executed with a compiler-backed Foundry suite.\n` },
+  ];
+  download(`${project}-veilforge-ci-gate.zip`, createZip(entries), 'application/zip');
+}
+
 function exportZip() {
   const project = slugify(elements.projectName.value);
   const policy = generatePolicyManifest(state.report);
@@ -884,11 +1422,88 @@ function exportZip() {
     { name: 'report/veilforge-report.md', data: formatMarkdownReport(state.report, elements.projectName.value) },
     { name: 'policy/arc-policy-manifest.json', data: JSON.stringify(policy, null, 2) },
     { name: 'treatment/treatment-plan.json', data: JSON.stringify(state.report.treatmentPlan, null, 2) },
+    { name: 'genome/privacy-genome.json', data: JSON.stringify(state.report.privacyGenome, null, 2) },
+    { name: 'intent/privacy-intent.yaml', data: state.report.privacyIntent.document },
+    { name: 'shadow/attack-lab.json', data: JSON.stringify(state.report.attackLab, null, 2) },
+    { name: 'mri/transaction-mri.json', data: JSON.stringify(state.report.transactionMRI, null, 2) },
+    { name: 'forge/forge-plan.json', data: JSON.stringify(state.report.forgePlan, null, 2) },
+    { name: 'twin/privacy-deployment-twin.json', data: JSON.stringify(state.report.privacyTwin, null, 2) },
+    { name: 'lineage/deployment-lineage.json', data: JSON.stringify(state.report.deploymentLineage, null, 2) },
+    { name: 'passport/privacy-passport.json', data: JSON.stringify(state.report.privacyPassport, null, 2) },
+    { name: 'deployment/arc-deploy-rehearsal.json', data: JSON.stringify(state.report.arcDeployRehearsal, null, 2) },
+    { name: 'ci/privacy-gate.json', data: JSON.stringify(state.report.privacyGate, null, 2) },
+    { name: 'ci/rule-packs.json', data: JSON.stringify(state.report.rulePacks, null, 2) },
+    { name: 'ci/source-guided-fuzz-plan.json', data: JSON.stringify(state.report.fuzzPlan, null, 2) },
+    { name: '.github/workflows/veilforge-privacy-gate.yml', data: state.report.privacyGate.workflow },
     { name: 'proof/arc-proof-payload.json', data: JSON.stringify(proof, null, 2) },
-    { name: 'README.txt', data: `Generated locally by VeilForge v1.8 Privacy Mission Control. Source code was not sent to an AI model or remote analyzer.\n${sourceNote}\n` },
+    { name: 'proof/proof-of-fix.json', data: JSON.stringify(currentProofLabSnapshot(), null, 2) },
+    { name: 'README.txt', data: `Generated locally by VeilForge v3.2 Ascension Privacy Operating System. Source code was not sent to an AI model or remote analyzer. APS output is a roadmap readiness simulation, not live confidential execution.\n${sourceNote}\n` },
     ...state.files.map((file) => ({ name: `source/${file.path}`, data: file.content })),
   ];
-  download(`${project}-remediation-pack.zip`, createZip(entries), 'application/zip');
+  download(`${project}-privacy-os-pack.zip`, createZip(entries), 'application/zip');
+}
+
+function exportProofLabKit() {
+  const project = slugify(elements.projectName.value);
+  const proof = currentProofLabSnapshot();
+  const candidates = applyForgeCandidates(state.files, state.report.forgePlan);
+  const request = {
+    version: '3.2-proof-request',
+    project: elements.projectName.value || 'Solidity project',
+    sourceHash: state.report.sourceHash,
+    reportHash: state.report.reportHash,
+    framework: state.projectXray?.framework || 'Unknown',
+    upgradeable: Boolean(state.projectXray?.upgradeable),
+    expectedMinimumFuzzRuns: 1024,
+    commands: proof.commands,
+    receiptSchema: {
+      framework: 'Foundry or Hardhat',
+      sourceHash: state.report.sourceHash,
+      compilation: { success: true },
+      tests: { total: 1, passed: 1, failed: 0, skipped: 0 },
+      fuzz: { runs: 1024, failures: 0 },
+      storageLayout: { safe: !state.projectXray?.upgradeable },
+    },
+  };
+  const readme = `# VeilForge Proof Lab Kit\n\nThis kit does not claim that tests were executed in the browser. Run the matching command in the actual project, preserve its JSON output, and import the receipt into Proof Lab.\n\n## Foundry\n\n${proof.commands.foundry}\n\n## Hardhat\n\n${proof.commands.hardhat}\n\nFor the strongest source binding, wrap the runner output with the receipt schema in veilforge/proof-request.json and retain the canonical sourceHash.\n`;
+  download(`${project}-veilforge-proof-lab.zip`, createZip([
+    { name: 'README.md', data: readme },
+    { name: 'veilforge/proof-request.json', data: JSON.stringify(request, null, 2) },
+    { name: 'veilforge/source-guided-fuzz-plan.json', data: JSON.stringify(state.report.fuzzPlan, null, 2) },
+    { name: 'veilforge/forge-plan.json', data: JSON.stringify(state.report.forgePlan, null, 2) },
+    { name: 'veilforge/applied-candidates.json', data: JSON.stringify(candidates.applied, null, 2) },
+    ...candidates.files.map((file) => ({ name: `candidate-source/${file.path}`, data: file.content })),
+  ]), 'application/zip');
+}
+
+async function loadProofLabReceipt(file) {
+  if (!file) return;
+  if (file.size > 12 * 1024 * 1024) throw new Error('Test receipt is too large (12 MB maximum).');
+  try {
+    const receipt = parseProofLabReceipt(await file.text(), file.name);
+    state.proofLab = { receipt, receiptFileName: file.name, snapshot: null, error: null };
+    state.proofLab.snapshot = currentProofLabSnapshot();
+    renderWorkspace();
+    setMessage(`${receipt.framework} test receipt imported: ${receipt.tests.passed}/${receipt.tests.total} passed.`, receipt.tests.failed ? 'error' : 'success');
+  } catch (error) {
+    state.proofLab.error = error instanceof Error ? error.message : String(error);
+    renderWorkspace();
+    throw error;
+  }
+}
+
+function exportForgeZip() {
+  const project = slugify(elements.projectName.value);
+  const result = applyForgeCandidates(state.files, state.report.forgePlan);
+  const entries = [
+    { name: 'VEILFORGE_CANDIDATE_NOTICE.md', data: '# VeilForge candidate hardening bundle\n\nThese files contain deterministic candidate edits only. They are not compiler-verified and must be reviewed, compiled and tested before deployment.\n' },
+    { name: 'veilforge/forge-plan.json', data: JSON.stringify(state.report.forgePlan, null, 2) },
+    { name: 'veilforge/applied-candidates.json', data: JSON.stringify(result.applied, null, 2) },
+    { name: 'veilforge/privacy-intent.yaml', data: state.report.privacyIntent.document },
+    { name: 'veilforge/privacy-passport.json', data: JSON.stringify(state.report.privacyPassport, null, 2) },
+    ...result.files.map((file) => ({ name: `candidate-source/${file.path}`, data: file.content })),
+  ];
+  download(`${project}-veilforge-forge-candidates.zip`, createZip(entries), 'application/zip');
 }
 
 async function importBaseline() {
@@ -908,6 +1523,27 @@ async function importBaseline() {
     }
   });
   picker.click();
+}
+
+function playAttackReplay() {
+  const frames = [...elements.workspace.querySelectorAll('.cinema-frame')];
+  if (!frames.length) return;
+  if (state.replayTimer) clearInterval(state.replayTimer);
+  frames.forEach((frame) => frame.classList.remove('active', 'passed'));
+  let index = 0;
+  frames[index].classList.add('active');
+  state.replayTimer = setInterval(() => {
+    frames[index]?.classList.remove('active');
+    frames[index]?.classList.add('passed');
+    index += 1;
+    if (index >= frames.length) {
+      clearInterval(state.replayTimer);
+      state.replayTimer = null;
+      elements.workspace.querySelector('.replay-cinema')?.classList.add('replay-complete');
+      return;
+    }
+    frames[index].classList.add('active');
+  }, 650);
 }
 
 async function handleWorkspaceAction(button) {
@@ -956,10 +1592,56 @@ async function handleWorkspaceAction(button) {
   } else if (action === 'copy-payload') {
     await navigator.clipboard.writeText(JSON.stringify(buildProofPayload(state.report, document.querySelector('#report-uri')?.value || ''), null, 2));
     setMessage('Proof payload copied.', 'success');
+  } else if (action === 'apply-intent') {
+    safeStorageSet(INTENT_KEY, JSON.stringify(state.intentDeclaration));
+    runScan();
+    state.activeView = 'intent';
+    renderAll();
+    setMessage('Declared privacy policy compiled into a fresh canonical report.', 'success');
+  } else if (action === 'play-attack-replay') {
+    playAttackReplay();
+  } else if (action === 'link-deployment-evidence') {
+    state.deploymentEvidence = {
+      projectId: state.report.projectId,
+      sourceHash: state.report.sourceHash,
+      chainId: ARC_TESTNET.chainId,
+      contractAddress: document.querySelector('#deployment-address')?.value.trim() || '',
+      transactionHash: document.querySelector('#deployment-tx')?.value.trim() || '',
+      bytecodeHash: document.querySelector('#deployment-bytecode')?.value.trim() || '',
+    };
+    safeStorageSet(DEPLOYMENT_EVIDENCE_KEY, JSON.stringify(state.deploymentEvidence));
+    renderWorkspace();
+  } else if (action === 'clear-deployment-evidence') {
+    state.deploymentEvidence = {};
+    safeStorageRemove(DEPLOYMENT_EVIDENCE_KEY);
+    renderWorkspace();
   } else if (action === 'export-json') exportJson();
+  else if (action === 'export-intent') download(`${slugify(elements.projectName.value)}-privacy-intent.yaml`, state.report.privacyIntent.document, 'text/yaml');
+  else if (action === 'export-passport') download(`${slugify(elements.projectName.value)}-privacy-passport.json`, JSON.stringify(state.report.privacyPassport, null, 2), 'application/json');
+  else if (action === 'export-forge-zip') exportForgeZip();
   else if (action === 'export-markdown') exportMarkdown();
   else if (action === 'export-policy') exportPolicy();
+  else if (action === 'export-ci-kit') exportCiKit();
+  else if (action === 'export-lineage') download(`${slugify(elements.projectName.value)}-deployment-lineage.json`, JSON.stringify({ privacyTwin: state.report.privacyTwin, deploymentLineage: state.report.deploymentLineage, privacyPassport: state.report.privacyPassport, arcDeployRehearsal: state.report.arcDeployRehearsal }, null, 2), 'application/json');
   else if (action === 'export-zip') exportZip();
+  else if (action === 'export-release-gate') download(`${slugify(elements.projectName.value)}-release-gate.json`, JSON.stringify(buildReleaseGateSnapshot(), null, 2), 'application/json');
+  else if (action === 'verify-bytecode') await verifyArcBytecode();
+  else if (action === 'clear-bytecode-artifact') {
+    state.bytecodeTruth = { artifact: null, artifactFileName: '', verification: null, error: null };
+    renderWorkspace();
+  }
+  else if (action === 'export-bytecode-attestation') download(`${slugify(elements.projectName.value)}-bytecode-truth.json`, JSON.stringify(state.bytecodeTruth.verification, null, 2), 'application/json');
+  else if (action === 'download-proof-kit') exportProofLabKit();
+  else if (action === 'export-proof-attestation') download(`${slugify(elements.projectName.value)}-proof-of-fix.json`, JSON.stringify(currentProofLabSnapshot(), null, 2), 'application/json');
+  else if (action === 'copy-proof-command') {
+    const proof = currentProofLabSnapshot();
+    await navigator.clipboard.writeText(proof.commands[button.dataset.command] || proof.commands.foundry);
+    setMessage(`${button.dataset.command === 'hardhat' ? 'Hardhat' : 'Foundry'} Proof Lab command copied.`, 'success');
+  }
+  else if (action === 'copy-release-command') {
+    await navigator.clipboard.writeText(buildReleaseGateSnapshot().ciCommand);
+    setMessage('Release Gate CI command copied.', 'success');
+  }
   else if (action === 'clear-history') {
     state.history = [];
     writeHistory();
@@ -975,6 +1657,7 @@ async function handleWorkspaceAction(button) {
     setFiles(files, { invalidateReport: false, announce: false });
     elements.projectName.value = item.label || 'Solidity project';
     state.report = structuredClone(item.report);
+    if (item.report.privacyIntent?.declaration) state.intentDeclaration = structuredClone(item.report.privacyIntent.declaration);
     state.activeView = 'triage';
     state.filters = { query: '', severity: 'all', policy: 'all' };
     renderAll();
@@ -987,8 +1670,8 @@ async function handleWorkspaceAction(button) {
 
 function bindEvents() {
   document.querySelectorAll('[data-demo]').forEach((button) => button.addEventListener('click', () => loadDemo(button.dataset.demo, { scan: true }).catch((error) => setMessage(error.message, 'error'))));
-  elements.fileInput.addEventListener('change', async () => setFiles(await readBrowserFiles(elements.fileInput.files)));
-  elements.folderInput.addEventListener('change', async () => setFiles(await readBrowserFiles(elements.folderInput.files)));
+  elements.fileInput.addEventListener('change', () => loadFilesAndScan(elements.fileInput.files));
+  elements.folderInput.addEventListener('change', () => loadFilesAndScan(elements.folderInput.files));
   elements.clearFiles.addEventListener('click', () => setFiles([]));
   elements.scanButton.addEventListener('click', runScan);
   document.querySelector('#heroDemo')?.addEventListener('click', () => { loadDemo('vulnerable', { scan: true }).catch((error) => setMessage(error.message, 'error')); document.querySelector('#scanner')?.scrollIntoView({ behavior: 'smooth' }); });
@@ -1002,7 +1685,7 @@ function bindEvents() {
     event.preventDefault();
     elements.dropZone.classList.remove('dragging');
   }));
-  elements.dropZone.addEventListener('drop', async (event) => setFiles(await readBrowserFiles(event.dataTransfer.files)));
+  elements.dropZone.addEventListener('drop', (event) => loadFilesAndScan(event.dataTransfer.files));
   elements.dropZone.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' || event.key === ' ') elements.fileInput.click();
   });
@@ -1045,8 +1728,21 @@ function bindEvents() {
     }
   });
   elements.workspace.addEventListener('change', (event) => {
+    if (event.target.id === 'bytecode-artifact-input') loadBytecodeArtifact(event.target.files?.[0]).catch((error) => setMessage(error.message, 'error'));
+    if (event.target.id === 'proof-lab-receipt-input') loadProofLabReceipt(event.target.files?.[0]).catch((error) => setMessage(error.message, 'error'));
     if (event.target.id === 'severity-filter') state.filters.severity = event.target.value;
     if (event.target.id === 'policy-filter') state.filters.policy = event.target.value;
+    if (event.target.id === 'intent-public-observer') state.intentDeclaration.defaults.publicObserver = event.target.value;
+    if (event.target.id === 'intent-external-contract') state.intentDeclaration.defaults.externalContract = event.target.value;
+    if (event.target.id === 'intent-record-owner') state.intentDeclaration.defaults.recordOwner = event.target.value;
+    if (event.target.id === 'intent-least-privilege') state.intentDeclaration.controls.requireLeastPrivilege = event.target.checked;
+    if (event.target.id === 'intent-revocation') state.intentDeclaration.controls.requireRevocationPath = event.target.checked;
+    if (event.target.id === 'intent-revert-data') state.intentDeclaration.controls.prohibitSensitiveRevertData = event.target.checked;
+    if (event.target.id === 'intent-lineage') state.intentDeclaration.controls.requireDeploymentLineage = event.target.checked;
+    if (event.target.id === 'attack-replay-select') {
+      state.activeReplayId = event.target.value;
+      renderWorkspace();
+    }
     if (event.target.id === 'severity-filter' || event.target.id === 'policy-filter') renderWorkspace();
   });
 }
