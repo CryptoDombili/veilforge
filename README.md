@@ -33,7 +33,7 @@ Registry V2 scopes every latest report by `projectId + publisher`, preventing on
 
 ## Demo Video
 
-[Watch the VeilForge demo](https://youtu.be/URAFCuYUQy0)
+[Watch the VeilForge demo](https://youtu.be/7RiI7QfxWzo)
 
 
 
