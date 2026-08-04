@@ -1,0 +1,5 @@
+import test from'node:test';import assert from'node:assert/strict';import{projection,evidence}from'./helpers.mjs';
+test('plain keccak receives an unsafe warning',()=>assert.ok(projection({evidence:[evidence('declassification','e1','rejected:plain-hash-not-declassification keccak256')]}).unsafeRemediationWarnings.some(x=>x.includes('keccak256'))));
+test('abi.encode receives an unsafe warning',()=>assert.ok(projection({evidence:[evidence('trace-edge','e2','abi.encode boundary')]}).unsafeRemediationWarnings.some(x=>x.includes('ABI encoding'))));
+test('private storage with public getter receives a warning',()=>assert.ok(projection({detectorId:'arc-payments.public-getter-disclosure',sinkClass:'public-storage-getter'}).unsafeRemediationWarnings.some(x=>x.includes('private variable'))));
+test('accepted risk is not presented as remediation',()=>assert.ok(projection({disposition:'accepted-risk',acceptedRiskId:'risk'}).unsafeRemediationWarnings.some(x=>x.includes('not a technical remediation'))));

@@ -1,0 +1,3 @@
+import test from'node:test';import assert from'node:assert/strict';import{projection}from'./helpers.mjs';
+test('custom error explanation describes classification trace sink and declassification',()=>{const p=projection({detectorId:'arc-payments.revert-disclosure',sinkClass:'revert-custom-error'});assert.match(p.explanation,/classified/u);assert.match(p.explanation,/recorded trace/u);assert.match(p.explanation,/without an approved declassification/u);});
+test('incomplete explanation describes the analysis boundary',()=>assert.match(projection({complete:false,disposition:'incomplete',incompleteReasons:['delegatecall-boundary']}).explanation,/Manual review/u));

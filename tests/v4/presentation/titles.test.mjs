@@ -1,0 +1,6 @@
+import test from'node:test';import assert from'node:assert/strict';import{projection}from'./helpers.mjs';
+test('Payments payer to event title and summary',()=>{const p=projection({dataClass:'payer'});assert.equal(p.title,'Payer Identity Exposed Through Event Log');assert.match(p.summary,/supported data-flow trace/u);});
+test('payroll to public getter uses deterministic terminology',()=>assert.equal(projection({dataClass:'employee-payroll',detectorId:'arc-payments.public-getter-disclosure',sinkClass:'public-storage-getter'}).title,'Payroll Data Exposed Through Public Storage or Getter'));
+test('payment amount to metadata uses the metadata surface',()=>assert.equal(projection({dataClass:'payment-amount',detectorId:'arc-payments.metadata-disclosure',sinkClass:'metadata-uri'}).title,'Payment Amount Exposed Through Metadata or URI'));
+test('Treasury signer to event uses treasury data terminology',()=>assert.match(projection({domain:'arc-treasury',dataClass:'treasury-operator',detectorId:'arc-treasury.event-disclosure'}).title,/Treasury Operator/u));
+test('Borrower KYC to event uses KYC terminology',()=>assert.match(projection({domain:'arc-private-credit',dataClass:'customer-kyc-reference',detectorId:'arc-private-credit.event-disclosure'}).title,/KYC Reference/u));

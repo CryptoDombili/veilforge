@@ -39,6 +39,8 @@
     "test:v4-private-credit-detectors-determinism": "node --test tests/v4/detectors/private-credit/determinism.test.mjs",
     "test:v4-findings": "node --test tests/v4/findings/model.test.mjs tests/v4/findings/severity-event-storage.test.mjs tests/v4/findings/severity-return-revert.test.mjs tests/v4/findings/severity-external-metadata.test.mjs tests/v4/findings/severity-observation.test.mjs tests/v4/findings/confidence.test.mjs tests/v4/findings/disposition.test.mjs tests/v4/findings/grouping.test.mjs tests/v4/findings/semantic-detector-grouping.test.mjs tests/v4/findings/primary-location.test.mjs tests/v4/findings/fingerprint.test.mjs tests/v4/findings/incomplete.test.mjs tests/v4/findings/suppression.test.mjs tests/v4/findings/summary.test.mjs",
     "test:v4-findings-determinism": "node --test tests/v4/findings/determinism.test.mjs",
+    "test:v4-presentation": "node --test tests/v4/presentation/titles.test.mjs tests/v4/presentation/summaries.test.mjs tests/v4/presentation/explanations.test.mjs tests/v4/presentation/impacts.test.mjs tests/v4/presentation/remediation-payments.test.mjs tests/v4/presentation/remediation-treasury.test.mjs tests/v4/presentation/remediation-private-credit.test.mjs tests/v4/presentation/unsafe-remediation.test.mjs tests/v4/presentation/evidence-view.test.mjs tests/v4/presentation/trace-view.test.mjs tests/v4/presentation/incomplete-messages.test.mjs tests/v4/presentation/disposition-messages.test.mjs tests/v4/presentation/projection.test.mjs",
+    "test:v4-presentation-determinism": "node --test tests/v4/presentation/determinism.test.mjs",
     "typecheck": "node scripts/typecheck.mjs",
     "smoke:browser": "node scripts/smoke-browser.mjs",
     "preflight": "node scripts/preflight.mjs",
