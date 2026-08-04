@@ -1,0 +1,24 @@
+import { canonicalJson, compareCodePoints } from '../frontend/standard-json.js';
+
+function plain(value) {
+  if (Array.isArray(value)) return value.map(plain);
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, plain(item)]));
+  return value;
+}
+
+export function normalizeDataflowAnalysis(analysis) {
+  const normalized = plain(analysis);
+  normalized.callables.sort((a, b) => compareCodePoints(a.callableId, b.callableId));
+  for (const callable of normalized.callables) {
+    callable.facts.sort((a, b) => compareCodePoints(a.factId, b.factId));
+    callable.valueNodes.sort((a, b) => compareCodePoints(a.valueNodeId, b.valueNodeId));
+    callable.valueFlowEdges.sort((a, b) => compareCodePoints(a.edgeId, b.edgeId));
+    callable.traces.sort((a, b) => compareCodePoints(a.traceId, b.traceId));
+    callable.incomplete.sort((a, b) => compareCodePoints(a.incompleteId, b.incompleteId));
+  }
+  return normalized;
+}
+
+export function serializeDataflowAnalysis(analysis) {
+  return canonicalJson(normalizeDataflowAnalysis(analysis));
+}
