@@ -21,6 +21,8 @@
     "test:v4-frontend": "node --test tests/v4/frontend/compiler-provider.test.mjs tests/v4/frontend/standard-json.test.mjs tests/v4/frontend/compile-project.test.mjs tests/v4/frontend/import-graph.test.mjs tests/v4/frontend/ast-index.test.mjs tests/v4/frontend/source-locations.test.mjs",
     "test:v4-corpus-compile": "node --test tests/v4/corpus-compile.test.mjs",
     "test:v4-frontend-determinism": "node --test tests/v4/frontend/determinism.test.mjs",
+    "test:v4-ir": "node --test tests/v4/ir/model.test.mjs tests/v4/ir/ids.test.mjs tests/v4/ir/symbols.test.mjs tests/v4/ir/scopes.test.mjs tests/v4/ir/inheritance.test.mjs tests/v4/ir/lower-ast.test.mjs tests/v4/ir/storage-access.test.mjs",
+    "test:v4-ir-determinism": "node --test tests/v4/ir/determinism.test.mjs",
     "typecheck": "node scripts/typecheck.mjs",
     "smoke:browser": "node scripts/smoke-browser.mjs",
     "preflight": "node scripts/preflight.mjs",
