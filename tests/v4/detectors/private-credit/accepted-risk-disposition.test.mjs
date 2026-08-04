@@ -1,0 +1,4 @@
+import test from'node:test';import assert from'node:assert/strict';import{detect,policy,results}from'./helpers.mjs';
+const source='contract CreditCase{event Out(address);function publish(address borrower)external{emit Out(borrower);}}',risk={id:'R1',owner:'security@example.test',justification:'bounded',scope:'CreditCase.publish(address)',expiresAt:'2027-01-01T00:00:00Z'};
+test('valid accepted-risk disposition',()=>{const{detectorRun}=detect(source,{...policy,acceptedRisks:[risk]});assert.ok(results(detectorRun,'event-disclosure').some(x=>x.disposition==='accepted-risk'&&x.acceptedRiskId));});
+test('expired accepted-risk gives no approval',()=>{const{detectorRun}=detect(source,{...policy,acceptedRisks:[risk]},{evaluationTime:'2028-01-01T00:00:00Z'});assert.ok(results(detectorRun,'event-disclosure').some(x=>x.disposition==='detected'));});

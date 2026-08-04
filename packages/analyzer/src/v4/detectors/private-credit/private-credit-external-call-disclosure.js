@@ -1,0 +1,2 @@
+import { detectorEvidence } from '../detector-evidence.js'; import { privateCreditDetector } from './factory.js';
+export const privateCreditExternalCallDisclosure = privateCreditDetector('arc-private-credit.external-call-disclosure','external-call','private-credit.external-call-disclosure',{evidence:({sink})=>[detectorEvidence('private-credit-external-target',sink.sinkCandidateId,JSON.stringify(sink.externalTarget??{resolutionStatus:'unknown'}),sink.location)]});

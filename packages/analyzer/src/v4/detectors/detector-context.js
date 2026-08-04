@@ -5,7 +5,8 @@ const PAYMENTS_CLASSES = new Set([
   'invoice-reference', 'settlement-reference', 'repayment-reference', 'customer-kyc-reference',
 ]);
 const TREASURY_CLASSES = new Set(['treasury-operator', 'beneficiary', 'supplier', 'employee-payroll', 'amount', 'invoice-reference', 'settlement-reference']);
-const DOMAIN_CLASSES = new Map([['arc-payments', PAYMENTS_CLASSES], ['arc-treasury', TREASURY_CLASSES]]);
+const PRIVATE_CREDIT_CLASSES = new Set(['customer-kyc-reference', 'beneficiary', 'loan-terms', 'collateral', 'interest-rate', 'settlement-reference']);
+const DOMAIN_CLASSES = new Map([['arc-payments', PAYMENTS_CLASSES], ['arc-treasury', TREASURY_CLASSES], ['arc-private-credit', PRIVATE_CREDIT_CLASSES]]);
 const GLOBAL_INCOMPLETE = new Set([
   'policy-invalid', 'trace-budget-exceeded', 'inline-assembly-not-modeled', 'dynamic-storage-alias-not-modeled',
   'dynamic-function-pointer', 'delegatecall-boundary', 'unsupported-expression', 'unknown-metadata-builder',
@@ -27,7 +28,14 @@ export function createDetectorContext(classification, options = {}) {
   return {
     classification, program, declarations, symbols, sourceById, sinkById, decisionByTrace, riskById, globalIncomplete,
     domain, supportedClasses,
-    isDomainSource(source) { return (source?.domain === domain || (!classification.policy.valid && source?.domain == null)) && supportedClasses.has(source.dataClass); },
+    isDomainSource(source) {
+      if (!((source?.domain === domain || (!classification.policy.valid && source?.domain == null)) && supportedClasses.has(source.dataClass))) return false;
+      if (domain !== 'arc-private-credit') return true;
+      const hasContext = source.evidence.some((item) => item.kind === 'financial-context' || item.kind === 'policy-label');
+      if (source.dataClass === 'interest-rate' && !hasContext) return false;
+      if (source.dataClass === 'customer-kyc-reference' && source.confidence === 'low' && !hasContext) return false;
+      return true;
+    },
     isPaymentsSource(source) { return (source?.domain === 'arc-payments' || (!classification.policy.valid && source?.domain == null)) && PAYMENTS_CLASSES.has(source.dataClass); },
     sourceDeclaration(source) { return symbols.get(source?.symbolId) ?? null; },
     callable(callableId) { return declarations.get(callableId) ?? null; },
@@ -35,4 +43,4 @@ export function createDetectorContext(classification, options = {}) {
   };
 }
 
-export { DOMAIN_CLASSES, PAYMENTS_CLASSES, TREASURY_CLASSES };
+export { DOMAIN_CLASSES, PAYMENTS_CLASSES, PRIVATE_CREDIT_CLASSES, TREASURY_CLASSES };

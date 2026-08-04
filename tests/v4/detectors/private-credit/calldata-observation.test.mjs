@@ -1,0 +1,3 @@
+import test from'node:test';import assert from'node:assert/strict';import{detect,results}from'./helpers.mjs';
+test('public calldata credit observation',()=>{const{detectorRun}=detect('contract CreditCase{function f(address borrower)external{}}');assert.ok(results(detectorRun,'calldata-observation').length);});
+test('observation produces no severity',()=>{const{detectorRun}=detect('contract CreditCase{function f(uint loanAmount)public{}}');const x=results(detectorRun,'calldata-observation')[0];assert.equal('severity'in x,false);assert.equal(x.remediationKey,'private-credit.calldata-observation');});

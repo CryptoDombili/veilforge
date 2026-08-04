@@ -8,3 +8,4 @@ export * from './serialize.js';
 export * from './summary.js';
 export * from './payments/index.js';
 export * from './treasury/index.js';
+export * from './private-credit/index.js';

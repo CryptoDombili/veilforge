@@ -1,0 +1,4 @@
+import test from'node:test';import assert from'node:assert/strict';import{detect,results}from'./helpers.mjs';
+test('loan terms to public return',()=>{const{detectorRun}=detect('contract CreditCase{function f(uint loanAmount)external pure returns(uint){return loanAmount;}}');assert.ok(results(detectorRun,'return-disclosure').length);});
+test('internal return to public caller return',()=>{const{detectorRun}=detect('contract CreditCase{function g(uint x)internal pure returns(uint){return x;}function f(uint loanAmount)external pure returns(uint){return g(loanAmount);}}');assert.ok(results(detectorRun,'return-disclosure').length);});
+test('internal-only return negative',()=>{const{detectorRun}=detect('contract CreditCase{function f(uint loanAmount)internal pure returns(uint){return loanAmount;}}');assert.equal(results(detectorRun,'return-disclosure').length,0);});

@@ -1,0 +1,6 @@
+import test from'node:test';import assert from'node:assert/strict';import{detect,results}from'./helpers.mjs';
+test('unconnected source sink negative',()=>{const{detectorRun}=detect('contract CreditCase{event Out(address);function f(address borrower)external{borrower;emit Out(address(1));}}');assert.equal(results(detectorRun,'event-disclosure').length,0);});
+test('non-financial customer negative',()=>{const{detectorRun}=detect('contract CRM{event Out(address);function f(address customer)external{emit Out(customer);}}');assert.equal(detectorRun.results.length,0);});
+test('generic user account ID negative',()=>{const{detectorRun}=detect('contract CreditCase{event Out(bytes32);function f(bytes32 accountId)external{emit Out(accountId);}}');assert.equal(detectorRun.results.length,0);});
+test('constant event argument negative',()=>{const{detectorRun}=detect('contract CreditCase{event Out(uint);function f(uint loanAmount)external{loanAmount;emit Out(1);}}');assert.equal(results(detectorRun,'event-disclosure').length,0);});
+test('public constant negative',()=>{const{detectorRun}=detect('contract CreditCase{uint public constant loanAmount=1;}');assert.equal(results(detectorRun,'public-storage-disclosure').length,0);});

@@ -56,7 +56,7 @@ export function classifySinks(program, analysis) {
           complete: !['unresolved-call', 'delegatecall-boundary', 'dynamic-function-pointer'].includes(boundary.reason), reason: boundary.reason });
         if (['encode', 'encodePacked', 'encodeWithSelector', 'encodeWithSignature'].includes(name)) add('metadata-uri', node, { argumentIndex: argumentIndex(astNode, call), evidenceKind: 'abi-encoding', detail: `abi.${name}`, reason: 'abi-encoding-boundary' });
         if (/(?:uri|metadata|memo)/iu.test(name)) {
-          const known = new Set(['uri', 'tokenURI', 'buildURI', 'buildMetadata', 'metadata', 'memo', 'executionMetadata', 'buildExecutionMetadata']).has(name);
+          const known = new Set(['uri', 'tokenURI', 'buildURI', 'buildMetadata', 'metadata', 'memo', 'executionMetadata', 'buildExecutionMetadata', 'loanMetadata', 'agreementMetadata', 'borrowerMemo']).has(name);
           add('metadata-uri', node, { argumentIndex: argumentIndex(astNode, call), evidenceKind: 'metadata-builder', detail: name,
             confidence: known ? 'medium' : 'incomplete', complete: known, reason: known ? 'known-metadata-builder-context' : 'unknown-metadata-builder' });
         }

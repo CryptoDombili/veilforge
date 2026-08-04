@@ -1,0 +1,8 @@
+import { classify, policy as basePolicy, taxonomy } from '../../classification/helpers.mjs';
+import { compileProject } from '../../../../packages/analyzer/src/v4/frontend/index.js'; import { buildProgramGraphs, lowerCompilationToIR } from '../../../../packages/analyzer/src/v4/ir/index.js';
+import { analyzeProgramDataflow, analyzeProgramInterprocedural } from '../../../../packages/analyzer/src/v4/analysis/index.js'; import { analyzeFinancialClassification } from '../../../../packages/analyzer/src/v4/classification/index.js';
+import { createPrivateCreditDetectorRegistry, runDetectors } from '../../../../packages/analyzer/src/v4/detectors/index.js';
+export const policy=Object.freeze({...basePolicy,policyId:'private-credit-detector-test',domain:'arc-private-credit'});
+export function detect(source,policyOverride=policy,options={}){const built=classify(source,policyOverride,options);const detectorRun=runDetectors(built.classification,createPrivateCreditDetectorRegistry(),{program:built.ir});return{...built,detectorRun};}
+export function results(run,suffix){return run.results.filter(x=>x.detectorId.endsWith(suffix));}
+export function detectSources(sources,policyOverride=policy){const compilation=compileProject({sources});if(compilation.result.status!=='compiled')throw new Error(compilation.result.diagnostics.map(x=>x.formattedMessage).join('\n'));const ir=lowerCompilationToIR(compilation),graphs=buildProgramGraphs(ir),intra=analyzeProgramDataflow(ir,graphs),analysis=analyzeProgramInterprocedural(ir,graphs,intra),classification=analyzeFinancialClassification(ir,analysis,{taxonomy,policy:policyOverride,evaluationTime:'2026-08-04T00:00:00Z'});return runDetectors(classification,createPrivateCreditDetectorRegistry(),{program:ir});}
