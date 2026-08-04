@@ -29,6 +29,8 @@
     "test:v4-dataflow-determinism": "node --test tests/v4/dataflow/determinism.test.mjs",
     "test:v4-interprocedural": "node --test tests/v4/interprocedural/arguments.test.mjs tests/v4/interprocedural/returns.test.mjs tests/v4/interprocedural/multiple-returns.test.mjs tests/v4/interprocedural/inheritance.test.mjs tests/v4/interprocedural/libraries.test.mjs tests/v4/interprocedural/storage-effects.test.mjs tests/v4/interprocedural/recursion.test.mjs tests/v4/interprocedural/unresolved-boundaries.test.mjs tests/v4/interprocedural/budgets.test.mjs tests/v4/interprocedural/traces.test.mjs",
     "test:v4-interprocedural-determinism": "node --test tests/v4/interprocedural/determinism.test.mjs",
+    "test:v4-classification": "node --test tests/v4/classification/taxonomy-loader.test.mjs tests/v4/classification/source-policy.test.mjs tests/v4/classification/source-context.test.mjs tests/v4/classification/sink-storage-getter.test.mjs tests/v4/classification/sink-event-calldata.test.mjs tests/v4/classification/sink-return-revert.test.mjs tests/v4/classification/sink-external-metadata.test.mjs tests/v4/classification/declassification.test.mjs tests/v4/classification/accepted-risk.test.mjs tests/v4/classification/candidate-trace.test.mjs tests/v4/classification/invalid-policy.test.mjs",
+    "test:v4-classification-determinism": "node --test tests/v4/classification/determinism.test.mjs",
     "typecheck": "node scripts/typecheck.mjs",
     "smoke:browser": "node scripts/smoke-browser.mjs",
     "preflight": "node scripts/preflight.mjs",

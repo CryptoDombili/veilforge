@@ -10,6 +10,20 @@
     "policyId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,127}$" },
     "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
     "domain": { "enum": ["arc-payments", "arc-treasury", "arc-private-credit"] },
+    "sourceLabels": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "target", "dataClass", "scope"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "target": { "type": "string", "minLength": 1 },
+          "dataClass": { "type": "string", "minLength": 1 },
+          "scope": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
     "approvedWrappers": {
       "type": "array",
       "items": {

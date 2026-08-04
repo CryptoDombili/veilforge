@@ -1,0 +1,4 @@
+import test from 'node:test'; import assert from 'node:assert/strict'; import { classify } from './helpers.mjs';
+test('contextual financial source', () => { const { classification } = classify('contract PaymentVault { function settle(address beneficiary) external {} }'); assert.ok(classification.sourceCandidates.some((item) => item.dataClass === 'beneficiary' && item.confidence === 'high')); });
+test('name-only low confidence', () => { const { classification } = classify('contract Misc { function set(uint invoiceCode) external {} }'); assert.ok(classification.sourceCandidates.some((item) => item.confidence === 'low')); });
+test('similar named non-financial negative', () => { const { classification } = classify('contract Misc { function set(uint paymentStatusCode) external {} }'); assert.equal(classification.sourceCandidates.length, 0); });
