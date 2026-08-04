@@ -12,6 +12,7 @@ export function buildCandidateTraces(analysis, sources, sinks, options = {}) {
   const maxTraces = options.maxTraces ?? analysis.budget?.limits?.maxTraces ?? 2048;
   const nodes = new Map(analysis.callableAnalyses.flatMap((item) => item.valueNodes).map((item) => [item.valueNodeId, item]));
   const edges = [...analysis.callableAnalyses.flatMap((item) => item.valueFlowEdges), ...analysis.interproceduralEdges].sort((a, b) => compare(a.edgeId, b.edgeId));
+  const resolvedReturnNodeIds = new Set(analysis.interproceduralEdges.filter((edge) => edge.flowKind === 'return-propagation').map((edge) => edge.toValueNodeId));
   const adjacency = new Map();
   for (const edge of edges) adjacency.set(edge.fromValueNodeId, [...(adjacency.get(edge.fromValueNodeId) ?? []), edge]);
   const result = []; let exceeded = false;
@@ -34,7 +35,7 @@ export function buildCandidateTraces(analysis, sources, sinks, options = {}) {
     if (!path) continue;
     const transitions = path.edges.filter((edge) => edge.fromCallableId && edge.toCallableId && edge.fromCallableId !== edge.toCallableId)
       .map((edge) => ({ edgeId: edge.edgeId, fromCallableId: edge.fromCallableId, toCallableId: edge.toCallableId, flowKind: edge.flowKind }));
-    const markers = [...new Set(path.ids.flatMap((id) => { const node = nodes.get(id); return [node?.unknown ? 'unknown' : null, node?.boundary].filter(Boolean); }))].sort(compare);
+    const markers = [...new Set(path.ids.flatMap((id) => { const node = nodes.get(id); return [node?.unknown && !resolvedReturnNodeIds.has(id) ? 'unknown' : null, node?.boundary].filter(Boolean); }))].sort(compare);
     const complete = source.complete && sink.complete && !markers.includes('unknown');
     const fields = { sourceCandidateId: source.sourceCandidateId, sinkCandidateId: sink.sinkCandidateId,
       orderedValueNodeIds: path.ids, orderedEdgeIds: path.edges.map((edge) => edge.edgeId), callableTransitions: transitions,

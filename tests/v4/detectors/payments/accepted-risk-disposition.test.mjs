@@ -1,0 +1,6 @@
+import test from 'node:test'; import assert from 'node:assert/strict'; import { detect, policy, results } from './helpers.mjs';
+const source = 'contract PaymentCase {event Out(address); function publish(address beneficiary) external {emit Out(beneficiary);} }';
+const risk = { id: 'R1', owner: 'security@example.test', justification: 'bounded pilot', scope: 'PaymentCase.publish(address)', expiresAt: '2027-01-01T00:00:00Z' };
+test('valid accepted-risk disposition', () => { const { detectorRun } = detect(source, { ...policy, acceptedRisks: [risk] }); const item = results(detectorRun, 'event-disclosure').find((entry) => entry.disposition === 'accepted-risk'); assert.ok(item?.acceptedRiskId); });
+test('expired accepted-risk is rejected', () => { const { detectorRun } = detect(source, { ...policy, acceptedRisks: [risk] }, { evaluationTime: '2028-01-01T00:00:00Z' }); assert.ok(results(detectorRun, 'event-disclosure').some((item) => item.disposition === 'detected')); });
+test('accepted risk preserves technical flow', () => { const { detectorRun } = detect(source, { ...policy, acceptedRisks: [risk] }); const item = results(detectorRun, 'event-disclosure')[0]; assert.ok(item.sourceCandidateId && item.sinkCandidateId && item.candidateTraceId); });

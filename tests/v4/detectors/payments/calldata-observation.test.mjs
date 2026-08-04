@@ -1,0 +1,4 @@
+import test from 'node:test'; import assert from 'node:assert/strict'; import { detect, results } from './helpers.mjs';
+test('public calldata financial observation', () => { const { detectorRun } = detect('contract PaymentCase { function f(address payer) external {} }'); assert.ok(results(detectorRun, 'calldata-observation').length); });
+test('calldata observation produces no severity', () => { const { detectorRun } = detect('contract PaymentCase { function f(address payer) public {} }'); const item = results(detectorRun, 'calldata-observation')[0]; assert.equal('severity' in item, false); assert.equal(item.remediationKey, 'payments.calldata-observation'); });
+test('internal parameter is not calldata observation', () => { const { detectorRun } = detect('contract PaymentCase { function f(address payer) internal {} }'); assert.equal(results(detectorRun, 'calldata-observation').length, 0); });
