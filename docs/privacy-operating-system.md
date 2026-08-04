@@ -1,5 +1,7 @@
 # Privacy Operating System modules
 
+> **Legacy v3 views:** These modules are deterministic views derived from the current v3.2.2 prototype; they are not formal verification, an audit replacement, or native Arc privacy. The v4.0.0-gc.1 product boundary is not yet implemented.
+
 ## Genome
 
 Builds a source-derived registry of protected assets, actors, graph nodes, graph edges and actor-to-asset visibility states.

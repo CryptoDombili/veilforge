@@ -1,0 +1,16 @@
+{
+  "caseId": "TRE-POS-007",
+  "classification": "positive",
+  "analysisStatus": "supported",
+  "expectedOpenFindingCount": 1,
+  "expectedFindings": [
+    {
+      "ruleId": "VF4-METADATA-DISCLOSURE",
+      "sourceClass": "invoice-reference",
+      "sink": "metadata-uri",
+      "occurrenceCount": 1,
+      "disposition": "open"
+    }
+  ],
+  "forbiddenRuleIds": []
+}

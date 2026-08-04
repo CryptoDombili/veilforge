@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "4.0.0",
+  "policyId": "crd-pos-005",
+  "version": "1.0.0",
+  "domain": "arc-private-credit",
+  "approvedWrappers": [],
+  "publicFields": [],
+  "acceptedRisks": []
+}

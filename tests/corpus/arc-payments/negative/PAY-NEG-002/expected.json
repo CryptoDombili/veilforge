@@ -1,0 +1,8 @@
+{
+  "caseId": "PAY-NEG-002",
+  "classification": "negative",
+  "analysisStatus": "supported",
+  "expectedOpenFindingCount": 0,
+  "expectedFindings": [],
+  "forbiddenRuleIds": []
+}

@@ -1,0 +1,16 @@
+{
+  "caseId": "PAY-NEG-004",
+  "classification": "negative",
+  "analysisStatus": "supported",
+  "expectedOpenFindingCount": 0,
+  "expectedFindings": [
+    {
+      "ruleId": "VF4-PUBLIC-STORAGE",
+      "sourceClass": "beneficiary",
+      "sink": "public-storage-getter",
+      "occurrenceCount": 1,
+      "disposition": "approved-public"
+    }
+  ],
+  "forbiddenRuleIds": []
+}

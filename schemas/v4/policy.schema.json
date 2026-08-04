@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://veilforge.dev/schemas/v4/policy.schema.json",
+  "title": "VeilForge V4 Financial Privacy Policy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "policyId", "version", "domain", "approvedWrappers", "publicFields", "acceptedRisks"],
+  "properties": {
+    "schemaVersion": { "const": "4.0.0" },
+    "policyId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,127}$" },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "domain": { "enum": ["arc-payments", "arc-treasury", "arc-private-credit"] },
+    "approvedWrappers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "callable", "kind", "scope"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "callable": { "type": "string", "minLength": 1 },
+          "kind": { "enum": ["commitment", "encryption"] },
+          "scope": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "publicFields": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "field", "justification", "scope"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "field": { "type": "string", "minLength": 1 },
+          "justification": { "type": "string", "minLength": 1 },
+          "scope": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "acceptedRisks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "owner", "justification", "scope", "expiresAt"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "owner": { "type": "string", "minLength": 1 },
+          "justification": { "type": "string", "minLength": 1 },
+          "scope": { "type": "string", "minLength": 1 },
+          "expiresAt": { "type": "string", "format": "date-time" }
+        }
+      }
+    }
+  }
+}

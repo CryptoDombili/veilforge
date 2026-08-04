@@ -1,3 +1,7 @@
+# VeilForge
+
+> **Grant Candidate status:** The current v3.2.2 analyzer is the legacy v3 regex- and name-assisted prototype. VeilForge v4.0.0-gc.1 is a specification and labeled-corpus target and is not yet implemented. The current product is not a formal verification tool, a security-audit replacement, or a native Arc privacy feature. See [`docs/grant-candidate/product-boundary.md`](docs/grant-candidate/product-boundary.md).
+
 ## Live
 
 

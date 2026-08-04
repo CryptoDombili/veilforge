@@ -1,0 +1,16 @@
+{
+  "caseId": "CRD-ADV-005",
+  "classification": "adversarial",
+  "analysisStatus": "supported",
+  "expectedOpenFindingCount": 1,
+  "expectedFindings": [
+    {
+      "ruleId": "VF4-RETURN-DISCLOSURE",
+      "sourceClass": "loan-terms",
+      "sink": "return",
+      "occurrenceCount": 1,
+      "disposition": "open"
+    }
+  ],
+  "forbiddenRuleIds": []
+}

@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "4.0.0",
+  "policyId": "pay-adv-005",
+  "version": "1.0.0",
+  "domain": "arc-payments",
+  "approvedWrappers": [],
+  "publicFields": [],
+  "acceptedRisks": []
+}

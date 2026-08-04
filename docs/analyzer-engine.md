@@ -1,5 +1,7 @@
 # Analyzer Engine
 
+> **Legacy v3 implementation:** This document describes the v3.2.2 regex- and name-assisted analyzer. The v4.0.0-gc.1 compiler AST/IR engine is not yet implemented. Its normative boundary is in [`grant-candidate/product-boundary.md`](grant-candidate/product-boundary.md).
+
 ## Public API
 
 Import from:

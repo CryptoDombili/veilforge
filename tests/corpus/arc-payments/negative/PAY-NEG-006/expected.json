@@ -1,0 +1,16 @@
+{
+  "caseId": "PAY-NEG-006",
+  "classification": "negative",
+  "analysisStatus": "supported",
+  "expectedOpenFindingCount": 0,
+  "expectedFindings": [
+    {
+      "ruleId": "VF4-EXTERNAL-CALL-DISCLOSURE",
+      "sourceClass": "invoice-reference",
+      "sink": "external-call",
+      "occurrenceCount": 1,
+      "disposition": "accepted-risk"
+    }
+  ],
+  "forbiddenRuleIds": []
+}

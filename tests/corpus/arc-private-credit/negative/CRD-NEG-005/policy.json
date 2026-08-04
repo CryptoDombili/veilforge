@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "4.0.0",
+  "policyId": "crd-neg-005",
+  "version": "1.0.0",
+  "domain": "arc-private-credit",
+  "approvedWrappers": [
+    {
+      "id": "CRD-NEG-005-WRAPPER",
+      "callable": "CreditCaseNegative5.approvedCommitment(bytes32)",
+      "kind": "commitment",
+      "scope": "CreditCaseNegative5.publish(bytes32)"
+    }
+  ],
+  "publicFields": [],
+  "acceptedRisks": []
+}

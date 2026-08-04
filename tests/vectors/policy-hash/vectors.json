@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "1.0.0",
+  "vectors": [
+    {
+      "name": "empty-payments-policy",
+      "policy": {
+        "schemaVersion": "4.0.0",
+        "policyId": "payments.default",
+        "version": "1.0.0",
+        "domain": "arc-payments",
+        "approvedWrappers": [],
+        "publicFields": [],
+        "acceptedRisks": []
+      },
+      "expectedPolicyHash": "0xdaecaa00f9db25c521dbaf04c5fbdeeed89da8742653404356d09c2e74e89725"
+    },
+    {
+      "name": "approved-credit-commitment",
+      "policy": {
+        "schemaVersion": "4.0.0",
+        "policyId": "credit.wrapper",
+        "version": "1.0.0",
+        "domain": "arc-private-credit",
+        "approvedWrappers": [
+          {
+            "id": "credit-commitment",
+            "callable": "Credit.approvedCommitment(bytes32)",
+            "kind": "commitment",
+            "scope": "Credit.publish(bytes32)"
+          }
+        ],
+        "publicFields": [],
+        "acceptedRisks": []
+      },
+      "expectedPolicyHash": "0x749b44299706cdc8f9feb8bc4a1d5cf7947d2e4a9c9f69564f31ba721dfa7310"
+    }
+  ]
+}

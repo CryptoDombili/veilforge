@@ -1,0 +1,23 @@
+{
+  "caseId": "TRE-POS-008",
+  "classification": "positive",
+  "analysisStatus": "supported",
+  "expectedOpenFindingCount": 2,
+  "expectedFindings": [
+    {
+      "ruleId": "VF4-EXTERNAL-CALL-DISCLOSURE",
+      "sourceClass": "invoice-reference",
+      "sink": "external-call",
+      "occurrenceCount": 1,
+      "disposition": "open"
+    },
+    {
+      "ruleId": "VF4-EVENT-DISCLOSURE",
+      "sourceClass": "invoice-reference",
+      "sink": "event",
+      "occurrenceCount": 1,
+      "disposition": "open"
+    }
+  ],
+  "forbiddenRuleIds": []
+}

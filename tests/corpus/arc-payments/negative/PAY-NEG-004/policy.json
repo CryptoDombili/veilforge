@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "4.0.0",
+  "policyId": "pay-neg-004",
+  "version": "1.0.0",
+  "domain": "arc-payments",
+  "approvedWrappers": [],
+  "publicFields": [
+    {
+      "id": "PAY-NEG-004-PUBLIC",
+      "field": "PaymentCaseNegative4.beneficiaryReference",
+      "justification": "The integration identifier is intentionally public.",
+      "scope": "PaymentCaseNegative4"
+    }
+  ],
+  "acceptedRisks": []
+}

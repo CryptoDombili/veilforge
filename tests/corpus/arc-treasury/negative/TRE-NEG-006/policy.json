@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "4.0.0",
+  "policyId": "tre-neg-006",
+  "version": "1.0.0",
+  "domain": "arc-treasury",
+  "approvedWrappers": [],
+  "publicFields": [],
+  "acceptedRisks": [
+    {
+      "id": "TRE-NEG-006-RISK",
+      "owner": "security@veilforge.dev",
+      "justification": "Pilot counterparty requires this bounded disclosure.",
+      "scope": "TreasuryCaseNegative6.forward(address,bytes32)",
+      "expiresAt": "2027-01-01T00:00:00Z"
+    }
+  ]
+}

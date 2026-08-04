@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://veilforge.dev/schemas/v4/report.schema.json",
+  "title": "VeilForge V4 Canonical Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "scannerVersion", "analysis", "project", "canonicalSourceHash", "compilerInputHash", "policyHash", "findings", "summary", "reportHash", "limitations"],
+  "properties": {
+    "schemaVersion": { "const": "4.0.0" },
+    "scannerVersion": { "const": "4.0.0-gc.1" },
+    "analysis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "compilerVersion", "compilerSettings", "diagnostics"],
+      "properties": {
+        "status": { "enum": ["complete", "analysis-incomplete", "compile-error", "unsupported-compiler"] },
+        "compilerVersion": { "type": "string", "minLength": 1 },
+        "compilerSettings": { "type": "object" },
+        "diagnostics": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["severity", "code", "message"],
+            "properties": {
+              "severity": { "enum": ["error", "warning", "info"] },
+              "code": { "type": "string", "minLength": 1 },
+              "message": { "type": "string", "minLength": 1 },
+              "path": { "type": ["string", "null"] }
+            }
+          }
+        }
+      }
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["projectId", "domain", "sources"],
+      "properties": {
+        "projectId": { "type": "string", "minLength": 1 },
+        "domain": { "enum": ["arc-payments", "arc-treasury", "arc-private-credit"] },
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "contentHash"],
+            "properties": {
+              "path": { "type": "string", "minLength": 1 },
+              "contentHash": { "$ref": "#/$defs/hash" }
+            }
+          }
+        }
+      }
+    },
+    "canonicalSourceHash": { "$ref": "#/$defs/hash" },
+    "compilerInputHash": { "$ref": "#/$defs/hash" },
+    "policyHash": { "$ref": "#/$defs/hash" },
+    "findings": { "type": "array", "items": { "$ref": "https://veilforge.dev/schemas/v4/finding.schema.json" } },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total", "critical", "high", "medium", "low", "informational"],
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "critical": { "type": "integer", "minimum": 0 },
+        "high": { "type": "integer", "minimum": 0 },
+        "medium": { "type": "integer", "minimum": 0 },
+        "low": { "type": "integer", "minimum": 0 },
+        "informational": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "reportHash": { "$ref": "#/$defs/hash" },
+    "limitations": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true }
+  },
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^0x[0-9a-f]{64}$" }
+  }
+}

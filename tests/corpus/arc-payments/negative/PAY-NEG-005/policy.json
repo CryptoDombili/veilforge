@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "4.0.0",
+  "policyId": "pay-neg-005",
+  "version": "1.0.0",
+  "domain": "arc-payments",
+  "approvedWrappers": [
+    {
+      "id": "PAY-NEG-005-WRAPPER",
+      "callable": "PaymentCaseNegative5.approvedCommitment(bytes32)",
+      "kind": "commitment",
+      "scope": "PaymentCaseNegative5.publish(bytes32)"
+    }
+  ],
+  "publicFields": [],
+  "acceptedRisks": []
+}

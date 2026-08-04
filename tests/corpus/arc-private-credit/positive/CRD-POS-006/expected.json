@@ -1,0 +1,16 @@
+{
+  "caseId": "CRD-POS-006",
+  "classification": "positive",
+  "analysisStatus": "supported",
+  "expectedOpenFindingCount": 1,
+  "expectedFindings": [
+    {
+      "ruleId": "VF4-EXTERNAL-CALL-DISCLOSURE",
+      "sourceClass": "beneficiary",
+      "sink": "external-call",
+      "occurrenceCount": 1,
+      "disposition": "open"
+    }
+  ],
+  "forbiddenRuleIds": []
+}

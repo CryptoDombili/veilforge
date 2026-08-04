@@ -5,8 +5,22 @@ import process from 'node:process';
 
 const root = process.cwd();
 const outputFile = 'RELEASE_MANIFEST.sha256';
-const ignoredDirectories = new Set(['.git', 'dist', 'node_modules', 'coverage']);
+const ignoredDirectories = new Set(['.git', 'dist', 'node_modules', 'coverage', 'output', 'tmp']);
 const ignoredFiles = new Set([outputFile, '.DS_Store']);
+const normalizedTextExtensions = new Set([
+  '.css', '.html', '.js', '.json', '.md', '.mjs', '.sha256', '.sol', '.svg', '.txt', '.yaml', '.yml',
+]);
+
+function compareCodePoints(left, right) {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
+function manifestBytes(file, data) {
+  if (!normalizedTextExtensions.has(path.extname(file).toLowerCase())) return data;
+  // Git may materialize text as CRLF on Windows and LF on Linux. Hash the
+  // repository text model, while retaining byte-exact hashes for binary assets.
+  return Buffer.from(data.toString('utf8').replace(/\r\n?/g, '\n'), 'utf8');
+}
 
 async function collectFiles(directory = '.') {
   const absolute = path.join(root, directory);
@@ -23,7 +37,7 @@ async function collectFiles(directory = '.') {
     files.push(relative);
   }
 
-  return files.sort((a, b) => a.localeCompare(b));
+  return files.sort(compareCodePoints);
 }
 
 async function buildManifest() {
@@ -31,7 +45,7 @@ async function buildManifest() {
   const rows = [];
   for (const file of files) {
     const data = await readFile(path.join(root, file));
-    const hash = createHash('sha256').update(data).digest('hex');
+    const hash = createHash('sha256').update(manifestBytes(file, data)).digest('hex');
     rows.push(`${hash}  ${file}`);
   }
   return `${rows.join('\n')}\n`;
@@ -44,7 +58,7 @@ if (mode === '--write') {
   await writeFile(path.join(root, outputFile), expected);
   console.log(`Wrote ${outputFile}.`);
 } else if (mode === '--check') {
-  const current = await readFile(path.join(root, outputFile), 'utf8').catch(() => '');
+  const current = await readFile(path.join(root, outputFile), 'utf8').then((value) => value.replace(/\r\n?/g, '\n')).catch(() => '');
   if (current !== expected) {
     console.error(`${outputFile} is stale. Run: npm run manifest:write`);
     process.exit(1);

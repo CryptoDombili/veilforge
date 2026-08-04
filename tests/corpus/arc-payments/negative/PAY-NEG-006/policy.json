@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "4.0.0",
+  "policyId": "pay-neg-006",
+  "version": "1.0.0",
+  "domain": "arc-payments",
+  "approvedWrappers": [],
+  "publicFields": [],
+  "acceptedRisks": [
+    {
+      "id": "PAY-NEG-006-RISK",
+      "owner": "security@veilforge.dev",
+      "justification": "Pilot counterparty requires this bounded disclosure.",
+      "scope": "PaymentCaseNegative6.forward(address,bytes32)",
+      "expiresAt": "2027-01-01T00:00:00Z"
+    }
+  ]
+}

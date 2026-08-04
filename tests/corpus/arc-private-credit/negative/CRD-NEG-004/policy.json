@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "4.0.0",
+  "policyId": "crd-neg-004",
+  "version": "1.0.0",
+  "domain": "arc-private-credit",
+  "approvedWrappers": [],
+  "publicFields": [
+    {
+      "id": "CRD-NEG-004-PUBLIC",
+      "field": "CreditCaseNegative4.interestRateReference",
+      "justification": "The integration identifier is intentionally public.",
+      "scope": "CreditCaseNegative4"
+    }
+  ],
+  "acceptedRisks": []
+}

@@ -1,0 +1,16 @@
+{
+  "caseId": "PAY-ADV-005",
+  "classification": "adversarial",
+  "analysisStatus": "supported",
+  "expectedOpenFindingCount": 2,
+  "expectedFindings": [
+    {
+      "ruleId": "VF4-EVENT-DISCLOSURE",
+      "sourceClass": "amount",
+      "sink": "event",
+      "occurrenceCount": 2,
+      "disposition": "open"
+    }
+  ],
+  "forbiddenRuleIds": []
+}

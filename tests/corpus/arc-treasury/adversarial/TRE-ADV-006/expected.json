@@ -1,0 +1,8 @@
+{
+  "caseId": "TRE-ADV-006",
+  "classification": "adversarial",
+  "analysisStatus": "compile-error",
+  "expectedOpenFindingCount": 0,
+  "expectedFindings": [],
+  "forbiddenRuleIds": []
+}

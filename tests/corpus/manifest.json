@@ -1,0 +1,981 @@
+{
+  "schemaVersion": "1.0.0",
+  "candidateVersion": "4.0.0-gc.1",
+  "compiler": {
+    "name": "solc",
+    "version": "0.8.24",
+    "mode": "exact"
+  },
+  "cases": [
+    {
+      "id": "CRD-ADV-001",
+      "domain": "arc-private-credit",
+      "classification": "adversarial",
+      "behavior": "Inline assembly storage flow must be reported as analysis-incomplete until modeled.",
+      "sensitiveClasses": [
+        "collateral"
+      ],
+      "sinks": [
+        "public-storage-getter"
+      ],
+      "tags": [
+        "inline-assembly-yul"
+      ],
+      "path": "tests/corpus/arc-private-credit/adversarial/CRD-ADV-001"
+    },
+    {
+      "id": "CRD-ADV-002",
+      "domain": "arc-private-credit",
+      "classification": "adversarial",
+      "behavior": "Delegatecall through a proxy must be recognized as an external trust boundary.",
+      "sensitiveClasses": [
+        "loan-terms"
+      ],
+      "sinks": [
+        "external-call"
+      ],
+      "tags": [
+        "delegatecall-proxy"
+      ],
+      "path": "tests/corpus/arc-private-credit/adversarial/CRD-ADV-002"
+    },
+    {
+      "id": "CRD-ADV-003",
+      "domain": "arc-private-credit",
+      "classification": "adversarial",
+      "behavior": "Compiler version 0.8.23 must produce unsupported-compiler.",
+      "sensitiveClasses": [
+        "interest-rate"
+      ],
+      "sinks": [],
+      "tags": [
+        "compiler-version-mismatch"
+      ],
+      "path": "tests/corpus/arc-private-credit/adversarial/CRD-ADV-003"
+    },
+    {
+      "id": "CRD-ADV-004",
+      "domain": "arc-private-credit",
+      "classification": "adversarial",
+      "behavior": "Case-folded path aliases must be rejected instead of silently overwriting a source.",
+      "sensitiveClasses": [
+        "customer-kyc-reference"
+      ],
+      "sinks": [],
+      "tags": [
+        "path-collision",
+        "windows-path"
+      ],
+      "path": "tests/corpus/arc-private-credit/adversarial/CRD-ADV-004"
+    },
+    {
+      "id": "CRD-ADV-005",
+      "domain": "arc-private-credit",
+      "classification": "adversarial",
+      "behavior": "A function named privateHash must not declassify a raw loan term return.",
+      "sensitiveClasses": [
+        "loan-terms"
+      ],
+      "sinks": [
+        "return"
+      ],
+      "tags": [
+        "misleading-hash-name"
+      ],
+      "path": "tests/corpus/arc-private-credit/adversarial/CRD-ADV-005"
+    },
+    {
+      "id": "CRD-ADV-006",
+      "domain": "arc-private-credit",
+      "classification": "adversarial",
+      "behavior": "Plain keccak256 without an approved wrapper must not declassify loan terms.",
+      "sensitiveClasses": [
+        "loan-terms"
+      ],
+      "sinks": [
+        "event"
+      ],
+      "tags": [
+        "plain-keccak"
+      ],
+      "path": "tests/corpus/arc-private-credit/adversarial/CRD-ADV-006"
+    },
+    {
+      "id": "CRD-NEG-001",
+      "domain": "arc-private-credit",
+      "classification": "negative",
+      "behavior": "Sensitive value remains private while only a non-sensitive counter has a public getter.",
+      "sensitiveClasses": [
+        "customer-kyc-reference"
+      ],
+      "sinks": [
+        "public-storage-getter"
+      ],
+      "tags": [
+        "non-sensitive-public"
+      ],
+      "path": "tests/corpus/arc-private-credit/negative/CRD-NEG-001"
+    },
+    {
+      "id": "CRD-NEG-002",
+      "domain": "arc-private-credit",
+      "classification": "negative",
+      "behavior": "Sensitive value is used only in a local comparison and reaches no public sink.",
+      "sensitiveClasses": [
+        "collateral"
+      ],
+      "sinks": [],
+      "tags": [
+        "local-only"
+      ],
+      "path": "tests/corpus/arc-private-credit/negative/CRD-NEG-002"
+    },
+    {
+      "id": "CRD-NEG-003",
+      "domain": "arc-private-credit",
+      "classification": "negative",
+      "behavior": "Event emits a fixed public literal and not the sensitive private value.",
+      "sensitiveClasses": [
+        "loan-terms"
+      ],
+      "sinks": [
+        "event"
+      ],
+      "tags": [
+        "constant-event"
+      ],
+      "path": "tests/corpus/arc-private-credit/negative/CRD-NEG-003"
+    },
+    {
+      "id": "CRD-NEG-004",
+      "domain": "arc-private-credit",
+      "classification": "negative",
+      "behavior": "Policy explicitly declares one field intentionally public with justification and scope.",
+      "sensitiveClasses": [
+        "interest-rate"
+      ],
+      "sinks": [
+        "public-storage-getter"
+      ],
+      "tags": [
+        "approved-public-field"
+      ],
+      "path": "tests/corpus/arc-private-credit/negative/CRD-NEG-004"
+    },
+    {
+      "id": "CRD-NEG-005",
+      "domain": "arc-private-credit",
+      "classification": "negative",
+      "behavior": "Policy-approved fully qualified commitment wrapper declassifies the event payload.",
+      "sensitiveClasses": [
+        "settlement-reference"
+      ],
+      "sinks": [
+        "event"
+      ],
+      "tags": [
+        "approved-wrapper"
+      ],
+      "path": "tests/corpus/arc-private-credit/negative/CRD-NEG-005"
+    },
+    {
+      "id": "CRD-NEG-006",
+      "domain": "arc-private-credit",
+      "classification": "negative",
+      "behavior": "Complete non-expired accepted-risk record changes gate disposition without deleting the trace.",
+      "sensitiveClasses": [
+        "beneficiary"
+      ],
+      "sinks": [
+        "external-call"
+      ],
+      "tags": [
+        "accepted-risk"
+      ],
+      "path": "tests/corpus/arc-private-credit/negative/CRD-NEG-006"
+    },
+    {
+      "id": "CRD-POS-001",
+      "domain": "arc-private-credit",
+      "classification": "positive",
+      "behavior": "Direct collateral flow reaches the public-storage-getter sink.",
+      "sensitiveClasses": [
+        "collateral"
+      ],
+      "sinks": [
+        "public-storage-getter"
+      ],
+      "tags": [
+        "direct-flow",
+        "public-storage-getter"
+      ],
+      "path": "tests/corpus/arc-private-credit/positive/CRD-POS-001"
+    },
+    {
+      "id": "CRD-POS-002",
+      "domain": "arc-private-credit",
+      "classification": "positive",
+      "behavior": "Direct loan-terms flow reaches the event sink.",
+      "sensitiveClasses": [
+        "loan-terms"
+      ],
+      "sinks": [
+        "event"
+      ],
+      "tags": [
+        "direct-flow",
+        "event"
+      ],
+      "path": "tests/corpus/arc-private-credit/positive/CRD-POS-002"
+    },
+    {
+      "id": "CRD-POS-003",
+      "domain": "arc-private-credit",
+      "classification": "positive",
+      "behavior": "Direct customer-kyc-reference flow reaches the calldata sink.",
+      "sensitiveClasses": [
+        "customer-kyc-reference"
+      ],
+      "sinks": [
+        "calldata"
+      ],
+      "tags": [
+        "direct-flow",
+        "calldata"
+      ],
+      "path": "tests/corpus/arc-private-credit/positive/CRD-POS-003"
+    },
+    {
+      "id": "CRD-POS-004",
+      "domain": "arc-private-credit",
+      "classification": "positive",
+      "behavior": "Direct interest-rate flow reaches the return sink.",
+      "sensitiveClasses": [
+        "interest-rate"
+      ],
+      "sinks": [
+        "return"
+      ],
+      "tags": [
+        "direct-flow",
+        "return"
+      ],
+      "path": "tests/corpus/arc-private-credit/positive/CRD-POS-004"
+    },
+    {
+      "id": "CRD-POS-005",
+      "domain": "arc-private-credit",
+      "classification": "positive",
+      "behavior": "Direct settlement-reference flow reaches the revert-custom-error sink.",
+      "sensitiveClasses": [
+        "settlement-reference"
+      ],
+      "sinks": [
+        "revert-custom-error"
+      ],
+      "tags": [
+        "direct-flow",
+        "revert-custom-error"
+      ],
+      "path": "tests/corpus/arc-private-credit/positive/CRD-POS-005"
+    },
+    {
+      "id": "CRD-POS-006",
+      "domain": "arc-private-credit",
+      "classification": "positive",
+      "behavior": "Direct beneficiary flow reaches the external-call sink.",
+      "sensitiveClasses": [
+        "beneficiary"
+      ],
+      "sinks": [
+        "external-call"
+      ],
+      "tags": [
+        "direct-flow",
+        "external-call"
+      ],
+      "path": "tests/corpus/arc-private-credit/positive/CRD-POS-006"
+    },
+    {
+      "id": "CRD-POS-007",
+      "domain": "arc-private-credit",
+      "classification": "positive",
+      "behavior": "Direct loan-terms flow reaches the metadata-uri sink.",
+      "sensitiveClasses": [
+        "loan-terms"
+      ],
+      "sinks": [
+        "metadata-uri"
+      ],
+      "tags": [
+        "direct-flow",
+        "metadata-uri"
+      ],
+      "path": "tests/corpus/arc-private-credit/positive/CRD-POS-007"
+    },
+    {
+      "id": "CRD-POS-008",
+      "domain": "arc-private-credit",
+      "classification": "positive",
+      "behavior": "Cross-contract loan-terms flow reaches an external call and event sink.",
+      "sensitiveClasses": [
+        "loan-terms"
+      ],
+      "sinks": [
+        "external-call",
+        "event"
+      ],
+      "tags": [
+        "cross-contract",
+        "internal-trace"
+      ],
+      "path": "tests/corpus/arc-private-credit/positive/CRD-POS-008"
+    },
+    {
+      "id": "PAY-ADV-001",
+      "domain": "arc-payments",
+      "classification": "adversarial",
+      "behavior": "Keywords in a comment must not create a finding.",
+      "sensitiveClasses": [
+        "payer"
+      ],
+      "sinks": [],
+      "tags": [
+        "comment-keyword"
+      ],
+      "path": "tests/corpus/arc-payments/adversarial/PAY-ADV-001"
+    },
+    {
+      "id": "PAY-ADV-002",
+      "domain": "arc-payments",
+      "classification": "adversarial",
+      "behavior": "Keywords in a string literal must not create a financial disclosure finding.",
+      "sensitiveClasses": [
+        "payee"
+      ],
+      "sinks": [],
+      "tags": [
+        "string-keyword"
+      ],
+      "path": "tests/corpus/arc-payments/adversarial/PAY-ADV-002"
+    },
+    {
+      "id": "PAY-ADV-003",
+      "domain": "arc-payments",
+      "classification": "adversarial",
+      "behavior": "A misleading onlyAnyone modifier name must not be treated as access control.",
+      "sensitiveClasses": [
+        "beneficiary"
+      ],
+      "sinks": [
+        "event"
+      ],
+      "tags": [
+        "misleading-modifier"
+      ],
+      "path": "tests/corpus/arc-payments/adversarial/PAY-ADV-003"
+    },
+    {
+      "id": "PAY-ADV-004",
+      "domain": "arc-payments",
+      "classification": "adversarial",
+      "behavior": "Parameter shadowing must retain the parameter-to-event flow.",
+      "sensitiveClasses": [
+        "customer-kyc-reference"
+      ],
+      "sinks": [
+        "event"
+      ],
+      "tags": [
+        "shadowing"
+      ],
+      "path": "tests/corpus/arc-payments/adversarial/PAY-ADV-004"
+    },
+    {
+      "id": "PAY-ADV-005",
+      "domain": "arc-payments",
+      "classification": "adversarial",
+      "behavior": "Two identical semantic event sinks must retain two distinct occurrences.",
+      "sensitiveClasses": [
+        "amount"
+      ],
+      "sinks": [
+        "event"
+      ],
+      "tags": [
+        "duplicate-occurrence"
+      ],
+      "path": "tests/corpus/arc-payments/adversarial/PAY-ADV-005"
+    },
+    {
+      "id": "PAY-ADV-006",
+      "domain": "arc-payments",
+      "classification": "adversarial",
+      "behavior": "CRLF and LF source variants must produce the same canonical identity.",
+      "sensitiveClasses": [
+        "settlement-reference"
+      ],
+      "sinks": [
+        "event"
+      ],
+      "tags": [
+        "crlf"
+      ],
+      "path": "tests/corpus/arc-payments/adversarial/PAY-ADV-006"
+    },
+    {
+      "id": "PAY-NEG-001",
+      "domain": "arc-payments",
+      "classification": "negative",
+      "behavior": "Sensitive value remains private while only a non-sensitive counter has a public getter.",
+      "sensitiveClasses": [
+        "amount"
+      ],
+      "sinks": [
+        "public-storage-getter"
+      ],
+      "tags": [
+        "non-sensitive-public"
+      ],
+      "path": "tests/corpus/arc-payments/negative/PAY-NEG-001"
+    },
+    {
+      "id": "PAY-NEG-002",
+      "domain": "arc-payments",
+      "classification": "negative",
+      "behavior": "Sensitive value is used only in a local comparison and reaches no public sink.",
+      "sensitiveClasses": [
+        "payer"
+      ],
+      "sinks": [],
+      "tags": [
+        "local-only"
+      ],
+      "path": "tests/corpus/arc-payments/negative/PAY-NEG-002"
+    },
+    {
+      "id": "PAY-NEG-003",
+      "domain": "arc-payments",
+      "classification": "negative",
+      "behavior": "Event emits a fixed public literal and not the sensitive private value.",
+      "sensitiveClasses": [
+        "payee"
+      ],
+      "sinks": [
+        "event"
+      ],
+      "tags": [
+        "constant-event"
+      ],
+      "path": "tests/corpus/arc-payments/negative/PAY-NEG-003"
+    },
+    {
+      "id": "PAY-NEG-004",
+      "domain": "arc-payments",
+      "classification": "negative",
+      "behavior": "Policy explicitly declares one field intentionally public with justification and scope.",
+      "sensitiveClasses": [
+        "beneficiary"
+      ],
+      "sinks": [
+        "public-storage-getter"
+      ],
+      "tags": [
+        "approved-public-field"
+      ],
+      "path": "tests/corpus/arc-payments/negative/PAY-NEG-004"
+    },
+    {
+      "id": "PAY-NEG-005",
+      "domain": "arc-payments",
+      "classification": "negative",
+      "behavior": "Policy-approved fully qualified commitment wrapper declassifies the event payload.",
+      "sensitiveClasses": [
+        "customer-kyc-reference"
+      ],
+      "sinks": [
+        "event"
+      ],
+      "tags": [
+        "approved-wrapper"
+      ],
+      "path": "tests/corpus/arc-payments/negative/PAY-NEG-005"
+    },
+    {
+      "id": "PAY-NEG-006",
+      "domain": "arc-payments",
+      "classification": "negative",
+      "behavior": "Complete non-expired accepted-risk record changes gate disposition without deleting the trace.",
+      "sensitiveClasses": [
+        "invoice-reference"
+      ],
+      "sinks": [
+        "external-call"
+      ],
+      "tags": [
+        "accepted-risk"
+      ],
+      "path": "tests/corpus/arc-payments/negative/PAY-NEG-006"
+    },
+    {
+      "id": "PAY-POS-001",
+      "domain": "arc-payments",
+      "classification": "positive",
+      "behavior": "Direct payer flow reaches the public-storage-getter sink.",
+      "sensitiveClasses": [
+        "payer"
+      ],
+      "sinks": [
+        "public-storage-getter"
+      ],
+      "tags": [
+        "direct-flow",
+        "public-storage-getter"
+      ],
+      "path": "tests/corpus/arc-payments/positive/PAY-POS-001"
+    },
+    {
+      "id": "PAY-POS-002",
+      "domain": "arc-payments",
+      "classification": "positive",
+      "behavior": "Direct payee flow reaches the event sink.",
+      "sensitiveClasses": [
+        "payee"
+      ],
+      "sinks": [
+        "event"
+      ],
+      "tags": [
+        "direct-flow",
+        "event"
+      ],
+      "path": "tests/corpus/arc-payments/positive/PAY-POS-002"
+    },
+    {
+      "id": "PAY-POS-003",
+      "domain": "arc-payments",
+      "classification": "positive",
+      "behavior": "Direct amount flow reaches the calldata sink.",
+      "sensitiveClasses": [
+        "amount"
+      ],
+      "sinks": [
+        "calldata"
+      ],
+      "tags": [
+        "direct-flow",
+        "calldata"
+      ],
+      "path": "tests/corpus/arc-payments/positive/PAY-POS-003"
+    },
+    {
+      "id": "PAY-POS-004",
+      "domain": "arc-payments",
+      "classification": "positive",
+      "behavior": "Direct beneficiary flow reaches the return sink.",
+      "sensitiveClasses": [
+        "beneficiary"
+      ],
+      "sinks": [
+        "return"
+      ],
+      "tags": [
+        "direct-flow",
+        "return"
+      ],
+      "path": "tests/corpus/arc-payments/positive/PAY-POS-004"
+    },
+    {
+      "id": "PAY-POS-005",
+      "domain": "arc-payments",
+      "classification": "positive",
+      "behavior": "Direct customer-kyc-reference flow reaches the revert-custom-error sink.",
+      "sensitiveClasses": [
+        "customer-kyc-reference"
+      ],
+      "sinks": [
+        "revert-custom-error"
+      ],
+      "tags": [
+        "direct-flow",
+        "revert-custom-error"
+      ],
+      "path": "tests/corpus/arc-payments/positive/PAY-POS-005"
+    },
+    {
+      "id": "PAY-POS-006",
+      "domain": "arc-payments",
+      "classification": "positive",
+      "behavior": "Direct invoice-reference flow reaches the external-call sink.",
+      "sensitiveClasses": [
+        "invoice-reference"
+      ],
+      "sinks": [
+        "external-call"
+      ],
+      "tags": [
+        "direct-flow",
+        "external-call"
+      ],
+      "path": "tests/corpus/arc-payments/positive/PAY-POS-006"
+    },
+    {
+      "id": "PAY-POS-007",
+      "domain": "arc-payments",
+      "classification": "positive",
+      "behavior": "Direct settlement-reference flow reaches the metadata-uri sink.",
+      "sensitiveClasses": [
+        "settlement-reference"
+      ],
+      "sinks": [
+        "metadata-uri"
+      ],
+      "tags": [
+        "direct-flow",
+        "metadata-uri"
+      ],
+      "path": "tests/corpus/arc-payments/positive/PAY-POS-007"
+    },
+    {
+      "id": "PAY-POS-008",
+      "domain": "arc-payments",
+      "classification": "positive",
+      "behavior": "Cross-contract settlement-reference flow reaches an external call and event sink.",
+      "sensitiveClasses": [
+        "settlement-reference"
+      ],
+      "sinks": [
+        "external-call",
+        "event"
+      ],
+      "tags": [
+        "cross-contract",
+        "internal-trace"
+      ],
+      "path": "tests/corpus/arc-payments/positive/PAY-POS-008"
+    },
+    {
+      "id": "TRE-ADV-001",
+      "domain": "arc-treasury",
+      "classification": "adversarial",
+      "behavior": "A leading UTF-8 BOM must be removed for canonical compilation and hashing.",
+      "sensitiveClasses": [
+        "employee-payroll"
+      ],
+      "sinks": [
+        "public-storage-getter"
+      ],
+      "tags": [
+        "utf8-bom"
+      ],
+      "path": "tests/corpus/arc-treasury/adversarial/TRE-ADV-001"
+    },
+    {
+      "id": "TRE-ADV-002",
+      "domain": "arc-treasury",
+      "classification": "adversarial",
+      "behavior": "An unsupported Unicode Solidity identifier must yield an explicit compile error.",
+      "sensitiveClasses": [
+        "supplier"
+      ],
+      "sinks": [],
+      "tags": [
+        "unicode-identifier"
+      ],
+      "path": "tests/corpus/arc-treasury/adversarial/TRE-ADV-002"
+    },
+    {
+      "id": "TRE-ADV-003",
+      "domain": "arc-treasury",
+      "classification": "adversarial",
+      "behavior": "Windows and POSIX path separators must canonicalize to one project-relative path.",
+      "sensitiveClasses": [
+        "treasury-operator"
+      ],
+      "sinks": [
+        "event"
+      ],
+      "tags": [
+        "windows-path"
+      ],
+      "path": "tests/corpus/arc-treasury/adversarial/TRE-ADV-003"
+    },
+    {
+      "id": "TRE-ADV-004",
+      "domain": "arc-treasury",
+      "classification": "adversarial",
+      "behavior": "Inherited override flow must resolve to the overriding event sink.",
+      "sensitiveClasses": [
+        "beneficiary"
+      ],
+      "sinks": [
+        "event"
+      ],
+      "tags": [
+        "inheritance-override"
+      ],
+      "path": "tests/corpus/arc-treasury/adversarial/TRE-ADV-004"
+    },
+    {
+      "id": "TRE-ADV-005",
+      "domain": "arc-treasury",
+      "classification": "adversarial",
+      "behavior": "Overloaded functions must retain separate callable signatures and traces.",
+      "sensitiveClasses": [
+        "supplier"
+      ],
+      "sinks": [
+        "event"
+      ],
+      "tags": [
+        "overloaded-function"
+      ],
+      "path": "tests/corpus/arc-treasury/adversarial/TRE-ADV-005"
+    },
+    {
+      "id": "TRE-ADV-006",
+      "domain": "arc-treasury",
+      "classification": "adversarial",
+      "behavior": "A missing import must yield compile-error and never a clean scan.",
+      "sensitiveClasses": [
+        "invoice-reference"
+      ],
+      "sinks": [],
+      "tags": [
+        "missing-import"
+      ],
+      "path": "tests/corpus/arc-treasury/adversarial/TRE-ADV-006"
+    },
+    {
+      "id": "TRE-NEG-001",
+      "domain": "arc-treasury",
+      "classification": "negative",
+      "behavior": "Sensitive value remains private while only a non-sensitive counter has a public getter.",
+      "sensitiveClasses": [
+        "amount"
+      ],
+      "sinks": [
+        "public-storage-getter"
+      ],
+      "tags": [
+        "non-sensitive-public"
+      ],
+      "path": "tests/corpus/arc-treasury/negative/TRE-NEG-001"
+    },
+    {
+      "id": "TRE-NEG-002",
+      "domain": "arc-treasury",
+      "classification": "negative",
+      "behavior": "Sensitive value is used only in a local comparison and reaches no public sink.",
+      "sensitiveClasses": [
+        "treasury-operator"
+      ],
+      "sinks": [],
+      "tags": [
+        "local-only"
+      ],
+      "path": "tests/corpus/arc-treasury/negative/TRE-NEG-002"
+    },
+    {
+      "id": "TRE-NEG-003",
+      "domain": "arc-treasury",
+      "classification": "negative",
+      "behavior": "Event emits a fixed public literal and not the sensitive private value.",
+      "sensitiveClasses": [
+        "employee-payroll"
+      ],
+      "sinks": [
+        "event"
+      ],
+      "tags": [
+        "constant-event"
+      ],
+      "path": "tests/corpus/arc-treasury/negative/TRE-NEG-003"
+    },
+    {
+      "id": "TRE-NEG-004",
+      "domain": "arc-treasury",
+      "classification": "negative",
+      "behavior": "Policy explicitly declares one field intentionally public with justification and scope.",
+      "sensitiveClasses": [
+        "supplier"
+      ],
+      "sinks": [
+        "public-storage-getter"
+      ],
+      "tags": [
+        "approved-public-field"
+      ],
+      "path": "tests/corpus/arc-treasury/negative/TRE-NEG-004"
+    },
+    {
+      "id": "TRE-NEG-005",
+      "domain": "arc-treasury",
+      "classification": "negative",
+      "behavior": "Policy-approved fully qualified commitment wrapper declassifies the event payload.",
+      "sensitiveClasses": [
+        "settlement-reference"
+      ],
+      "sinks": [
+        "event"
+      ],
+      "tags": [
+        "approved-wrapper"
+      ],
+      "path": "tests/corpus/arc-treasury/negative/TRE-NEG-005"
+    },
+    {
+      "id": "TRE-NEG-006",
+      "domain": "arc-treasury",
+      "classification": "negative",
+      "behavior": "Complete non-expired accepted-risk record changes gate disposition without deleting the trace.",
+      "sensitiveClasses": [
+        "beneficiary"
+      ],
+      "sinks": [
+        "external-call"
+      ],
+      "tags": [
+        "accepted-risk"
+      ],
+      "path": "tests/corpus/arc-treasury/negative/TRE-NEG-006"
+    },
+    {
+      "id": "TRE-POS-001",
+      "domain": "arc-treasury",
+      "classification": "positive",
+      "behavior": "Direct treasury-operator flow reaches the public-storage-getter sink.",
+      "sensitiveClasses": [
+        "treasury-operator"
+      ],
+      "sinks": [
+        "public-storage-getter"
+      ],
+      "tags": [
+        "direct-flow",
+        "public-storage-getter"
+      ],
+      "path": "tests/corpus/arc-treasury/positive/TRE-POS-001"
+    },
+    {
+      "id": "TRE-POS-002",
+      "domain": "arc-treasury",
+      "classification": "positive",
+      "behavior": "Direct employee-payroll flow reaches the event sink.",
+      "sensitiveClasses": [
+        "employee-payroll"
+      ],
+      "sinks": [
+        "event"
+      ],
+      "tags": [
+        "direct-flow",
+        "event"
+      ],
+      "path": "tests/corpus/arc-treasury/positive/TRE-POS-002"
+    },
+    {
+      "id": "TRE-POS-003",
+      "domain": "arc-treasury",
+      "classification": "positive",
+      "behavior": "Direct amount flow reaches the calldata sink.",
+      "sensitiveClasses": [
+        "amount"
+      ],
+      "sinks": [
+        "calldata"
+      ],
+      "tags": [
+        "direct-flow",
+        "calldata"
+      ],
+      "path": "tests/corpus/arc-treasury/positive/TRE-POS-003"
+    },
+    {
+      "id": "TRE-POS-004",
+      "domain": "arc-treasury",
+      "classification": "positive",
+      "behavior": "Direct supplier flow reaches the return sink.",
+      "sensitiveClasses": [
+        "supplier"
+      ],
+      "sinks": [
+        "return"
+      ],
+      "tags": [
+        "direct-flow",
+        "return"
+      ],
+      "path": "tests/corpus/arc-treasury/positive/TRE-POS-004"
+    },
+    {
+      "id": "TRE-POS-005",
+      "domain": "arc-treasury",
+      "classification": "positive",
+      "behavior": "Direct settlement-reference flow reaches the revert-custom-error sink.",
+      "sensitiveClasses": [
+        "settlement-reference"
+      ],
+      "sinks": [
+        "revert-custom-error"
+      ],
+      "tags": [
+        "direct-flow",
+        "revert-custom-error"
+      ],
+      "path": "tests/corpus/arc-treasury/positive/TRE-POS-005"
+    },
+    {
+      "id": "TRE-POS-006",
+      "domain": "arc-treasury",
+      "classification": "positive",
+      "behavior": "Direct beneficiary flow reaches the external-call sink.",
+      "sensitiveClasses": [
+        "beneficiary"
+      ],
+      "sinks": [
+        "external-call"
+      ],
+      "tags": [
+        "direct-flow",
+        "external-call"
+      ],
+      "path": "tests/corpus/arc-treasury/positive/TRE-POS-006"
+    },
+    {
+      "id": "TRE-POS-007",
+      "domain": "arc-treasury",
+      "classification": "positive",
+      "behavior": "Direct invoice-reference flow reaches the metadata-uri sink.",
+      "sensitiveClasses": [
+        "invoice-reference"
+      ],
+      "sinks": [
+        "metadata-uri"
+      ],
+      "tags": [
+        "direct-flow",
+        "metadata-uri"
+      ],
+      "path": "tests/corpus/arc-treasury/positive/TRE-POS-007"
+    },
+    {
+      "id": "TRE-POS-008",
+      "domain": "arc-treasury",
+      "classification": "positive",
+      "behavior": "Cross-contract invoice-reference flow reaches an external call and event sink.",
+      "sensitiveClasses": [
+        "invoice-reference"
+      ],
+      "sinks": [
+        "external-call",
+        "event"
+      ],
+      "tags": [
+        "cross-contract",
+        "internal-trace"
+      ],
+      "path": "tests/corpus/arc-treasury/positive/TRE-POS-008"
+    }
+  ]
+}

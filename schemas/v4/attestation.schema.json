@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://veilforge.dev/schemas/v4/attestation.schema.json",
+  "title": "VeilForge Registry V3 Attestation Envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "attestationId", "issuer", "subjectChainId", "subjectContract", "runtimeBytecodeHash", "canonicalSourceHash", "compilerInputHash", "reportHash", "policyHash", "scannerVersion", "compilerVersion", "gitCommit", "gitTreeHash", "issuedAt", "validUntil", "status"],
+  "properties": {
+    "schemaVersion": { "const": "4.0.0" },
+    "attestationId": { "$ref": "#/$defs/hash" },
+    "issuer": { "$ref": "#/$defs/address" },
+    "subjectChainId": { "type": "integer", "minimum": 1 },
+    "subjectContract": { "$ref": "#/$defs/address" },
+    "runtimeBytecodeHash": { "$ref": "#/$defs/hash" },
+    "canonicalSourceHash": { "$ref": "#/$defs/hash" },
+    "compilerInputHash": { "$ref": "#/$defs/hash" },
+    "reportHash": { "$ref": "#/$defs/hash" },
+    "policyHash": { "$ref": "#/$defs/hash" },
+    "scannerVersion": { "const": "4.0.0-gc.1" },
+    "compilerVersion": { "const": "0.8.24" },
+    "gitCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "gitTreeHash": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "issuedAt": { "type": "integer", "minimum": 1 },
+    "validUntil": { "type": "integer", "minimum": 1 },
+    "supersedes": { "anyOf": [{ "$ref": "#/$defs/hash" }, { "type": "null" }] },
+    "status": { "enum": ["active", "revoked", "superseded"] },
+    "revokedAt": { "type": ["integer", "null"], "minimum": 1 }
+  },
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^0x[0-9a-f]{64}$" },
+    "address": { "type": "string", "pattern": "^0x[0-9a-fA-F]{40}$" }
+  }
+}

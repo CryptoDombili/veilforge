@@ -1,0 +1,16 @@
+{
+  "caseId": "CRD-NEG-005",
+  "classification": "negative",
+  "analysisStatus": "supported",
+  "expectedOpenFindingCount": 0,
+  "expectedFindings": [
+    {
+      "ruleId": "VF4-EVENT-DISCLOSURE",
+      "sourceClass": "settlement-reference",
+      "sink": "event",
+      "occurrenceCount": 1,
+      "disposition": "declassified"
+    }
+  ],
+  "forbiddenRuleIds": []
+}

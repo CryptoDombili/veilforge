@@ -1,0 +1,5 @@
+# CRD-NEG-006
+
+Complete non-expired accepted-risk record changes gate disposition without deleting the trace.
+
+This case is labeled **negative** for **arc-private-credit**. Expected analysis status: `supported`.

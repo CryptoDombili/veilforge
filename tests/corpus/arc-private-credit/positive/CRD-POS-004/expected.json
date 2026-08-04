@@ -1,0 +1,16 @@
+{
+  "caseId": "CRD-POS-004",
+  "classification": "positive",
+  "analysisStatus": "supported",
+  "expectedOpenFindingCount": 1,
+  "expectedFindings": [
+    {
+      "ruleId": "VF4-RETURN-DISCLOSURE",
+      "sourceClass": "interest-rate",
+      "sink": "return",
+      "occurrenceCount": 1,
+      "disposition": "open"
+    }
+  ],
+  "forbiddenRuleIds": []
+}

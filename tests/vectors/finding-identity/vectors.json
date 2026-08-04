@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "1.0.0",
+  "vectors": [
+    {
+      "name": "two-event-occurrences-share-semantic-finding",
+      "finding": {
+        "ruleId": "VF4-EVENT-DISCLOSURE",
+        "contractFqn": "src/Payroll.sol:Payroll",
+        "callableSignature": "publish(bytes32)",
+        "sourceClass": "employee-payroll",
+        "sinkClass": "event",
+        "semanticAnchor": "Payroll.publish/EmitStatement[0]/arg[0]",
+        "traceHash": "0x1111111111111111111111111111111111111111111111111111111111111111"
+      },
+      "expectedFindingId": "0x4e56802039691c9f8661fe89b1f78deffef6880386948170b026097eaf8acbb8",
+      "occurrences": [
+        {
+          "input": { "canonicalPath": "src/Payroll.sol", "sinkStartByte": 120, "sinkEndByte": 160, "ordinal": 0 },
+          "expectedOccurrenceId": "0x2156e702118ec261c6348ca39e6e1b939716ac25400bf137effbfb810596a8a7"
+        },
+        {
+          "input": { "canonicalPath": "src/Payroll.sol", "sinkStartByte": 170, "sinkEndByte": 210, "ordinal": 1 },
+          "expectedOccurrenceId": "0x85e56888e5a54ab300a04083363cde1636cb96fd4ef136eb0d994bc291c05cf7"
+        }
+      ]
+    }
+  ]
+}
