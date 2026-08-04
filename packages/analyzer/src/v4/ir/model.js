@@ -35,6 +35,11 @@ export class ProgramIR extends IRNode {
     return this;
   }
 
+  attachCompilationContext(compilation) {
+    Object.defineProperty(this, '_compilation', { value: compilation, enumerable: false, configurable: false });
+    return this;
+  }
+
   lookupSymbols(name, scopeId) {
     return this._scopeGraph?.lookup(name, scopeId) ?? [];
   }

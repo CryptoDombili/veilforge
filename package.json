@@ -23,6 +23,8 @@
     "test:v4-frontend-determinism": "node --test tests/v4/frontend/determinism.test.mjs",
     "test:v4-ir": "node --test tests/v4/ir/model.test.mjs tests/v4/ir/ids.test.mjs tests/v4/ir/symbols.test.mjs tests/v4/ir/scopes.test.mjs tests/v4/ir/inheritance.test.mjs tests/v4/ir/lower-ast.test.mjs tests/v4/ir/storage-access.test.mjs",
     "test:v4-ir-determinism": "node --test tests/v4/ir/determinism.test.mjs",
+    "test:v4-graphs": "node --test tests/v4/graphs/cfg-basic.test.mjs tests/v4/graphs/cfg-branches.test.mjs tests/v4/graphs/cfg-loops.test.mjs tests/v4/graphs/cfg-termination.test.mjs tests/v4/graphs/cfg-modifiers.test.mjs tests/v4/graphs/call-graph-internal.test.mjs tests/v4/graphs/call-graph-inheritance.test.mjs tests/v4/graphs/call-graph-library.test.mjs tests/v4/graphs/call-graph-external.test.mjs tests/v4/graphs/recursion.test.mjs",
+    "test:v4-graphs-determinism": "node --test tests/v4/graphs/determinism.test.mjs",
     "typecheck": "node scripts/typecheck.mjs",
     "smoke:browser": "node scripts/smoke-browser.mjs",
     "preflight": "node scripts/preflight.mjs",

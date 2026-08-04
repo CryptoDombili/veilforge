@@ -328,5 +328,5 @@ export function lowerCompilationToIR(compilation) {
   for (const source of program.sources) source.declarationIds.sort(compareCodePoints);
   for (const contract of program.contracts) contract.declarationIds.sort(compareCodePoints);
   program.summary = summarizeProgramIR(program);
-  return program.attachScopeGraph(scopeGraph);
+  return program.attachScopeGraph(scopeGraph).attachCompilationContext(compilation);
 }
