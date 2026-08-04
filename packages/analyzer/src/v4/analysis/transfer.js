@@ -12,6 +12,25 @@ function children(node) {
   return result;
 }
 
+function unwrapCallExpression(expression) {
+  let current = expression;
+  while (current?.nodeType === 'FunctionCallOptions') current = current.expression;
+  return current;
+}
+
+function tupleArity(typeString) {
+  if (!String(typeString).startsWith('tuple(')) return 0;
+  const body = String(typeString).slice(6, -1);
+  let depth = 0;
+  let count = body ? 1 : 0;
+  for (const character of body) {
+    if (character === '(' || character === '[') depth += 1;
+    else if (character === ')' || character === ']') depth -= 1;
+    else if (character === ',' && depth === 0) count += 1;
+  }
+  return count;
+}
+
 const EXPRESSION_TYPES = new Set([
   'Identifier', 'Literal', 'BinaryOperation', 'UnaryOperation', 'Conditional', 'FunctionCall', 'MemberAccess',
   'IndexAccess', 'IndexRangeAccess', 'TupleExpression', 'Assignment', 'ElementaryTypeNameExpression', 'NewExpression',
@@ -20,6 +39,7 @@ const EXPRESSION_TYPES = new Set([
 export function createTransferEngine({ program, callable, cfg, context, nodes, edges, incomplete }) {
   const declarationByAstId = context.declarationByAstId;
   const symbolById = new Map(program.symbols.map((item) => [item.symbolId, item]));
+  const contractByName = new Map(program.contracts.map((item) => [item.canonicalName, item]));
   // Modifier-expanded CFGs contain AST nodes owned by the modifier callable.
   // Expression AST IDs are compiler-global, so include those accesses here and
   // re-anchor produced value nodes to the function currently being analyzed.
@@ -133,19 +153,33 @@ export function createTransferEngine({ program, callable, cfg, context, nodes, e
       for (const origin of input.nodeIds) addEdge(origin, resultId, 'type-conversion', block, state);
       return ref([resultId]);
     }
-    const calleeDeclaration = declarationByAstId.get(node.expression?.referencedDeclaration);
-    if (node.expression?.nodeType === 'Identifier'
-      && String(node.expression.typeDescriptions?.typeString ?? '').startsWith('function (')
+    const callExpression = unwrapCallExpression(node.expression);
+    const calleeDeclaration = declarationByAstId.get(callExpression?.referencedDeclaration);
+    if (callExpression?.nodeType === 'Identifier'
+      && String(callExpression.typeDescriptions?.typeString ?? '').startsWith('function (')
       && !['function', 'modifier'].includes(calleeDeclaration?.kind)) {
-      markIncomplete('unresolved-function-pointer', node, block, { referencedDeclaration: node.expression.referencedDeclaration ?? null });
+      markIncomplete('unresolved-function-pointer', node, block, { referencedDeclaration: callExpression.referencedDeclaration ?? null });
     }
-    if (node.expression?.nodeType === 'NewExpression') evaluate(node.expression, block, state, true);
+    if (callExpression?.nodeType === 'NewExpression') evaluate(callExpression, block, state, true);
+    const targetContract = calleeDeclaration?.contractContext ? contractByName.get(calleeDeclaration.contractContext) : null;
+    const receiver = callExpression?.nodeType === 'MemberAccess' ? callExpression.expression : null;
+    if (targetContract?.contractKind === 'library'
+      && receiver && !String(receiver.typeDescriptions?.typeString ?? '').startsWith('type(library ')) {
+      const value = evaluate(receiver, block, state, true);
+      const boundaryId = makeNode({ node: receiver, block, valueKind: 'expression', boundary: 'call-argument', provenance: 'call-argument:receiver', occurrence: `arg:receiver:call:${node.id}` });
+      for (const origin of value.nodeIds) addEdge(origin, boundaryId, 'call-argument', block, state, 'call-argument');
+    }
     for (let index = 0; index < (node.arguments ?? []).length; index += 1) {
       const argument = evaluate(node.arguments[index], block, state, true);
       const boundaryId = makeNode({ node: node.arguments[index], block, valueKind: 'expression', boundary: 'call-argument', provenance: `call-argument:${index}`, occurrence: `arg:${index}:call:${node.id}` });
       for (const origin of argument.nodeIds) addEdge(origin, boundaryId, 'call-argument', block, state, 'call-argument');
     }
     if (!needResult) return ref([]);
+    const arity = tupleArity(node.typeDescriptions?.typeString);
+    if (arity > 1) return tuple(Array.from({ length: arity }, (_, index) => ref([makeNode({
+      node, block, valueKind: 'tuple-element', boundary: 'call-result', unknown: true,
+      provenance: `call-result:${index}`, occurrence: `call-result:${node.id}:${index}`,
+    })], 'tuple-element')));
     const resultId = makeNode({ node, block, valueKind: 'call-result', boundary: 'call-result', unknown: true, provenance: 'intraprocedural-call-boundary' });
     markIncomplete('call-result-not-propagated-interprocedurally', node, block);
     return ref([resultId], 'call-result');
@@ -346,10 +380,26 @@ export function createTransferEngine({ program, callable, cfg, context, nodes, e
     }
   }
 
+  function materializeNormalReturns(block, state) {
+    for (let index = 0; index < (callable.returnParameterIds ?? []).length; index += 1) {
+      const declaration = program.declarations.find((item) => item.id === callable.returnParameterIds[index]);
+      const symbol = declaration?.symbolId ? symbolById.get(declaration.symbolId) : null;
+      if (!symbol) continue;
+      const origins = currentValue(state, bindingForSymbol(symbol.symbolId));
+      const returnId = makeNode({
+        node: context.astById.get(declaration.astNodeId), block, valueKind: 'return-parameter', symbolId: symbol.symbolId,
+        boundary: 'return', provenance: `return:${index}`, occurrence: `normal-exit:return:${index}`,
+      });
+      for (const origin of origins) addEdge(origin, returnId, 'return', block, state, 'return');
+      setBinding(state, bindingForSymbol(symbol.symbolId), symbol, 'return-parameter', [returnId], context.astById.get(declaration.astNodeId), block, 'return');
+    }
+  }
+
   function transferBlock(block, inputState) {
     const state = new Map([...inputState].map(([key, value]) => [key, { ...value, originIds: [...value.originIds], pathConditions: [...value.pathConditions] }]));
     if (block.blockId === cfg.entryBlockId) initializeEntry(block, state);
     for (const astId of block.statementAstIds) transferAst(context.astById.get(astId), block, state);
+    if (block.blockId === cfg.normalExitBlockId) materializeNormalReturns(block, state);
     return state;
   }
 

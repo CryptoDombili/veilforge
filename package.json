@@ -27,6 +27,8 @@
     "test:v4-graphs-determinism": "node --test tests/v4/graphs/determinism.test.mjs",
     "test:v4-dataflow": "node --test tests/v4/dataflow/facts.test.mjs tests/v4/dataflow/assignments.test.mjs tests/v4/dataflow/branches.test.mjs tests/v4/dataflow/loops.test.mjs tests/v4/dataflow/storage.test.mjs tests/v4/dataflow/tuples.test.mjs tests/v4/dataflow/modifiers.test.mjs tests/v4/dataflow/returns.test.mjs tests/v4/dataflow/unknown-incomplete.test.mjs tests/v4/dataflow/traces.test.mjs",
     "test:v4-dataflow-determinism": "node --test tests/v4/dataflow/determinism.test.mjs",
+    "test:v4-interprocedural": "node --test tests/v4/interprocedural/arguments.test.mjs tests/v4/interprocedural/returns.test.mjs tests/v4/interprocedural/multiple-returns.test.mjs tests/v4/interprocedural/inheritance.test.mjs tests/v4/interprocedural/libraries.test.mjs tests/v4/interprocedural/storage-effects.test.mjs tests/v4/interprocedural/recursion.test.mjs tests/v4/interprocedural/unresolved-boundaries.test.mjs tests/v4/interprocedural/budgets.test.mjs tests/v4/interprocedural/traces.test.mjs",
+    "test:v4-interprocedural-determinism": "node --test tests/v4/interprocedural/determinism.test.mjs",
     "typecheck": "node scripts/typecheck.mjs",
     "smoke:browser": "node scripts/smoke-browser.mjs",
     "preflight": "node scripts/preflight.mjs",
