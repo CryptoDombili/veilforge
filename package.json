@@ -41,6 +41,8 @@
     "test:v4-findings-determinism": "node --test tests/v4/findings/determinism.test.mjs",
     "test:v4-presentation": "node --test tests/v4/presentation/titles.test.mjs tests/v4/presentation/summaries.test.mjs tests/v4/presentation/explanations.test.mjs tests/v4/presentation/impacts.test.mjs tests/v4/presentation/remediation-payments.test.mjs tests/v4/presentation/remediation-treasury.test.mjs tests/v4/presentation/remediation-private-credit.test.mjs tests/v4/presentation/unsafe-remediation.test.mjs tests/v4/presentation/evidence-view.test.mjs tests/v4/presentation/trace-view.test.mjs tests/v4/presentation/incomplete-messages.test.mjs tests/v4/presentation/disposition-messages.test.mjs tests/v4/presentation/projection.test.mjs",
     "test:v4-presentation-determinism": "node --test tests/v4/presentation/determinism.test.mjs",
+    "test:v4-report": "node --test tests/v4/report/model.test.mjs tests/v4/report/schema-validation.test.mjs tests/v4/report/metadata.test.mjs tests/v4/report/compiler-section.test.mjs tests/v4/report/analysis-section.test.mjs tests/v4/report/policy-section.test.mjs tests/v4/report/findings-section.test.mjs tests/v4/report/summary.test.mjs tests/v4/report/canonical-json.test.mjs tests/v4/report/report-hash.test.mjs tests/v4/report/hash-exclusions.test.mjs tests/v4/report/integrity.test.mjs tests/v4/report/redaction.test.mjs tests/v4/report/incomplete.test.mjs",
+    "test:v4-report-determinism": "node --test tests/v4/report/determinism.test.mjs",
     "typecheck": "node scripts/typecheck.mjs",
     "smoke:browser": "node scripts/smoke-browser.mjs",
     "preflight": "node scripts/preflight.mjs",

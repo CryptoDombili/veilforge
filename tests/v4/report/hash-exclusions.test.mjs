@@ -1,0 +1,4 @@
+import test from'node:test';import assert from'node:assert/strict';import{clone,report}from'./helpers.mjs';import{calculateReportHash,canonicalReportJson}from'../../../packages/analyzer/src/v4/report/index.js';
+for(const key of['generatedAt','durationMs','hostname'])test(`${key} does not alter report hash`,()=>{const a=report({}, {includeOperational:true}),b=clone(a);b.scan.operational[key]=`changed-${key}`;assert.equal(calculateReportHash(a),calculateReportHash(b));});
+test('pretty JSON does not alter hash',()=>{const r=report(),pretty=JSON.parse(JSON.stringify(r,null,2));assert.equal(calculateReportHash(r),calculateReportHash(pretty));assert.equal(canonicalReportJson(r),canonicalReportJson(pretty));});
+test('integrity reportHash field excludes itself',()=>{const r=report(),hash=calculateReportHash(r);r.integrity.reportHash='sha256:'+ '0'.repeat(64);assert.equal(calculateReportHash(r),hash);});

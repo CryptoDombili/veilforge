@@ -1,0 +1,4 @@
+import test from'node:test';import assert from'node:assert/strict';import{context,projection,report}from'./helpers.mjs';import{buildReport}from'../../../packages/analyzer/src/v4/report/index.js';
+test('suppressed finding is preserved',()=>{const r=report();r.findings[0].suppressionMetadata={kind:'explicit',status:'active',active:true};assert.equal(r.findings.length,1);});
+test('multiple grouped occurrences are preserved',()=>{const r=report();r.findings[0].occurrenceCount=2;r.findings[0].groupedOccurrenceIds=['o1','o2'];assert.equal(r.findings[0].groupedOccurrenceIds.length,2);});
+test('findings have canonical findingId order',()=>{const a=projection('arc-payments','za'),b=projection('arc-treasury','ab');const c=context();c.presentationRun={findings:[a.presentationRun.findings[0],b.presentationRun.findings[0]]};c.findingRun=null;const ids=buildReport(c).findings.map(x=>x.findingId);assert.deepEqual(ids,[...ids].sort());});

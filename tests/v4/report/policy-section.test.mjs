@@ -1,0 +1,4 @@
+import test from'node:test';import assert from'node:assert/strict';import{report}from'./helpers.mjs';
+test('invalid policy report remains explicit',()=>{const p=report({policy:{present:true,valid:false,errors:['bad'],policy:{schemaVersion:'4.0.0',policyId:'bad-policy'}}}).policy;assert.equal(p.valid,false);assert.equal(p.evaluationStatus,'invalid');});
+test('policy-approved finding remains in report',()=>{const r=report();r.findings[0].disposition='policy-approved';assert.equal(r.findings.length,1);});
+test('accepted-risk metadata omits justification free text',()=>{const p=report({policy:{present:true,valid:true,policy:{schemaVersion:'4.0.0',policyId:'p',acceptedRisks:[{id:'r',owner:'alice',scope:'Case.f',expiresAt:'2027-01-01T00:00:00Z',justification:'secret operational detail'}]}}}).policy;assert.equal(p.acceptedRiskSummary.records[0].owner,'alice');assert.ok(!JSON.stringify(p).includes('secret operational detail'));});
