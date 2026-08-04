@@ -34,7 +34,9 @@ export function runDetectors(classification, registry, options = {}) {
         callableId: sink.callableId ?? source.callableId, primaryLocation: locationAnchor(sink.location ?? source.location),
         sourceLocation: locationAnchor(source.location), sinkLocation: locationAnchor(sink.location), confidence: trace.confidence,
         disposition: finalDisposition, declassificationDecisionId: decision?.decisionId ?? null,
-        acceptedRiskId: acceptedRisk?.acceptedRiskId ?? null, complete: finalDisposition !== 'incomplete', incompleteReasons,
+        policyRuleId: decision?.policyRuleId ?? null, acceptedRiskId: acceptedRisk?.acceptedRiskId ?? null,
+        acceptedRiskMetadata: acceptedRisk ? { owner: acceptedRisk.owner, expiry: acceptedRisk.expiry, scope: acceptedRisk.scope, valid: acceptedRisk.valid, validationReason: acceptedRisk.validationReason } : null,
+        complete: finalDisposition !== 'incomplete', incompleteReasons,
         remediationKey: detector.remediationKey, fingerprint,
       };
       fields.evidence = [...buildDetectorEvidence({ source, sink, trace, decision, acceptedRisk, incompleteReasons }),

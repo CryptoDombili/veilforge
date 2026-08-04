@@ -1,0 +1,4 @@
+import test from'node:test';import assert from'node:assert/strict';import{detectorResult,findings}from'./helpers.mjs';
+test('real sink location is primary',()=>assert.equal(findings(detectorResult({sourceLocation:{sourcePath:'src/A.sol',byteStart:1,byteEnd:2},sinkLocation:{sourcePath:'src/A.sol',byteStart:50,byteEnd:60}})).findings[0].primaryLocation.byteStart,50));
+test('source location is primary when sink is absent',()=>assert.equal(findings(detectorResult({sinkLocation:null,sourceLocation:{sourcePath:'src/A.sol',byteStart:7,byteEnd:9}})).findings[0].primaryLocation.byteStart,7));
+test('Windows path separators canonicalize',()=>assert.equal(findings(detectorResult({sinkLocation:{sourcePath:'src\\Credit.sol',byteStart:1,byteEnd:2}})).findings[0].primaryLocation.sourcePath,'src/Credit.sol'));

@@ -1,0 +1,3 @@
+import test from'node:test';import assert from'node:assert/strict';import{detectorResult,findings}from'./helpers.mjs';
+test('calldata observation is informational',()=>assert.equal(findings(detectorResult({detectorId:'arc-payments.calldata-observation',sinkClass:'calldata'})).findings[0].severity,'informational'));
+test('observation never becomes high or critical',()=>{for(const dataClass of['customer-kyc-reference','collateral'])assert.equal(findings(detectorResult({detectorId:'arc-private-credit.calldata-observation',domain:'arc-private-credit',sinkClass:'calldata',dataClass})).findings[0].severity,'informational');});
