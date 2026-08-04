@@ -18,6 +18,9 @@
     "test:identity-vectors": "node --test tests/spec/identity-vectors.test.mjs",
     "test:hash-vectors": "node --test tests/spec/report-hash-vectors.test.mjs",
     "test:determinism": "node --test tests/spec/identity-vectors.test.mjs tests/spec/report-hash-vectors.test.mjs",
+    "test:v4-frontend": "node --test tests/v4/frontend/compiler-provider.test.mjs tests/v4/frontend/standard-json.test.mjs tests/v4/frontend/compile-project.test.mjs tests/v4/frontend/import-graph.test.mjs tests/v4/frontend/ast-index.test.mjs tests/v4/frontend/source-locations.test.mjs",
+    "test:v4-corpus-compile": "node --test tests/v4/corpus-compile.test.mjs",
+    "test:v4-frontend-determinism": "node --test tests/v4/frontend/determinism.test.mjs",
     "typecheck": "node scripts/typecheck.mjs",
     "smoke:browser": "node scripts/smoke-browser.mjs",
     "preflight": "node scripts/preflight.mjs",
@@ -26,5 +29,8 @@
     "scan:json": "node packages/analyzer/cli.mjs scan examples/vulnerable-payroll --format json",
     "manifest:write": "node scripts/release-manifest.mjs --write",
     "manifest:check": "node scripts/release-manifest.mjs --check"
+  },
+  "dependencies": {
+    "solc": "0.8.24"
   }
 }
