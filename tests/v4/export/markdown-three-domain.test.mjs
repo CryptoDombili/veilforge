@@ -1,0 +1,2 @@
+import test from'node:test';import assert from'node:assert/strict';import{renderMarkdownReport}from'../../../packages/analyzer/src/v4/export/index.js';import{threeDomainReport}from'./helpers.mjs';
+test('full three-domain report preserves every grouped finding and domain',()=>{const value=threeDomainReport(),md=renderMarkdownReport(value);assert.equal((md.match(/^### /gmu)??[]).length,3);for(const domain of['arc-payments','arc-treasury','arc-private-credit'])assert.match(md,new RegExp(domain));});
