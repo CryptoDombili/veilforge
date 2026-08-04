@@ -1,0 +1,4 @@
+import test from 'node:test'; import assert from 'node:assert/strict'; import { detect, results } from './helpers.mjs';
+test('approval reference to custom error',()=>{const {detectorRun}=detect('contract TreasuryCase {error Bad(bytes32); function f(bytes32 approvalReference) external pure {revert Bad(approvalReference);}}'); assert.ok(results(detectorRun,'revert-disclosure').length);});
+test('generic access-control revert negative',()=>{const {detectorRun}=detect('contract TreasuryCase {function f(address treasuryOperator) external pure {treasuryOperator; revert("not authorized");}}'); assert.equal(results(detectorRun,'revert-disclosure').length,0);});
+test('execution reference revert keeps trace',()=>{const {detectorRun}=detect('contract TreasuryCase {error Bad(bytes32); function f(bytes32 executionReference) external pure {revert Bad(executionReference);}}'); assert.ok(results(detectorRun,'revert-disclosure')[0].candidateTraceId);});

@@ -1,0 +1,4 @@
+import test from 'node:test'; import assert from 'node:assert/strict'; import { detect, results } from './helpers.mjs';
+test('public calldata treasury observation',()=>{const {detectorRun}=detect('contract TreasuryCase {function f(address treasuryOperator) external {}}'); assert.ok(results(detectorRun,'calldata-observation').length);});
+test('observation produces no severity',()=>{const {detectorRun}=detect('contract TreasuryCase {function f(uint withdrawalAmount) public {}}'); const x=results(detectorRun,'calldata-observation')[0]; assert.equal('severity' in x,false); assert.equal(x.remediationKey,'treasury.calldata-observation');});
+test('internal calldata negative',()=>{const {detectorRun}=detect('contract TreasuryCase {function f(address treasuryOperator) internal {}}'); assert.equal(results(detectorRun,'calldata-observation').length,0);});

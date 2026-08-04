@@ -4,13 +4,14 @@ import { createEvidence, sortEvidence } from './evidence.js';
 import { SourceCandidate } from './source-model.js';
 
 const aliases = new Map(Object.entries({
-  payer: ['payer'], payee: ['payee'], beneficiary: ['beneficiary'], supplier: ['supplier', 'vendor'],
+  payer: ['payer'], payee: ['payee'], beneficiary: ['beneficiary', 'destination', 'recipient'], supplier: ['supplier', 'vendor'],
   'employee-payroll': ['employee', 'payroll', 'salary', 'employee-payroll'],
   'customer-kyc-reference': ['kyc', 'kyc-reference', 'customer-reference', 'customer-kyc-reference'],
-  amount: ['amount', 'payment-amount', 'invoice-amount'], 'loan-terms': ['loan', 'loan-amount', 'principal', 'loan-terms'],
+  amount: ['amount', 'payment-amount', 'invoice-amount', 'withdrawal-amount', 'transfer-amount', 'treasury-balance', 'spending-limit', 'allowance'], 'loan-terms': ['loan', 'loan-amount', 'principal', 'loan-terms'],
   'interest-rate': ['interest-rate', 'apr'], collateral: ['collateral'], 'invoice-reference': ['invoice', 'invoice-id', 'invoice-reference'],
-  'settlement-reference': ['settlement', 'settlement-id', 'settlement-reference'], 'repayment-reference': ['repayment', 'repayment-id', 'repayment-reference'],
-  'treasury-operator': ['treasury-operator', 'operator'], borrower: ['borrower'], customer: ['customer'],
+  'settlement-reference': ['settlement', 'settlement-id', 'settlement-reference', 'approval-reference', 'execution-reference'], 'repayment-reference': ['repayment', 'repayment-id', 'repayment-reference'],
+  'treasury-operator': ['treasury-operator', 'operator', 'signer', 'signer-identity', 'approver', 'approver-identity'],
+  borrower: ['borrower'], customer: ['customer'],
 }).flatMap(([dataClass, values]) => values.map((value) => [normalizeName(value), dataClass])));
 const financialContext = /(?:payment|payroll|treasury|credit|loan|invoice|settlement|repayment|kyc|beneficiar|supplier|borrow)/u;
 
@@ -38,7 +39,9 @@ export function classifySources(program, analysis, taxonomy, policyState) {
     const evidence = [];
     if (label) { confidence = CONFIDENCE.HIGH; origin = 'policy-explicit-label'; reason = 'authoritative-policy-label'; evidence.push(createEvidence({ kind: 'policy-label', origin: label.id, detail: `${label.target}:${label.dataClass}`, location: declaration.location, strength: 'authoritative' })); }
     else if (directClass && allowed.has(directClass)) {
-      confidence = financialContext.test(context) || declaration.kind === 'state-variable' || declaration.kind === 'parameter' ? CONFIDENCE.HIGH : CONFIDENCE.MEDIUM;
+      const roleOnly = ['operator', 'signer', 'signer-identity', 'approver', 'approver-identity'].includes(exactName);
+      confidence = roleOnly && !financialContext.test(context) ? CONFIDENCE.LOW
+        : financialContext.test(context) || declaration.kind === 'state-variable' || declaration.kind === 'parameter' ? CONFIDENCE.HIGH : CONFIDENCE.MEDIUM;
       origin = 'taxonomy-alias'; reason = 'taxonomy-exact-alias'; evidence.push(createEvidence({ kind: 'taxonomy-alias', origin: domain ?? 'all-domains', detail: `${exactName}:${directClass}`, location: declaration.location, strength: 'primary' }));
     } else if (tokenClasses.length === 1 && allowed.has(tokenClasses[0])) {
       dataClass = tokenClasses[0]; confidence = CONFIDENCE.LOW; evidence.push(createEvidence({ kind: 'identifier-heuristic', origin: 'name-token', detail: exactName, location: declaration.location }));
