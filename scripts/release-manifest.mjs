@@ -5,7 +5,7 @@ import process from 'node:process';
 
 const root = process.cwd();
 const outputFile = 'RELEASE_MANIFEST.sha256';
-const ignoredDirectories = new Set(['.git', 'dist', 'node_modules', 'coverage', 'output', 'tmp']);
+const ignoredDirectories = new Set(['.git', 'dist', 'dist-preview-v4', 'node_modules', 'coverage', 'output', 'tmp']);
 const ignoredFiles = new Set([outputFile, '.DS_Store']);
 const normalizedTextExtensions = new Set([
   '.css', '.html', '.js', '.json', '.md', '.mjs', '.sha256', '.sol', '.svg', '.txt', '.yaml', '.yml',

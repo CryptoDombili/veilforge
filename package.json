@@ -18,6 +18,7 @@
     ,"./sarif": "./packages/sarif/src/index.js"
     ,"./gate": "./packages/gate/src/index.js"
     ,"./benchmark": "./packages/benchmark/src/index.js"
+    ,"./proof/v4": "./packages/proof/v4/index.js"
   },
   "bin": {
     "veilforge": "./packages/cli/bin/veilforge.js"
@@ -98,6 +99,12 @@
     "test:v4-negative-precision": "node --test --test-concurrency=1 tests/v4/negative-precision/precision.test.mjs tests/v4/negative-precision/corpus.test.mjs",
     "test:v4-negative-precision-determinism": "node --test tests/v4/negative-precision/determinism.test.mjs",
     "test:v4-fn-recovery": "node --test --test-concurrency=1 tests/v4/interprocedural/unresolved-boundaries.test.mjs tests/v4/classification/invalid-policy.test.mjs tests/v4/classification/sink-external-metadata.test.mjs tests/v4/detectors/payments/declassification-disposition.test.mjs tests/v4/detectors/payments/external-call-disclosure.test.mjs tests/v4/detectors/payments/incomplete.test.mjs tests/v4/detectors/payments/metadata-disclosure.test.mjs tests/v4/detectors/payments/return-disclosure.test.mjs tests/v4/detectors/private-credit/external-call-disclosure.test.mjs tests/v4/detectors/private-credit/incomplete.test.mjs tests/v4/detectors/private-credit/return-disclosure.test.mjs tests/v4/detectors/treasury/incomplete.test.mjs tests/v4/detectors/treasury/return-disclosure.test.mjs tests/v4/findings/grouping.test.mjs tests/v4/negative-precision/corpus.test.mjs tests/v4/benchmark/comparator.test.mjs",
+    "test:v4-proof": "node --test tests/v4/proof/core.test.mjs tests/v4/proof/receipt.test.mjs tests/v4/proof/persistence.test.mjs tests/v4/proof/performance.test.mjs",
+    "test:v4-proof-legacy": "node --test tests/v4/proof/legacy.test.mjs",
+    "test:v4-proof-network": "node --test tests/v4/proof/network.test.mjs",
+    "test:v4-proof-adversarial": "node --test tests/v4/proof/adversarial.test.mjs",
+    "test:v4-proof-determinism": "node --test tests/v4/proof/determinism.test.mjs",
+    "smoke:v4-proof-preflight": "node scripts/smoke-v4-proof-preflight.mjs",
     "benchmark:v4-negative": "node scripts/benchmark-v4-negative.mjs",
     "smoke:v4-negative-regression": "node scripts/smoke-v4-negative-regression.mjs",
     "test:web-v4-adapter": "node --test tests/web/v4/input-adapter.test.mjs tests/web/v4/report-adapter.test.mjs tests/web/v4/view-models.test.mjs tests/web/v4/export-adapter.test.mjs tests/web/v4/feature-flag.test.mjs tests/web/v4/v3-compatibility.test.mjs tests/web/v4/privacy.test.mjs",
