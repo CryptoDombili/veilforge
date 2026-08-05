@@ -4,7 +4,7 @@ import { safeTransactionRequest } from './proof-adapter.js';
 
 export const WEB_PROOF_STATES = Object.freeze([
   'unavailable', 'report-unverified', 'ready', 'incomplete-warning', 'wallet-not-connected',
-  'wrong-network', 'preflight-checking', 'preflight-failed', 'ready-to-publish',
+  'wrong-network', 'preflight-checking', 'preflight-failed', 'ready-to-publish', 'reconciling',
   'user-rejected', 'cancelled', 'timeout', 'pending', 'confirmed', 'reverted',
   'receipt-invalid', 'already-published',
 ]);

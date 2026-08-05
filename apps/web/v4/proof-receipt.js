@@ -63,6 +63,7 @@ export async function normalizeWebRegistryReceipt(receipt, envelope, expected = 
   if (!(receipt?.status === true || receipt?.status === 1 || receipt?.status === '1' || receipt?.status === '0x1')) fail('WEB_V4_RECEIPT_REVERTED', 'The registry transaction reverted.');
   const transactionHash = String(receipt.transactionHash ?? '').toLowerCase();
   if (!HEX32.test(transactionHash)) fail('WEB_V4_TX_INVALID', 'Transaction hash is invalid.');
+  if (expected.transactionHash && transactionHash !== String(expected.transactionHash).toLowerCase()) fail('WEB_V4_TX_INVALID', 'Receipt transaction hash does not match the requested transaction.');
   const blockNumber = normalizeChainId(receipt.blockNumber);
   let publisher;
   try { publisher = checksumAddress(expected.publisher ?? receipt.from, 'publisher'); }

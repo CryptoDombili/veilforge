@@ -48,6 +48,11 @@ test('malformed transaction hash is rejected', async () => {
   await assert.rejects(() => normalizeWebRegistryReceipt(receipt(proof.envelope, proof.preflight, { transactionHash: '0x1' }), proof.envelope), (error) => error.code === 'WEB_V4_TX_INVALID');
 });
 
+test('receipt transaction hash must match the polled transaction identity', async () => {
+  const proof = await readyProof();
+  await assert.rejects(() => normalizeWebRegistryReceipt(receipt(proof.envelope, proof.preflight), proof.envelope, { transactionHash: `0x${'cd'.repeat(32)}` }), (error) => error.code === 'WEB_V4_TX_INVALID');
+});
+
 test('explorer links are fixed-base, chain-aware and injection-safe', () => {
   assert.equal(safeWebExplorerLink(TX_HASH), `https://testnet.arcscan.app/tx/${TX_HASH}`);
   assert.throws(() => safeWebExplorerLink(`${TX_HASH}/../../evil`)); assert.throws(() => safeWebExplorerLink(TX_HASH, 'unsupported'));

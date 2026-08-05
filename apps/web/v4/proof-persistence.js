@@ -5,7 +5,8 @@ import { safeWebExplorerLink } from './proof-receipt.js';
 import { WEB_PROOF_STATES } from './proof-lifecycle.js';
 
 export const WEB_PROOF_STORAGE_PREFIX = 'veilforge:v4:web-proof:';
-export const WEB_PROOF_PERSISTENCE_VERSION = 'veilforge.web-proof-state.v1';
+export const WEB_PROOF_PERSISTENCE_VERSION = 'veilforge.web-proof-state.v2';
+export const WEB_PROOF_TRANSACTION_SOURCES = Object.freeze(['wallet-submission', 'provider-verified']);
 const FORBIDDEN = new Set(['provider', 'signer', 'privateKey', 'seedPhrase', 'mnemonic', 'source', 'sourceCode', 'content', 'ast', 'ir', 'rawReceipt', 'rawError']);
 
 function assertSafe(value, depth = 0, seen = new Set()) {
@@ -34,16 +35,33 @@ function safePreflight(preflight) {
   };
 }
 
-export async function saveWebProofState(storage, { envelope, preflight = null, status = 'ready', transactionHash = null, receiptSummary = null, updatedAt = new Date().toISOString() } = {}, options = {}) {
+function verifiedReceiptMatches(envelope, transactionHash, receiptSummary) {
+  return receiptSummary?.status === 'confirmed'
+    && receiptSummary.transactionHash?.toLowerCase() === transactionHash?.toLowerCase()
+    && receiptSummary.chainId === envelope.chainId
+    && receiptSummary.networkKey === envelope.networkKey
+    && receiptSummary.registryAddress?.toLowerCase() === envelope.registryAddress.toLowerCase()
+    && receiptSummary.registryContractVersion === envelope.registryContractVersion
+    && receiptSummary.reportHash === envelope.reportHash
+    && /^0x[0-9a-fA-F]{40}$/u.test(receiptSummary.publisher ?? '')
+    && Number.isSafeInteger(receiptSummary.blockNumber) && receiptSummary.blockNumber >= 0
+    && receiptSummary.explorerUrl === safeWebExplorerLink(transactionHash, envelope.networkKey);
+}
+
+export async function saveWebProofState(storage, { envelope, preflight = null, status = 'ready', transactionHash = null, transactionSource = null, receiptSummary = null, updatedAt = new Date().toISOString() } = {}, options = {}) {
   await verifyWebProofEnvelope(envelope);
   if (!WEB_PROOF_STATES.includes(status)) throw webV4Error('WEB_V4_PROOF_PERSISTENCE_FAILED', 'Proof state status is invalid.');
   if (transactionHash !== null) safeWebExplorerLink(transactionHash, envelope.networkKey);
+  if (transactionSource !== null && !WEB_PROOF_TRANSACTION_SOURCES.includes(transactionSource)) throw webV4Error('WEB_V4_PROOF_PERSISTENCE_FAILED', 'Proof transaction source is invalid.');
+  if (status === 'pending' && (transactionSource !== 'wallet-submission' || !transactionHash || receiptSummary !== null)) throw webV4Error('WEB_V4_PROOF_PERSISTENCE_FAILED', 'Pending proof state is not wallet-bound.');
+  if (['confirmed', 'already-published'].includes(status) && (transactionSource !== 'provider-verified' || !transactionHash || !verifiedReceiptMatches(envelope, transactionHash, receiptSummary))) throw webV4Error('WEB_V4_PROOF_PERSISTENCE_FAILED', 'Confirmed proof state is not provider-verified.');
   const payload = {
     persistenceVersion: WEB_PROOF_PERSISTENCE_VERSION,
     envelope: cloneValue(envelope),
     preflight: safePreflight(preflight),
     status,
     transactionHash,
+    transactionSource,
     receiptSummary: receiptSummary ? cloneValue(receiptSummary) : null,
     explorerUrl: transactionHash ? safeWebExplorerLink(transactionHash, envelope.networkKey) : null,
     updatedAt,
@@ -68,5 +86,16 @@ export async function loadWebProofState(storage, key) {
   await verifyWebProofEnvelope(record.envelope);
   if (webProofStorageKey(record.envelope) !== key) throw webV4Error('WEB_V4_PROOF_PERSISTENCE_FAILED', 'Stored proof identity is invalid.');
   if (record.transactionHash && record.explorerUrl !== safeWebExplorerLink(record.transactionHash, record.envelope.networkKey)) throw webV4Error('WEB_V4_PROOF_PERSISTENCE_FAILED', 'Stored explorer identity is invalid.');
+  if (record.status === 'pending' && record.transactionSource !== 'wallet-submission') throw webV4Error('WEB_V4_PROOF_PERSISTENCE_FAILED', 'Stored pending identity is invalid.');
+  if (['confirmed', 'already-published'].includes(record.status) && (record.transactionSource !== 'provider-verified' || !verifiedReceiptMatches(record.envelope, record.transactionHash, record.receiptSummary))) throw webV4Error('WEB_V4_PROOF_PERSISTENCE_FAILED', 'Stored confirmed identity is invalid.');
   return deepFreeze(record);
+}
+
+export async function loadVerifiedWebProofPublication(storage, envelope, publisher) {
+  const key = webProofStorageKey(envelope);
+  if (storage.getItem(key) === null) return null;
+  const record = await loadWebProofState(storage, key);
+  if (!['confirmed', 'already-published'].includes(record.status) || record.transactionSource !== 'provider-verified') return null;
+  if (record.receiptSummary?.publisher?.toLowerCase() !== String(publisher ?? '').toLowerCase()) return null;
+  return record;
 }

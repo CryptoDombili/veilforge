@@ -42,13 +42,20 @@ test('proof summary contains trusted network and shortened registry', async () =
 
 test('V4 preview template includes proof status, checks and transaction boundary', () => {
   const html = v4UiTemplate();
-  for (const id of ['v4-proof', 'v4-proof-status', 'v4-proof-summary', 'v4-proof-checks', 'v4-proof-preflight', 'v4-proof-transaction']) assert.match(html, new RegExp(`id="${id}"`, 'u'));
-  assert.match(html, /Transaction submission is disabled/u);
+  for (const id of ['v4-proof', 'v4-proof-status', 'v4-proof-summary', 'v4-proof-checks', 'v4-proof-preflight', 'v4-proof-transaction', 'v4-proof-reconcile-hash', 'v4-proof-reconcile']) assert.match(html, new RegExp(`id="${id}"`, 'u'));
+  assert.match(html, /Publishing always requires a separate explicit click/u);
+  assert.match(html, /No signature, network switch, or transaction request is made automatically/u);
 });
 
 test('proof UI exposes a bounded registry reverify action', () => {
   const source = fs.readFileSync(new URL('../../../apps/web/v4/ui.js', import.meta.url), 'utf8');
   assert.match(source, /Reverify registry status/u);
+});
+
+test('production UI exposes no mock receipt acceptance boundary', () => {
+  const source = fs.readFileSync(new URL('../../../apps/web/v4/ui.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /acceptMockReceipt/u); assert.match(source, /reconcileProofTransaction/u);
+  assert.match(source, /loadVerifiedWebProofPublication/u); assert.match(source, /state\.proof\.status = 'already-published'/u);
 });
 
 test('proof errors are source-free', () => {

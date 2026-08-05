@@ -10,7 +10,9 @@ const valueAfter = (flag) => {
 };
 const port = Number(valueAfter('--port') || process.env.PORT || 4174);
 const host = valueAfter('--host') || process.env.HOST || '127.0.0.1';
-const root = path.resolve(process.cwd(), 'dist');
+const rootDirectory = valueAfter('--root') || 'dist';
+if (!['dist', 'dist-preview-v4'].includes(rootDirectory)) throw new Error('Preview root must be dist or dist-preview-v4.');
+const root = path.resolve(process.cwd(), rootDirectory);
 
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error(`Invalid port: ${port}`);
 

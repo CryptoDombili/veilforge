@@ -72,10 +72,10 @@ test('failed network preflight blocks review', async () => {
   assert.ok(result.blockingReasons.includes('network-preflight-passed'));
 });
 
-test('UI exposes distinct Connect Wallet and Review & Publish actions with disabled send', () => {
+test('UI exposes distinct Connect Wallet, review and user-approved publish actions', () => {
   const html = proofSectionTemplate();
   assert.match(html, />Connect Wallet</u); assert.match(html, />Review &amp; Publish Proof</u); assert.match(html, /id="v4-proof-send"[^>]*disabled/u);
-  assert.match(html, /Transaction sending is disabled in this preflight build/u);
+  assert.match(html, />Publish Proof</u); assert.match(html, /separate explicit click/u);
 });
 
 test('automatic send and automatic chain switch are absent', () => {
