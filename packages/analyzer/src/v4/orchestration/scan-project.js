@@ -10,7 +10,7 @@ function budgetUsed(stageName,value){if(stageName==='compilation')return{sources
 function reportPolicy(input,domains){if(domains.length===1)return policyFor(input,domains[0]);const policies=domains.map(domain=>policyFor(input,domain));return{schemaVersion:'4.0.0',policyId:`multi-domain:${domains.join('+')}`,version:'1.0.0',domain:'multi-domain',sourceLabels:policies.flatMap(x=>x.sourceLabels??[]),approvedWrappers:policies.flatMap(x=>x.approvedWrappers??[]),publicFields:policies.flatMap(x=>x.publicFields??[]),acceptedRisks:policies.flatMap(x=>x.acceptedRisks??[])};}
 const EXECUTORS={
  'input-validation':session=>({compilerVersion:session.input.compilerVersion,domains:session.input.domains,sourcePaths:Object.keys(session.input.sources),sourceCount:Object.keys(session.input.sources).length}),
- 'compilation':session=>{session.metrics.compilerInvocations+=1;return compileProject({sources:session.input.sources,compilerVersion:session.input.compilerVersion,settings:session.input.settings??session.input.compilerSettings??{}});},
+ 'compilation':session=>{session.metrics.compilerInvocations+=1;return compileProject({sources:session.input.sources,compilerVersion:session.input.compilerVersion,settings:session.input.settings??session.input.compilerSettings??{},compiler:session.options.compiler??null});},
  ir:session=>lowerCompilationToIR(previous(session,'compilation')),
  graphs:session=>buildProgramGraphs(previous(session,'ir')),
  intraprocedural:session=>analyzeProgramDataflow(previous(session,'ir'),previous(session,'graphs'),session.options.dataflowOptions??{}),

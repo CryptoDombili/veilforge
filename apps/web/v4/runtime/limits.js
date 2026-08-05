@@ -1,8 +1,8 @@
 export const WEB_V4_LIMITS = Object.freeze({
   maxFileCount: 100,
   maxPerFileBytes: 512 * 1024,
-  maxProjectBytes: 5 * 1024 * 1024,
-  maxWorkerProjectBytes: 5 * 1024 * 1024,
+  maxProjectBytes: 1 * 1024 * 1024,
+  maxWorkerProjectBytes: 1 * 1024 * 1024,
   maxPersistenceBytes: 2 * 1024 * 1024,
   stageTimeoutMs: 120_000,
   globalTimeoutMs: 300_000,

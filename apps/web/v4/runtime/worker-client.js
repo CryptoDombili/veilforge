@@ -5,7 +5,7 @@ import { assertWorkerMessage, createWorkerMessage, semanticScanPayload } from '.
 const requestId = () => globalThis.crypto?.randomUUID?.() ?? `v4-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
 export function createWorkerClient(options = {}) {
-  const worker = (options.workerFactory ?? (() => new Worker(new URL('./worker-entry.js', import.meta.url), { type: 'module', name: 'veilforge-v4' })))();
+  const worker = (options.workerFactory ?? (() => new Worker(new URL('../veilforge-v4-scanner.worker.js', import.meta.url), { type: 'module', name: 'veilforge-v4' })))();
   const limits = normalizeWebV4Limits(options.limits);
   let active = null;
   let disposed = false;

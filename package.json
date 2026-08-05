@@ -28,6 +28,11 @@
   "scripts": {
     "build": "npm run build:web",
     "build:web": "node scripts/build-web.mjs",
+    "build:web-v4-runtime": "node scripts/build-web.mjs",
+    "verify:web-v4-runtime": "node scripts/verify-web-v4-runtime.mjs",
+    "test:web-v4-runtime": "node --test --test-concurrency=1 tests/web/v4-runtime/runtime.test.mjs tests/web/v4-runtime/parity.test.mjs tests/web/v4-runtime/lifecycle.test.mjs tests/web/v4-runtime/privacy.test.mjs",
+    "test:web-v4-runtime-determinism": "node --test --test-concurrency=1 tests/web/v4-runtime/determinism.test.mjs",
+    "smoke:web-v4-real-scan": "node scripts/smoke-web-v4-real-scan.mjs",
     "serve": "node scripts/serve.mjs",
     "test": "node --test tests/*.test.mjs",
     "test:spec": "node --test tests/spec/*.test.mjs",

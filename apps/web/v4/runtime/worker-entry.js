@@ -1,3 +1,4 @@
+import './browser-scanner-entry.js';
 import { createWorkerRuntime } from './worker-runtime.js';
 
 const scope = globalThis;

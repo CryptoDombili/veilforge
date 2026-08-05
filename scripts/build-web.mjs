@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
+import { buildWebV4Runtime } from './build-web-v4-runtime.mjs';
 
 const root = process.cwd();
 const dist = path.join(root, 'dist');
@@ -67,6 +68,8 @@ function listFiles(directory) {
 }
 manifest.generatedFiles = listFiles(dist);
 fs.writeFileSync(path.join(dist, 'build-manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+
+buildWebV4Runtime({ root, dist });
 
 for (const required of ['index.html', 'app.js', 'styles.css', 'engine/index.js', 'proof/registry.js', 'config.js']) {
   if (!fs.existsSync(path.join(dist, required))) throw new Error(`Build output is missing ${required}.`);
