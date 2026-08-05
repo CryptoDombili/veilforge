@@ -25,7 +25,8 @@ import {
   verifyBytecodeTruth,
 } from './lib/bytecode-truth.js';
 import { buildProofLabSnapshot, parseProofLabReceipt } from './lib/proof-lab.js';
-import { REGISTRY_ADDRESS } from './config.js';
+import { REGISTRY_ADDRESS, WEB_V4_ENABLED } from './config.js';
+import { browserFilesToScanInput, createV4ViewModel, createWorkerClient, verifyV4Report } from './v4/index.js';
 
 const HISTORY_KEY = 'veilforge:v3.2:scan-history';
 const MAX_HISTORY = 12;
@@ -56,6 +57,7 @@ const state = {
   replayTimer: null,
   bytecodeTruth: { artifact: null, artifactFileName: '', verification: null, error: null },
   proofLab: { receipt: null, receiptFileName: '', snapshot: null, error: null },
+  v4: { verification: null, viewModel: null },
 };
 
 const elements = {
@@ -1336,7 +1338,24 @@ async function loadFilesAndScan(fileList) {
   }
 }
 
-function runScan() {
+async function runV4FoundationScan() {
+  const client = createWorkerClient();
+  try {
+    const projectName = elements.projectName.value.trim() || 'VeilForge Web Project';
+    const scanInput = await browserFilesToScanInput(state.files, {
+      projectId: projectName,
+      projectName,
+      domains: ['arc-payments', 'arc-treasury', 'arc-private-credit'],
+      compilerVersion: '0.8.24',
+    });
+    const result = await client.scan(scanInput);
+    const verification = await verifyV4Report(result?.report ?? result);
+    state.v4 = { verification, viewModel: createV4ViewModel(verification) };
+    setMessage(`Verified V4 report ${shortHash(verification.reportHash)} is ready for the Phase 5B-2 UI adapter.`, 'success');
+  } finally { client.dispose(); }
+}
+
+async function runScan() {
   if (!state.files.length) {
     clearDetectorSeveritySummary();
     setMessage('Add at least one Solidity file before scanning.', 'error');
@@ -1350,6 +1369,10 @@ function runScan() {
   if (elements.detectorFindings) elements.detectorFindings.innerHTML = '';
   setMessage('Running local deterministic analysis…');
   try {
+    if (WEB_V4_ENABLED) {
+      await runV4FoundationScan();
+      return;
+    }
     state.report = scanProject(state.files, { declaredIntent: state.intentDeclaration });
     saveCurrentToHistory();
     renderAll();
@@ -1367,8 +1390,8 @@ function runScan() {
     }
     setMessage(`${state.report.status}: ${state.report.summary.total} finding${state.report.summary.total === 1 ? '' : 's'}, report ${shortHash(state.report.reportHash)}.`, 'success');
   } catch (error) {
-    console.error(error);
-    setMessage(error instanceof Error ? error.message : String(error), 'error');
+    if (!WEB_V4_ENABLED) console.error(error);
+    setMessage(WEB_V4_ENABLED ? 'The browser-compatible V4 scanner runtime is unavailable or could not verify its result.' : error instanceof Error ? error.message : String(error), 'error');
   } finally {
     elements.scanButton.disabled = false;
     elements.scanButton.classList.remove('scanning');

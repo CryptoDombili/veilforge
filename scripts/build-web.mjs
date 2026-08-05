@@ -36,10 +36,13 @@ fs.writeFileSync(
 
 const sourceConfig = await import(pathToFileURL(path.join(web, 'config.js')).href);
 const configuredAddress = process.env.VITE_REGISTRY_ADDRESS || process.env.VEILFORGE_REGISTRY_ADDRESS || sourceConfig.REGISTRY_ADDRESS;
+const webV4Flag = process.env.VEILFORGE_WEB_V4_ENABLED;
+const webV4Enabled = webV4Flag === undefined || webV4Flag === '' ? false : webV4Flag === 'true' || webV4Flag === '1' ? true : webV4Flag === 'false' || webV4Flag === '0' ? false : null;
 if (!validAddress(configuredAddress)) throw new Error('Registry address is invalid. Set VITE_REGISTRY_ADDRESS to a valid EVM address.');
+if (webV4Enabled === null) throw new Error('VEILFORGE_WEB_V4_ENABLED must be true or false.');
 fs.writeFileSync(
   path.join(dist, 'config.js'),
-  `export const REGISTRY_ADDRESS = '${configuredAddress}';\nexport const BUILD_VERSION = '3.2.2';\n`,
+  `export const REGISTRY_ADDRESS = '${configuredAddress}';\nexport const BUILD_VERSION = '3.2.2';\nexport const WEB_V4_ENABLED = ${webV4Enabled};\n`,
 );
 
 const manifest = {
