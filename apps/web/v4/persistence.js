@@ -44,6 +44,24 @@ export async function loadV4Report(storage, projectId, options = {}) {
   return deepFreeze({ envelope, verification });
 }
 
+export async function listV4Reports(storage, options = {}) {
+  const entries = [];
+  const errors = [];
+  for (let index = 0; index < storage.length; index += 1) {
+    const key = storage.key(index);
+    if (!key?.startsWith(V4_STORAGE_PREFIX)) continue;
+    let projectId;
+    try { projectId = decodeURIComponent(key.slice(V4_STORAGE_PREFIX.length)); }
+    catch { errors.push(Object.freeze({ key, code: 'WEB_V4_PERSISTENCE_INVALID' })); continue; }
+    try {
+      const loaded = await loadV4Report(storage, projectId, options);
+      entries.push(Object.freeze({ projectId, createdAt: loaded.envelope.createdAt, reportHash: loaded.verification.reportHash, verification: loaded.verification }));
+    } catch (error) { errors.push(Object.freeze({ key, code: error?.code ?? 'WEB_V4_PERSISTENCE_INVALID' })); }
+  }
+  entries.sort((left, right) => right.createdAt.localeCompare(left.createdAt) || left.projectId.localeCompare(right.projectId));
+  return deepFreeze({ entries, errors });
+}
+
 export function readV3Storage(storage, key = `${V3_STORAGE_PREFIX}scan-history`) {
   if (!key.startsWith(V3_STORAGE_PREFIX)) throw webV4Error('WEB_V4_PERSISTENCE_INVALID', 'Only V3 read-only keys are accepted.');
   try { return deepFreeze(cloneValue(JSON.parse(storage.getItem(key) ?? '[]'))); }

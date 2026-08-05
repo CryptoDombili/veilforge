@@ -27,6 +27,7 @@ import {
 import { buildProofLabSnapshot, parseProofLabReceipt } from './lib/proof-lab.js';
 import { REGISTRY_ADDRESS, WEB_V4_ENABLED } from './config.js';
 import { browserFilesToScanInput, createV4ViewModel, createWorkerClient, verifyV4Report } from './v4/index.js';
+import { initV4Ui } from './v4/ui.js';
 
 const HISTORY_KEY = 'veilforge:v3.2:scan-history';
 const MAX_HISTORY = 12;
@@ -1786,6 +1787,13 @@ async function init() {
   window.addEventListener('unhandledrejection', (event) => {
     document.body.dataset.runtimeError = event.reason?.message || String(event.reason || 'unhandled rejection');
   });
+  if (WEB_V4_ENABLED) {
+    await initV4Ui();
+    document.body.dataset.ready = 'true';
+    document.body.dataset.webRuntime = 'v4';
+    window.__VEILFORGE_READY__ = true;
+    return;
+  }
   bindEvents();
   await hydrateWallet();
   renderFileList();

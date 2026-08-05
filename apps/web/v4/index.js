@@ -3,7 +3,8 @@ export { browserFilesToScanInput, canonicalSourcePath } from './input-adapter.js
 export { verifyV4Report, safeSourcePath } from './report-adapter.js';
 export { createV4ViewModel } from './view-models.js';
 export { createV4WebExport, verifyV4WebExport } from './export-adapter.js';
-export { loadV4Report, readV3Storage, saveV4Report, V3_STORAGE_PREFIX, V4_STORAGE_PREFIX } from './persistence.js';
+export { listV4Reports, loadV4Report, readV3Storage, saveV4Report, V3_STORAGE_PREFIX, V4_STORAGE_PREFIX } from './persistence.js';
+export { filterAndSortV4Findings, initV4Ui, v4ErrorMessage, v4UiTemplate } from './ui.js';
 export { WebV4Error, WEB_V4_ERROR_CODES } from './errors.js';
 export * from './runtime/index.js';
 export * from './version.js';
