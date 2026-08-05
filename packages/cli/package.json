@@ -1,0 +1,9 @@
+{
+  "name": "@veilforge/cli",
+  "version": "4.0.0-gc.1",
+  "private": true,
+  "type": "module",
+  "bin": { "veilforge": "./bin/veilforge.js" },
+  "exports": { ".": "./src/index.js", "./protocol": "./src/worker-protocol.js", "./version": "./src/commands/version.js" },
+  "engines": { "node": ">=20" }
+}

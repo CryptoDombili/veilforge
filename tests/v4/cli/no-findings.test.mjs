@@ -1,0 +1,2 @@
+import test from 'node:test'; import assert from 'node:assert/strict'; import { capture, fixture, baseArgs } from './helpers.mjs';
+test('no-finding scan is explicitly completed', async () => { const f = await fixture(); try { const result = await capture(baseArgs(f.output), f.root); const json = JSON.parse(result.stdout); assert.equal(json.status, 'completed'); assert.equal(json.findingSummary.totalFindings, 0); } finally { await f.cleanup(); } });

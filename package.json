@@ -11,7 +11,13 @@
     "./session": "./packages/sdk/src/session.js",
     "./verify": "./packages/sdk/src/exports.js",
     "./types": "./packages/sdk/src/types.js",
-    "./version": "./packages/sdk/src/version.js"
+    "./version": "./packages/sdk/src/version.js",
+    "./cli": "./packages/cli/src/index.js",
+    "./cli/protocol": "./packages/cli/src/worker-protocol.js",
+    "./cli/version": "./packages/cli/src/commands/version.js"
+  },
+  "bin": {
+    "veilforge": "./packages/cli/bin/veilforge.js"
   },
   "engines": {
     "node": ">=20"
@@ -58,6 +64,10 @@
     "test:v4-sdk": "node --test tests/v4/sdk/public-api.test.mjs tests/v4/sdk/scan.test.mjs tests/v4/sdk/staged-session.test.mjs tests/v4/sdk/input-validation.test.mjs tests/v4/sdk/options.test.mjs tests/v4/sdk/timeout.test.mjs tests/v4/sdk/abort.test.mjs tests/v4/sdk/progress.test.mjs tests/v4/sdk/errors.test.mjs tests/v4/sdk/result-shape.test.mjs tests/v4/sdk/export-package.test.mjs tests/v4/sdk/immutability.test.mjs",
     "test:v4-sdk-determinism": "node --test tests/v4/sdk/determinism.test.mjs",
     "test:v4-sdk-examples": "node --test tests/v4/sdk/examples.test.mjs",
+    "test:v4-cli": "node --test --test-concurrency=1 tests/v4/cli/help.test.mjs tests/v4/cli/version.test.mjs tests/v4/cli/args.test.mjs tests/v4/cli/scan.test.mjs tests/v4/cli/three-domain.test.mjs tests/v4/cli/no-findings.test.mjs tests/v4/cli/incomplete.test.mjs tests/v4/cli/worker.test.mjs tests/v4/cli/timeout.test.mjs tests/v4/cli/abort.test.mjs tests/v4/cli/cleanup.test.mjs tests/v4/cli/progress.test.mjs tests/v4/cli/json-mode.test.mjs tests/v4/cli/file-output.test.mjs tests/v4/cli/overwrite.test.mjs tests/v4/cli/path-safety.test.mjs tests/v4/cli/verify-report.test.mjs tests/v4/cli/verify-export.test.mjs tests/v4/cli/exit-codes.test.mjs tests/v4/cli/errors.test.mjs",
+    "test:v4-cli-determinism": "node --test tests/v4/cli/determinism.test.mjs",
+    "test:v4-cli-examples": "node --test tests/v4/cli/examples.test.mjs",
+    "smoke:v4-cli": "node scripts/smoke-v4-cli.mjs",
     "smoke:v4-e2e": "node scripts/smoke-v4-e2e.mjs",
     "typecheck": "node scripts/typecheck.mjs",
     "smoke:browser": "node scripts/smoke-browser.mjs",

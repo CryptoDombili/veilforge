@@ -1,0 +1,4 @@
+import test from 'node:test'; import assert from 'node:assert/strict'; import { createWorkerScan } from '../../../packages/cli/src/index.js';
+const input = { projectId: 'timeout', sources: { 'Large.sol': { content: `pragma solidity 0.8.24; contract Large { ${Array.from({ length: 1000 }, (_, i) => `uint256 v${i};`).join(' ')} }` } } };
+test('parent hard timeout terminates synchronous worker', async () => { const worker = createWorkerScan(input, { hardTimeoutMs: 1, graceMs: 5 }); await assert.rejects(worker.promise, { code: 'CLI_SCAN_TIMEOUT', exitCode: 6 }); });
+test('stage timeout remains mapped through worker', async () => { const worker = createWorkerScan(input, { hardTimeoutMs: 30_000, sdkOptions: { stageTimeoutMs: 1 } }); await assert.rejects(worker.promise, (error) => ['CLI_SCAN_TIMEOUT', 'CLI_SCAN_FAILED'].includes(error.code)); });
