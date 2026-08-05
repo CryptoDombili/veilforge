@@ -30,6 +30,14 @@ When the same raw parameter is already represented by a stronger disclosure boun
 
 Compiler-backed ABI evidence remains complete when unrelated downstream analysis is incomplete. Genuine source, sink, trace, policy, or budget uncertainty continues to be represented as incomplete.
 
+### Non-calldata disclosure boundaries
+
+A return of a derived predicate such as `amount != 0` or `balance > threshold` does not disclose the raw financial value. Raw returns, event arguments, revert arguments, and external payloads remain disclosure boundaries. ABI encoding is a metadata boundary only in a metadata, URI, or memo callable context; encoding inside a commitment wrapper is not independently a metadata disclosure and a compiler-model dynamic-function marker on that same encoding node is not an external trust boundary.
+
+Declaration and use traces for the same detector, source symbol, sink candidate, callable boundary, and policy disposition form one semantic boundary. Their evidence is merged deterministically. Different event arguments, external payload positions, getter/storage surfaces, callables, dispositions, and actual sink candidates remain separate.
+
+Fully qualified public-field policy identities are matched against canonical declaration identities. An authoritative public-field decision resolves name-derived relationship ambiguity while preserving genuine sink or trace incompleteness.
+
 ## Approved declassification
 
 Only these mechanisms may declassify data:

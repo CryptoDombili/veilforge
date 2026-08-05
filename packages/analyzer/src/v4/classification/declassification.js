@@ -6,6 +6,7 @@ function scopeMatches(actual, expected) { return actual === expected || actual?.
 
 export function decideDeclassification(program, analysis, traces, sources, sinks, policyState, acceptedRisks) {
   const callableById = new Map(program.declarations.filter((item) => item.kind === 'function').map((item) => [item.id, item]));
+  const declarationBySymbol = new Map(program.declarations.filter((item) => item.symbolId).map((item) => [item.symbolId, item]));
   const valueNodeById = new Map(analysis.callableAnalyses.flatMap((item) => item.valueNodes).map((item) => [item.valueNodeId, item]));
   const astById = new Map(); const parentByNode = new WeakMap();
   function visit(node, parent = null) { if (!node?.nodeType) return; if (!astById.has(node.id)) astById.set(node.id, node); if (parent) parentByNode.set(node, parent); for (const value of Object.values(node)) {
@@ -37,7 +38,11 @@ export function decideDeclassification(program, analysis, traces, sources, sinks
     let reason = trace.complete ? 'no-approved-declassification' : 'trace-incomplete'; let transformation = null; let transformationExpressionAstId = null; const evidence = [];
     if (policyState.valid) {
       const wrapper = (policyState.policy.approvedWrappers ?? []).find((item) => callableNames.some((name) => callableMatches(name, item.callable)));
-      const publicField = (policyState.policy.publicFields ?? []).find((item) => [source?.dataClass, source?.symbolId].includes(item.field) || source?.evidence.some((entry) => entry.detail.includes(item.field)));
+      const sourceDeclaration = declarationBySymbol.get(source?.symbolId); const fieldIdentities = [source?.dataClass, source?.symbolId,
+        sourceDeclaration?.id, sourceDeclaration?.name, sourceDeclaration?.canonicalName,
+        sourceDeclaration ? `${String(sourceDeclaration.contractContext ?? '').split(':').at(-1)}.${sourceDeclaration.name}` : null].filter(Boolean);
+      const publicField = (policyState.policy.publicFields ?? []).find((item) => fieldIdentities.some((identity) => identity === item.field || String(identity).endsWith(`:${item.field}`) || String(identity).endsWith(`.${item.field}`))
+        || source?.evidence.some((entry) => entry.detail.includes(item.field)));
       const risk = acceptedRisks.find((item) => item.valid && callableNames.some((name) => scopeMatches(name, item.scope)));
       if (wrapper) { decision = 'approved'; rule = wrapper.id; scope = wrapper.scope; transformation = wrapper.callable; reason = 'policy-approved-wrapper'; evidence.push(createEvidence({ kind: 'approved-wrapper', origin: wrapper.id, detail: wrapper.callable, location: source?.location, strength: 'authoritative' })); }
       else if (publicField) { decision = 'approved'; rule = publicField.id; scope = publicField.scope; reason = 'policy-public-field'; evidence.push(createEvidence({ kind: 'public-field', origin: publicField.id, detail: publicField.field, location: source?.location, strength: 'authoritative' })); }
