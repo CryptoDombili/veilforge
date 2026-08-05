@@ -69,15 +69,22 @@ test('whitepaper files are registered in the canonical evidence manifest', () =>
 });
 
 test('responsive spacing and accessible version labels are encoded in preview sources', () => {
-  const css = read('apps/web/landing.css');
-  const fixes = read('apps/web/landing-fixes.css');
+  const css = read('apps/web/v4-grant-landing.css');
   const build = read('scripts/build-web.mjs');
   const ui = read('apps/web/v4/ui.js');
-  assert.match(css, /margin-block-end:clamp\(72px,6\.2vw,108px\)/u);
-  assert.match(css, /margin-block-end:clamp\(56px,7vw,68px\)/u);
-  assert.match(css, /margin-block-end:clamp\(42px,11vw,52px\)/u);
-  assert.match(css, /max-height:760px/u);
-  assert.match(fixes, /max-height:760px/u);
+  assert.match(css, /padding:88px 0 82px/u);
+  assert.match(css, /margin:0 0 76px/u);
+  assert.match(css, /margin-bottom:46px/u);
+  assert.match(css, /margin-bottom:34px/u);
+  assert.match(css, /prefers-reduced-motion/u);
   assert.match(build, /aria-label="VeilForge V4 Grant Candidate"/u);
   assert.match(ui, /aria-label', 'VeilForge V4 Release Candidate 1'/u);
+});
+
+test('all five whitepaper figures replace placeholders and resolve', () => {
+  const figures = [...whitepaper.matchAll(/\]\(figures\/([^)]+\.svg)\)/gu)].map((match) => match[1]);
+  assert.equal(figures.length, 5);
+  assert.equal(new Set(figures).size, 5);
+  for (const figure of figures) assert.equal(fs.existsSync(path.join(root, 'docs/whitepaper/figures', figure)), true, figure);
+  assert.doesNotMatch(whitepaper, /Figure \d placeholder/iu);
 });

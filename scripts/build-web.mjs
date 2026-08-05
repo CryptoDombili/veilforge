@@ -3,6 +3,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 import { buildWebV4Runtime } from './build-web-v4-runtime.mjs';
+import { buildV4GrantLanding } from './lib/v4-grant-landing.mjs';
 
 const root = process.cwd();
 const outputDirectory = process.env.VEILFORGE_WEB_OUTPUT_DIR || 'dist';
@@ -51,7 +52,7 @@ fs.writeFileSync(
 
 if (webV4Enabled) {
   const landingPath = path.join(dist, 'index.html');
-  const landing = fs.readFileSync(landingPath, 'utf8')
+  const landing = buildV4GrantLanding(fs.readFileSync(landingPath, 'utf8')
     .replace(/<meta name="description" content="[^"]+" \/>/u, '<meta name="description" content="VeilForge V4 Grant Candidate — local, deterministic Solidity privacy analysis with verified findings and Arc Testnet proof workflows." />')
     .replace(/<title>[^<]+<\/title>/u, '<title>VeilForge V4 Grant Candidate — Verified Findings</title>')
     .replace('<a href="./app/index.html#scanner">Privacy OS</a><a href="#workflow">Architecture</a><a href="https://docs.arc.network/arc/concepts/opt-in-privacy" target="_blank" rel="noreferrer">Arc APS docs</a>', '<a href="./app/index.html#scanner">V4 Scanner</a><a href="#workflow">Workflow</a><a href="https://github.com/CryptoDombili/veilforge/tree/main/docs" target="_blank" rel="noreferrer">Documentation</a>')
@@ -64,7 +65,7 @@ if (webV4Enabled) {
     .replace('VeilForge v3.2 privacy operating system showing Genome, Shadow and Passport states', 'VeilForge V4 verified findings workflow from local scan to Arc Testnet proof')
     .replace('VEILFORGE V3.2 ASCENSION SYSTEM', 'VEILFORGE V4 VERIFIED WORKFLOW')
     .replace('One mission.<br />Sixteen control surfaces.', 'One clear path.<br />Verified evidence end to end.')
-    .replace('Move from Project X-Ray and Privacy Genome through Shadow simulation, Forge, Bytecode Truth, Arc rehearsal and release proof without losing the audit trail.', 'Configure, scan, review, verify, publish and export through one evidence-first workflow. Advanced technical detail stays available when you need it.');
+    .replace('Move from Project X-Ray and Privacy Genome through Shadow simulation, Forge, Bytecode Truth, Arc rehearsal and release proof without losing the audit trail.', 'Configure, scan, review, verify, publish and export through one evidence-first workflow. Advanced technical detail stays available when you need it.'));
   fs.writeFileSync(landingPath, landing);
 
   const appPath = path.join(dist, 'app', 'index.html');

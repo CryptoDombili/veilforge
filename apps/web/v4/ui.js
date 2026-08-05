@@ -173,6 +173,18 @@ export async function initV4Ui(options = {}) {
   if (navActions) navActions.insertAdjacentHTML('afterbegin', '<span class="v4-context-pill">LOCAL / PRIVATE</span><span class="v4-context-pill">ARC TESTNET</span>');
   root.innerHTML = v4UiTemplate();
   document.body.classList.remove('v4-preview-pending');
+  if (window.location.hash === '#scanner') {
+    const alignScannerHeader = () => {
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    };
+    const queueScannerAlignment = () => {
+      if (typeof window.setTimeout === 'function') window.setTimeout(alignScannerHeader, 0);
+      else alignScannerHeader();
+    };
+    if (typeof window.addEventListener === 'function') window.addEventListener('pageshow', queueScannerAlignment, { once: true });
+    queueScannerAlignment();
+  }
   const byId = (id) => root.querySelector(`#${id}`);
   const state = { files: [], bytes: 0, inputError: null, client: null, verification: null, viewModel: null, exportBundle: null, proof: { envelope: null, wallet: buildWalletState(), preflight: null, networkPreflight: null, review: null, status: 'unavailable', receipt: null, provider: null }, filters: { query: '', severity: 'all', domain: 'all', disposition: 'all', confidence: 'all', completeness: 'all', detector: '', sort: 'severity' } };
   let detailTrigger = null;

@@ -91,7 +91,9 @@ Solidity source
     -> JSON / Markdown / SARIF / CI gate / proof envelope
 ```
 
-**Figure 1 placeholder — VeilForge architecture.** A release-quality figure can later visualize the same source-to-evidence pipeline. No image asset is claimed in this draft.
+![VeilForge V4 architecture from local Solidity input through deterministic analysis, verified findings, report integrity, policy gate, and optional Arc proof publication.](figures/veilforge-architecture.svg)
+
+**Figure 1 — VeilForge V4 architecture.** The local source boundary feeds compiler-backed analysis and deterministic evidence. Only verified report identity is eligible for the optional, user-approved proof workflow.
 
 ### 5.1 Compilation and source model
 
@@ -190,7 +192,9 @@ Wallet behavior is user-gated. VeilForge does not automatically connect a wallet
 
 The observed fee is historical Testnet evidence, not a mainnet fee or cost estimate.
 
-**Figure 2 placeholder — Proof publication lifecycle.** Verified report → trusted preflight → explicit user approval → Testnet transaction → receipt/event reconciliation → provider-verified persistence → duplicate prevention.
+![Arc Testnet proof publication lifecycle from verified report hash to duplicate prevention.](figures/arc-testnet-proof-lifecycle.svg)
+
+**Figure 2 — Arc Testnet proof publication lifecycle.** Verified report -> trusted preflight -> explicit user approval -> Testnet transaction -> receipt/event reconciliation -> provider-verified persistence -> duplicate prevention.
 
 ## 12. Benchmark and Validation
 
@@ -230,7 +234,9 @@ The mainnet readiness package is split into GO and NO-GO evidence.
 
 The product does not claim mainnet availability. Testnet success is useful implementation evidence, not authorization to deploy or publish on mainnet.
 
-**Figure 3 placeholder — Mainnet staged rollout.** Candidate configuration → independent review → deterministic rehearsal → read-only verification → limited publish → monitored expansion, with explicit stop and rollback gates.
+![Fail-closed Arc mainnet staged rollout and rollback controls.](figures/mainnet-staged-rollout.svg)
+
+**Figure 3 — Mainnet staged rollout.** Candidate configuration -> independent review -> deterministic rehearsal -> read-only verification -> limited publish -> monitored expansion, with explicit stop and rollback gates.
 
 ## 16. User Experience
 
@@ -240,7 +246,9 @@ The V4 product journey is:
 Configure -> Scan -> Review -> Verify -> Publish -> Export
 ```
 
-**Figure 4 placeholder — Configure-to-export workflow.** The final visual can show the six product stages and their evidence hand-offs.
+![Configure, scan, review, verify, publish, and export workflow.](figures/configure-to-export-workflow.svg)
+
+**Figure 4 — Configure-to-export workflow.** The six product stages preserve explicit evidence hand-offs and deterministic identity.
 
 Users configure a project label, domain selection, optional policy, and local Solidity files. The scanner shows bounded progress and supports cancellation. Verified results provide summaries and filters before exposing technical detail. Finding cards use progressive disclosure for traces, evidence, locations, occurrences, and remediation.
 
@@ -256,7 +264,9 @@ Paid capabilities are roadmap hypotheses. A Developer plan may provide managed p
 
 Planning price ranges are $19–39 per month for Developer, $99–249 per month for Team, and custom annual pricing for Enterprise. They are not offers or live plans. VeilForge currently has no production billing, paid subscriptions, claimed customers, claimed partnerships, or claimed revenue.
 
-**Figure 5 placeholder — Open-core commercial loop.** Free local adoption → validated managed-workflow demand → paid hosted/team/private deployment → reinvestment in detectors, corpus, security, and Arc coverage.
+![Open-core commercial sustainability hypothesis loop.](figures/open-core-sustainability-loop.svg)
+
+**Figure 5 — Open-core commercial loop.** Free local adoption -> validated managed-workflow demand -> paid hosted/team/private deployment -> reinvestment in detectors, corpus, security, and Arc coverage.
 
 ## 18. Sustainability
 

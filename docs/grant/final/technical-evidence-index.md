@@ -11,6 +11,7 @@ Status values: **Shipped and verified**, **Shipped with bounded limitations**, *
 | CLI, SDK, SARIF, GitHub Action, policy gate | Shipped and verified | `packages/cli/`, `packages/sdk/`, `packages/sarif/`, `action.yml`, `packages/gate/` |
 | Browser V4 runtime and product polish | Shipped with bounded limitations | `apps/web/v4/`, `docs/releases/v4-web-browser-support.md` |
 | Grant whitepaper and executive brief | Shipped and verified | `docs/whitepaper/veilforge-v4-whitepaper.md`, `docs/whitepaper/veilforge-v4-whitepaper-executive-brief.md` |
+| Grant landing, web readers, PDFs, and five evidence figures | Shipped and verified | `apps/web/v4-grant-landing.css`, `apps/web/whitepaper/`, `docs/whitepaper/figures/` |
 | Report schema/hash and proof envelope | Shipped and verified | `schemas/`, `packages/analyzer/src/v4/report/`, `packages/proof/v4/` |
 | Arc Testnet transaction/reconciliation/duplicate protection | Shipped and verified | `docs/releases/v4-arc-testnet-proof-acceptance.md` |
 | Mainnet readiness model/runbooks | Shipped with bounded limitations | `packages/proof/v4/mainnet-readiness.js`, `docs/releases/v4-arc-mainnet-readiness.md` |
@@ -42,6 +43,7 @@ Status values: **Shipped and verified**, **Shipped with bounded limitations**, *
 | Rollback and incident response | Shipped with bounded limitations | `docs/releases/v4-arc-mainnet-rollback.md`, `v4-arc-mainnet-incident-response.md` | Deterministic fail-closed config | Cannot erase on-chain history | `npm.cmd run rehearse:arc-mainnet-registry` |
 | Commercial model | Commercial hypothesis | `docs/business/`, `docs/grant/grant-sustainability.md` | Arithmetic and boundary consistency checked | No live billing, customers, or revenue | `npm.cmd run test:grant-evidence` |
 | Whitepaper evidence consistency | Shipped and verified | `docs/whitepaper/` | Version, benchmark, proof, budget, mainnet and claim boundaries checked | Reader document; canonical sources remain authoritative | `npm.cmd run test:whitepaper-consistency` |
+| Grant landing and whitepaper assets | Shipped and verified | `apps/web/whitepaper/`, `scripts/lib/v4-grant-landing.mjs` | Semantic landing checks, HTML/PDF/SVG asset checks, responsive browser smoke | V4 landing remains preview-only while the production flag is false | `npm.cmd run test:grant-landing` and `npm.cmd run test:whitepaper-assets` |
 
 ## Canonical grant story
 
