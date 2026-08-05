@@ -1,0 +1,17 @@
+{
+  "name": "@veilforge/sdk",
+  "version": "4.0.0-gc.1",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "exports": {
+    ".": "./src/index.js",
+    "./scan": "./src/scan.js",
+    "./session": "./src/session.js",
+    "./verify": "./src/exports.js",
+    "./types": "./src/types.js",
+    "./version": "./src/version.js"
+  }
+}

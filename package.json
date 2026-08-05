@@ -5,6 +5,14 @@
   "type": "module",
   "description": "VeilForge Privacy Operating System \u2014 deterministic, local-first privacy engineering for Solidity projects on Arc.",
   "license": "MIT",
+  "exports": {
+    ".": "./packages/sdk/src/index.js",
+    "./scan": "./packages/sdk/src/scan.js",
+    "./session": "./packages/sdk/src/session.js",
+    "./verify": "./packages/sdk/src/exports.js",
+    "./types": "./packages/sdk/src/types.js",
+    "./version": "./packages/sdk/src/version.js"
+  },
   "engines": {
     "node": ">=20"
   },
@@ -47,6 +55,9 @@
     "test:v4-export-determinism": "node --test tests/v4/export/determinism.test.mjs",
     "test:v4-orchestration": "node --test tests/v4/orchestration/scan-project.test.mjs tests/v4/orchestration/staged-api.test.mjs tests/v4/orchestration/compiler-reuse.test.mjs tests/v4/orchestration/telemetry.test.mjs tests/v4/orchestration/timeout.test.mjs tests/v4/orchestration/budget.test.mjs tests/v4/orchestration/abort.test.mjs tests/v4/orchestration/incomplete.test.mjs tests/v4/orchestration/no-findings.test.mjs tests/v4/orchestration/three-domain-smoke.test.mjs tests/v4/orchestration/export-verification.test.mjs",
     "test:v4-orchestration-determinism": "node --test tests/v4/orchestration/determinism.test.mjs",
+    "test:v4-sdk": "node --test tests/v4/sdk/public-api.test.mjs tests/v4/sdk/scan.test.mjs tests/v4/sdk/staged-session.test.mjs tests/v4/sdk/input-validation.test.mjs tests/v4/sdk/options.test.mjs tests/v4/sdk/timeout.test.mjs tests/v4/sdk/abort.test.mjs tests/v4/sdk/progress.test.mjs tests/v4/sdk/errors.test.mjs tests/v4/sdk/result-shape.test.mjs tests/v4/sdk/export-package.test.mjs tests/v4/sdk/immutability.test.mjs",
+    "test:v4-sdk-determinism": "node --test tests/v4/sdk/determinism.test.mjs",
+    "test:v4-sdk-examples": "node --test tests/v4/sdk/examples.test.mjs",
     "smoke:v4-e2e": "node scripts/smoke-v4-e2e.mjs",
     "typecheck": "node scripts/typecheck.mjs",
     "smoke:browser": "node scripts/smoke-browser.mjs",
