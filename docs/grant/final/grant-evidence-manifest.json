@@ -1,0 +1,228 @@
+{
+  "packageVersion": "1.0.0",
+  "productVersion": "4.0.0-gc.1",
+  "gitCommit": "0fc5935b331b60baf9db7a36fbbc382f2749cf9c",
+  "evidenceFiles": [
+    "docs/grant/final/executive-summary.md",
+    "docs/grant/final/technical-evidence-index.md",
+    "docs/grant/final/benchmark-evidence.md",
+    "docs/grant/final/arc-testnet-proof-evidence.md",
+    "docs/grant/final/mainnet-readiness-evidence.md",
+    "docs/grant/final/commercial-sustainability-evidence.md",
+    "docs/grant/final/milestones-and-budget.md",
+    "docs/grant/final/known-limitations.md",
+    "docs/grant/final/submission-faq.md",
+    "docs/grant/final/demo-script-foundation.md",
+    "docs/grant/final/grant-submission-checklist.md"
+  ],
+  "evidenceFileDigests": {
+    "docs/grant/final/executive-summary.md": "sha256:c207198576fec86e2befcda8e69c9194f8f953701ba95453044e6aeb5775e2e5",
+    "docs/grant/final/technical-evidence-index.md": "sha256:2f050026219fec4096b23cb17b75dbef77dcf03dea8d079dd17f5e76a6b5fa59",
+    "docs/grant/final/benchmark-evidence.md": "sha256:2d21e9cf7a6adf4664c1e3de66d8edd868a3f314e3d5e770e3c05dc7cbf46fe9",
+    "docs/grant/final/arc-testnet-proof-evidence.md": "sha256:fcb90b3b170ff6133d0e407366f65e7b64a2d0fcdf263466cfc56e9c0266aa4a",
+    "docs/grant/final/mainnet-readiness-evidence.md": "sha256:1b8bfb33c4065186ba8fd477d29ea8b96843a6c990716378eb037abcba51defa",
+    "docs/grant/final/commercial-sustainability-evidence.md": "sha256:8f22076bfd42d2d76d0c90812942f76cce455f6dde411af6c60d61fd510cabfa",
+    "docs/grant/final/milestones-and-budget.md": "sha256:db4b90157b35b5d1a41de8dcf86d97bfc874281cc6460c4ed3472453142c084c",
+    "docs/grant/final/known-limitations.md": "sha256:a1b9e2151c5b7078d834cb283b9134316ea30c116fa33dcca57d396d8bad6b52",
+    "docs/grant/final/submission-faq.md": "sha256:a013f42e222a7759c96da0a0fed0478672def06bf9eec916e1fea64cc750106d",
+    "docs/grant/final/demo-script-foundation.md": "sha256:569dad04edc8dcd72ece244293154fc99cc79739f2341de2d7eef8de1ccfc053",
+    "docs/grant/final/grant-submission-checklist.md": "sha256:95f78a0fb29d77ffd0476f09bb402b5f75c8ffd824f04e8672752fb84b5a679d"
+  },
+  "claims": [
+    {
+      "id": "compiler-backed-analysis",
+      "status": "shipped-and-verified",
+      "evidence": "docs/releases/v4.0.0-rc1.md"
+    },
+    {
+      "id": "ast-ir-cfg-callgraph-dataflow",
+      "status": "shipped-and-verified",
+      "evidence": "packages/analyzer/src/v4"
+    },
+    {
+      "id": "arc-detector-packs",
+      "status": "shipped-and-verified",
+      "evidence": "packages/analyzer/src/v4/detectors"
+    },
+    {
+      "id": "deterministic-reports",
+      "status": "shipped-and-verified",
+      "evidence": "packages/analyzer/src/v4/report"
+    },
+    {
+      "id": "cli-sdk-sarif-action-gate",
+      "status": "shipped-and-verified",
+      "evidence": "docs/grant/final/technical-evidence-index.md"
+    },
+    {
+      "id": "browser-runtime",
+      "status": "shipped-with-bounded-limitations",
+      "evidence": "docs/releases/v4-web-browser-support.md"
+    },
+    {
+      "id": "product-polish",
+      "status": "shipped-and-verified",
+      "evidence": "apps/web/v4/ui.js"
+    },
+    {
+      "id": "proof-envelope-core",
+      "status": "shipped-and-verified",
+      "evidence": "packages/proof/v4"
+    },
+    {
+      "id": "arc-testnet-publication",
+      "status": "shipped-and-verified",
+      "evidence": "docs/grant/final/arc-testnet-proof-evidence.md"
+    },
+    {
+      "id": "receipt-event-reconciliation",
+      "status": "shipped-and-verified",
+      "evidence": "apps/web/v4/proof-receipt.js"
+    },
+    {
+      "id": "duplicate-protection",
+      "status": "shipped-and-verified",
+      "evidence": "apps/web/v4/proof-transaction-acceptance.js"
+    },
+    {
+      "id": "mainnet-readiness-controls",
+      "status": "shipped-with-bounded-limitations",
+      "evidence": "packages/proof/v4/mainnet-readiness.js"
+    },
+    {
+      "id": "mainnet-deployment",
+      "status": "mainnet-unresolved",
+      "evidence": "docs/grant/final/mainnet-readiness-evidence.md"
+    },
+    {
+      "id": "hosted-ci-and-team-workflows",
+      "status": "roadmap",
+      "evidence": "docs/business/commercial-roadmap.md"
+    },
+    {
+      "id": "pricing-and-revenue-scenarios",
+      "status": "commercial-hypothesis",
+      "evidence": "docs/grant/final/commercial-sustainability-evidence.md"
+    },
+    {
+      "id": "customers-partnerships-endorsement-revenue",
+      "status": "not-claimed",
+      "evidence": "docs/grant/final/known-limitations.md"
+    }
+  ],
+  "transactionIdentity": {
+    "network": "Arc Testnet",
+    "testnetOnly": true,
+    "chainId": 5042002,
+    "transactionHash": "0xdb674c986195ed9b3950f34d058637fbb2b887f58ca724400225ba177884192c",
+    "blockNumber": 55469453,
+    "publisher": "0x60B6333a0722bBEA39d4026b284Ae1E142bEb914",
+    "registry": "0x88B4055eaB061CEa9BdfefF524f65ff461B5401d",
+    "method": "publishReport",
+    "value": "0 USDC",
+    "observedFee": "0.001175966 USDC",
+    "reportHash": "sha256:fce5ffa529c79d185a6013a362e25658020d1691550557d59173c9acc6a417ea",
+    "status": "Success",
+    "receiptVerified": true,
+    "eventVerified": true,
+    "publisherVerified": true,
+    "registryVerified": true,
+    "reportHashMatched": true,
+    "duplicateProtection": "already-published; transactionRequest=null; second send blocked"
+  },
+  "benchmarkSummary": {
+    "oracleVersion": "1.0.0",
+    "corpusSize": 60,
+    "casesPassed": 60,
+    "truePositives": 56,
+    "falsePositives": 0,
+    "falseNegatives": 0,
+    "negativeFalsePositives": 0,
+    "releaseGateStatus": "passed",
+    "releaseGateDecision": "allow",
+    "nondeterministicResults": 0,
+    "scope": "maintained oracle corpus only",
+    "universalCorrectnessClaimed": false,
+    "auditReplacementClaimed": false
+  },
+  "commercialStatus": {
+    "status": "commercial-hypothesis",
+    "communityCoreFree": true,
+    "paidPlansLive": false,
+    "billingLive": false,
+    "customersClaimed": false,
+    "revenueClaimed": false,
+    "pricing": {
+      "developerMonthlyRangeUsd": [19, 39],
+      "teamMonthlyRangeUsd": [99, 249],
+      "enterprise": "custom annual hypothesis"
+    },
+    "scenarios": {
+      "conservative": {
+        "developerCustomers": 10,
+        "teamCustomers": 2,
+        "enterprisePilots": 0,
+        "enterpriseMonthlyEquivalentUsd": 0,
+        "month12MrrUsd": 588
+      },
+      "base": {
+        "developerCustomers": 45,
+        "teamCustomers": 8,
+        "enterprisePilots": 1,
+        "enterpriseMonthlyEquivalentUsd": 1500,
+        "month12MrrUsd": 3997
+      },
+      "upside": {
+        "developerCustomers": 120,
+        "teamCustomers": 25,
+        "enterprisePilots": 3,
+        "enterpriseMonthlyEquivalentUsd": 2500,
+        "month12MrrUsd": 14705
+      }
+    }
+  },
+  "mainnetStatus": {
+    "status": "mainnet-unresolved",
+    "enabled": false,
+    "proofReadEnabled": false,
+    "publishEnabled": false,
+    "deployed": false,
+    "officialNetworkValuesResolved": false,
+    "independentContractReviewComplete": false,
+    "operationalOwnershipAssigned": false,
+    "feeValidationComplete": false,
+    "registryV2Decision": "compatible with operational limitations"
+  },
+  "budgetAllocationPercent": {
+    "productEngineering": 35,
+    "hostedCiInfrastructure": 15,
+    "securityValidation": 15,
+    "documentationAndOnboarding": 10,
+    "arcEcosystemIntegrations": 15,
+    "developerSupportAndOperations": 10
+  },
+  "limitations": [
+    "bounded 60-case maintained oracle corpus",
+    "exact solc 0.8.24",
+    "browser project limit 1 MiB",
+    "explicit incomplete analysis states",
+    "Edge and Firefox clean-CI acceptance pending",
+    "not an audit or formal verification",
+    "no confidentiality guarantee",
+    "Arc mainnet not deployed",
+    "paid plans and production billing not live",
+    "Registry V2 is immutable and operationally limited",
+    "publisher-scoped latest-record overwrite semantics",
+    "false-positive and false-negative risk outside the corpus"
+  ],
+  "canonicalization": {
+    "algorithm": "sha256",
+    "serialization": "recursively key-sorted JSON without insignificant whitespace",
+    "excludedFields": [
+      "generatedAtOperational",
+      "integrityDigest"
+    ]
+  },
+  "generatedAtOperational": "2026-08-05T21:30:40.7269324+03:00",
+  "integrityDigest": "sha256:df8730a83c26e322dd414d2c5d9ebb2dd3cee2e012b9397f03dc7af1fc93be15"
+}
