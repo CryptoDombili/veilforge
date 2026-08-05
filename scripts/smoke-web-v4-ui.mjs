@@ -59,7 +59,7 @@ try {
   if (!await evaluate("document.body.dataset.webRuntime==='v4' && !!document.querySelector('#v4-scan')")) throw new Error('V4 UI did not mount.');
   if (responsive) {
     const results = [];
-    for (const width of [1440, 1280, 768, 390]) {
+    for (const width of [1920, 1440, 1280, 1024, 768, 390, 360]) {
       await cdp.send('Emulation.setDeviceMetricsOverride', { width, height: 1000, deviceScaleFactor: 1, mobile: width < 600 }); await sleep(100);
       results.push(await evaluate(`(()=>({width:${width},overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth,scanVisible:!!document.querySelector('#v4-scan')?.offsetParent,resultsWidth:document.querySelector('.v4-results')?.getBoundingClientRect().width??0}))()`));
     }
