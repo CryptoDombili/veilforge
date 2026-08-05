@@ -10,5 +10,5 @@ test('all 18 negative cases have no benchmark false positives', async()=>{
   const results=[]; for(const id of negativeIds)results.push(await runBenchmarkCase(id));
   assert.equal(results.length,18); assert.equal(results.reduce((n,item)=>n+item.falsePositives.length,0),0);
   assert.equal(results.filter((item)=>item.compileMatch).length,18);
-  assert.equal(results.reduce((n,item)=>n+item.falseNegatives.length,0),3);
+  assert.equal(results.reduce((n,item)=>n+item.falseNegatives.length,0),0);
 });

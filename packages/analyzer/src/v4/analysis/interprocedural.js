@@ -10,6 +10,7 @@ import { AnalysisBudget, createProgramAnalysisId, DEFAULT_ANALYSIS_BUDGET, Progr
 import { maxAcyclicCallDepth, recursiveCallableIds } from './recursion-guard.js';
 
 const PROPAGATED_CALL_KINDS = new Set(['internal', 'inherited-internal', 'super', 'library']);
+const ARGUMENT_PROPAGATED_BOUNDARIES = new Set(['external-self', 'known-contract-external']);
 function compare(left, right) { return left < right ? -1 : left > right ? 1 : 0; }
 function pathKey(node) { return JSON.stringify({ symbolId: node.symbolId, storagePath: node.storagePath }); }
 function returnIndex(node) {
@@ -119,9 +120,11 @@ export function analyzeProgramInterprocedural(program, graphs, intraprocedural =
     const call = context.astById.get(callEdge.expressionAstId);
     const callerAnalysis = analysisByCallable.get(callEdge.callerCallableId);
     const callee = callableById.get(callEdge.calleeCallableId);
-    const allowed = callEdge.resolutionStatus === 'resolved' && callee && PROPAGATED_CALL_KINDS.has(callEdge.callKind);
+    const propagateReturns = callEdge.resolutionStatus === 'resolved' && callee && PROPAGATED_CALL_KINDS.has(callEdge.callKind);
+    const propagateArguments = propagateReturns || (callEdge.resolutionStatus === 'resolved' && callee && ARGUMENT_PROPAGATED_BOUNDARIES.has(callEdge.callKind));
     const depth = (depths.get(callEdge.callerCallableId) ?? 0) + 1;
-    if (!allowed || depth > limits.maxCallDepth) {
+    const callerResults = callerAnalysis?.valueNodes.filter((item) => item.expressionAstId === callEdge.expressionAstId && item.boundary === 'call-result') ?? [];
+    if (!propagateArguments || depth > limits.maxCallDepth) {
       const reason = depth > limits.maxCallDepth ? 'call-depth-limit' : reasonForBoundary(callEdge, call);
       if (depth > limits.maxCallDepth) exceeded.add(reason);
       const boundary = new CallBoundary({
@@ -131,14 +134,24 @@ export function analyzeProgramInterprocedural(program, graphs, intraprocedural =
         markers: [callEdge.resolutionStatus === 'unresolved' ? 'unresolved' : 'trust-boundary'],
       });
       boundaries.push(boundary);
-      addIncomplete(reason, callEdge.callerCallableId, callEdge.location, { callEdgeId: callEdge.edgeId, resolverReason: callEdge.reason, depth, limit: limits.maxCallDepth });
-      const results = callerAnalysis?.valueNodes.filter((item) => item.expressionAstId === callEdge.expressionAstId && item.boundary === 'call-result') ?? [];
-      if (results.length) addIncomplete('unknown-external-return', callEdge.callerCallableId, callEdge.location, { callEdgeId: callEdge.edgeId, callKind: callEdge.callKind });
+      const inputTraceIsComplete = ['external-self', 'known-contract-external', 'low-level-call', 'staticcall', 'delegatecall'].includes(callEdge.callKind) && callerResults.length === 0;
+      if (!inputTraceIsComplete) addIncomplete(reason, callEdge.callerCallableId, callEdge.location, { callEdgeId: callEdge.edgeId, resolverReason: callEdge.reason, depth, limit: limits.maxCallDepth });
+      if (callerResults.length) addIncomplete('unknown-external-return', callEdge.callerCallableId, callEdge.location, { callEdgeId: callEdge.edgeId, callKind: callEdge.callKind });
       continue;
     }
     const calleeAnalysis = analysisByCallable.get(callee.id);
-    if (!callerAnalysis || !calleeAnalysis) {
+    if (!callerAnalysis) {
       addIncomplete('unsupported-callee-semantics', callEdge.callerCallableId, callEdge.location, { callEdgeId: callEdge.edgeId, calleeCallableId: callee.id });
+      continue;
+    }
+    if (!calleeAnalysis) {
+      boundaries.push(new CallBoundary({
+        callEdgeId: callEdge.edgeId, callerCallableId: callEdge.callerCallableId, calleeCallableId: callee.id,
+        callKind: callEdge.callKind, resolutionStatus: callEdge.resolutionStatus, propagationStatus: 'boundary',
+        reason: 'runtime-external-trust-boundary', expressionAstId: callEdge.expressionAstId, location: callEdge.location,
+        markers: ['trust-boundary'],
+      }));
+      if (callerResults.length) addIncomplete('unknown-external-return', callEdge.callerCallableId, callEdge.location, { callEdgeId: callEdge.edgeId, callKind: callEdge.callKind });
       continue;
     }
     const argumentMappings = [];
@@ -158,12 +171,12 @@ export function analyzeProgramInterprocedural(program, graphs, intraprocedural =
       });
       if (propagated) argumentMappings.push({ argumentPosition: mapping.argumentPosition, parameterIndex: mapping.parameterIndex, fromValueNodeId: from.valueNodeId, toValueNodeId: to.valueNodeId, edgeId: propagated.edgeId });
     }
-    const callerResults = callerAnalysis.valueNodes.filter((item) => item.expressionAstId === callEdge.expressionAstId && item.boundary === 'call-result').sort((a, b) => resultIndex(a) - resultIndex(b) || compare(a.valueNodeId, b.valueNodeId));
+    const sortedCallerResults = callerResults.sort((a, b) => resultIndex(a) - resultIndex(b) || compare(a.valueNodeId, b.valueNodeId));
     const calleeReturns = calleeAnalysis.valueNodes.filter((item) => item.boundary === 'return').sort((a, b) => returnIndex(a) - returnIndex(b) || compare(a.valueNodeId, b.valueNodeId));
     const returnMappings = [];
-    for (const from of calleeReturns) {
+    for (const from of propagateReturns ? calleeReturns : []) {
       const index = returnIndex(from);
-      const to = callerResults.find((item) => resultIndex(item) === index) ?? (callerResults.length === 1 ? callerResults[0] : null);
+      const to = sortedCallerResults.find((item) => resultIndex(item) === index) ?? (sortedCallerResults.length === 1 ? sortedCallerResults[0] : null);
       if (!to) continue;
       const propagated = addEdge({
         callEdgeId: callEdge.edgeId, fromCallableId: callee.id, toCallableId: callEdge.callerCallableId,
@@ -180,10 +193,13 @@ export function analyzeProgramInterprocedural(program, graphs, intraprocedural =
       set.add(callEdge.expressionAstId);
       resolvedCallAstIds.set(callEdge.callerCallableId, set);
     }
+    if (!propagateReturns && sortedCallerResults.length) {
+      addIncomplete('unknown-external-return', callEdge.callerCallableId, callEdge.location, { callEdgeId: callEdge.edgeId, callKind: callEdge.callKind });
+    }
     boundaries.push(new CallBoundary({
       callEdgeId: callEdge.edgeId, callerCallableId: callEdge.callerCallableId, calleeCallableId: callee.id,
-      callKind: callEdge.callKind, resolutionStatus: callEdge.resolutionStatus, propagationStatus: 'propagated',
-      reason: 'compiler-resolved-call', expressionAstId: callEdge.expressionAstId, location: callEdge.location,
+      callKind: callEdge.callKind, resolutionStatus: callEdge.resolutionStatus, propagationStatus: propagateReturns ? 'propagated' : 'argument-propagated',
+      reason: propagateReturns ? 'compiler-resolved-call' : 'runtime-external-trust-boundary', expressionAstId: callEdge.expressionAstId, location: callEdge.location,
       argumentMappings, returnMappings, markers: callEdge.recursive ? ['recursive'] : [],
     }));
     const calleeBlocking = calleeAnalysis.incomplete.filter((item) => ['inline-assembly-not-modeled', 'try-catch-not-modeled', 'unsupported-expression'].includes(item.reason));

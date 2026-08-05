@@ -17,6 +17,11 @@ function callName(call) {
 }
 function callable(program, id) { return program.declarations.find((item) => item.id === id); }
 function contract(program, canonicalName) { return program.contracts.find((item) => item.canonicalName === canonicalName); }
+function containingCall(node, ast) { let current = node; while (current && current.nodeType !== 'FunctionCall') current = ast.parent.get(current.id); return current; }
+function eventKey(node, ast, index) {
+  const call = containingCall(node, ast); const expression = call?.expression;
+  return expression ? `${expression.name ?? expression.memberName ?? 'event'}:${expression.typeDescriptions?.typeString ?? ''}:${index}` : null;
+}
 
 export function classifySinks(program, analysis) {
   const ast = astContext(program); const result = [];
@@ -24,9 +29,10 @@ export function classifySinks(program, analysis) {
     const owner = callable(program, node.callableId); const ownerContract = contract(program, owner?.contractContext);
     const payload = { sinkClass, valueNodeId: node.valueNodeId, callableId: node.callableId ?? null, contractId: ownerContract?.id ?? fields.contractId ?? null,
       location: locationAnchor(node.location ?? fields.location), argumentIndex: fields.argumentIndex ?? null, externalTarget: fields.externalTarget ?? null,
+      semanticSinkKey: fields.semanticSinkKey ?? null,
       evidence: sortEvidence([createEvidence({ kind: fields.evidenceKind ?? 'dataflow-boundary', origin: fields.origin ?? 'compiler-ast-ir', detail: fields.detail ?? sinkClass, location: node.location ?? fields.location, strength: 'primary' })]),
       confidence: fields.confidence ?? 'high', complete: fields.complete !== false, reason: fields.reason ?? 'compiler-backed-sink' };
-    result.push(new SinkCandidate({ ...payload, sinkCandidateId: classificationId('sink-candidate', { sinkClass, valueNodeId: node.valueNodeId, argumentIndex: payload.argumentIndex, externalTarget: payload.externalTarget }) }));
+    result.push(new SinkCandidate({ ...payload, sinkCandidateId: classificationId('sink-candidate', { sinkClass, valueNodeId: node.valueNodeId, argumentIndex: payload.argumentIndex, semanticSinkKey: payload.semanticSinkKey, externalTarget: payload.externalTarget }) }));
   }
   const stateDeclarations = program.declarations.filter((item) => item.kind === 'state-variable' && item.visibility === 'public');
   for (const declaration of stateDeclarations) {
@@ -44,16 +50,23 @@ export function classifySinks(program, analysis) {
     for (const node of callableAnalysis.valueNodes) {
       const astNode = ast.byId.get(node.expressionAstId); const parent = ast.parent.get(node.expressionAstId);
       if (node.valueKind === 'parameter' && ['public', 'external'].includes(owner?.visibility)) add('calldata', node, { evidenceKind: 'abi-parameter', detail: owner.canonicalName });
-      if (node.boundary === 'emit-argument') add('event', node, { argumentIndex: Number(String(node.provenance).split(':').at(-1)) });
-      if (node.boundary === 'return') add('return', node, { argumentIndex: Number(String(node.provenance).split(':').at(-1)) || 0 });
+      if (node.boundary === 'emit-argument') {
+        const index = Number(String(node.provenance).split(':').at(-1));
+        add('event', node, { argumentIndex: index, semanticSinkKey: eventKey(astNode, ast, index) });
+      }
+      if (node.boundary === 'return') {
+        const index = Number(String(node.provenance).split(':').at(-1)) || 0;
+        add('return', node, { argumentIndex: index, semanticSinkKey: `return:${owner?.canonicalName ?? node.callableId}:${index}` });
+      }
       if (node.boundary === 'revert-argument') add('revert-custom-error', node, { argumentIndex: Number(String(node.provenance).split(':').at(-1)) });
       if (node.boundary === 'call-argument') {
         let call = parent; while (call && call.nodeType !== 'FunctionCall') call = ast.parent.get(call.id);
         const boundary = analysis.callBoundaries.find((item) => item.expressionAstId === call?.id && item.callerCallableId === node.callableId);
         const name = callName(call);
         if (name === 'revert') add('revert-custom-error', node, { argumentIndex: argumentIndex(astNode, call), evidenceKind: 'builtin-revert-argument', detail: 'revert(string)' });
-        if (boundary?.propagationStatus === 'boundary') add('external-call', node, { argumentIndex: argumentIndex(astNode, call), externalTarget: { callKind: boundary.callKind, resolutionStatus: boundary.resolutionStatus },
-          complete: !['unresolved-call', 'delegatecall-boundary', 'dynamic-function-pointer'].includes(boundary.reason), reason: boundary.reason });
+        if (boundary && boundary.propagationStatus !== 'propagated') add('external-call', node, { argumentIndex: argumentIndex(astNode, call), externalTarget: { callKind: boundary.callKind, resolutionStatus: boundary.resolutionStatus },
+          complete: !['unresolved-call', 'dynamic-function-pointer'].includes(boundary.reason),
+          reason: boundary.reason });
         if (['encode', 'encodePacked', 'encodeWithSelector', 'encodeWithSignature'].includes(name)) add('metadata-uri', node, { argumentIndex: argumentIndex(astNode, call), evidenceKind: 'abi-encoding', detail: `abi.${name}`, reason: 'abi-encoding-boundary' });
         if (/(?:uri|metadata|memo)/iu.test(name)) {
           const known = new Set(['uri', 'tokenURI', 'buildURI', 'buildMetadata', 'metadata', 'memo', 'executionMetadata', 'buildExecutionMetadata', 'loanMetadata', 'agreementMetadata', 'borrowerMemo']).has(name);

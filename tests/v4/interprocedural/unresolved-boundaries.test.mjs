@@ -10,12 +10,15 @@ test('function pointer and low-level call types remain unpropagated boundaries',
   assert.equal(analysis.callBoundaries.filter((item) => reasons.includes(item.reason)).every((item) => item.propagationStatus === 'boundary'), true);
 });
 
-test('this.foo and known contract calls remain runtime trust boundaries', () => {
+test('this.foo and known contract calls propagate arguments across runtime trust boundaries', () => {
   const source = `${header} contract O { function ping(uint p) external pure returns(uint){return p;} } contract U { O other; function local(uint p) external pure returns(uint){return p;} function run(uint p) external returns(uint,uint){return(this.local(p),other.ping(p));} }`;
   const { analysis } = compileInterprocedural({ 'src/U.sol': source });
   const trust = analysis.callBoundaries.filter((item) => ['external-self', 'known-contract-external'].includes(item.callKind));
   assert.equal(trust.length, 2);
-  assert.equal(trust.every((item) => item.reason === 'runtime-external-trust-boundary' && item.propagationStatus === 'boundary'), true);
+  assert.equal(trust.every((item) => item.reason === 'runtime-external-trust-boundary' && item.propagationStatus === 'argument-propagated'), true);
+  assert.equal(trust.every((item) => item.argumentMappings.length === 1 && item.returnMappings.length === 0), true);
+  assert.equal(analysis.interproceduralEdges.filter((item) => item.flowKind === 'argument-propagation'
+    && trust.some((boundary) => boundary.callEdgeId === item.callEdgeId)).length, 2);
   assert.equal(analysis.incomplete.filter((item) => item.reason === 'unknown-external-return').length, 2);
 });
 

@@ -35,6 +35,12 @@ const EXPRESSION_TYPES = new Set([
   'Identifier', 'Literal', 'BinaryOperation', 'UnaryOperation', 'Conditional', 'FunctionCall', 'MemberAccess',
   'IndexAccess', 'IndexRangeAccess', 'TupleExpression', 'Assignment', 'ElementaryTypeNameExpression', 'NewExpression',
 ]);
+const PROVENANCE_BUILTINS = new Set(['keccak256', 'sha256', 'ripemd160', 'encode', 'encodePacked', 'encodeWithSelector', 'encodeWithSignature']);
+
+function callName(expression) {
+  const value = unwrapCallExpression(expression);
+  return value?.memberName ?? value?.name ?? '';
+}
 
 export function createTransferEngine({ program, callable, cfg, context, nodes, edges, incomplete }) {
   const declarationByAstId = context.declarationByAstId;
@@ -154,10 +160,13 @@ export function createTransferEngine({ program, callable, cfg, context, nodes, e
       return ref([resultId]);
     }
     const callExpression = unwrapCallExpression(node.expression);
+    const builtinName = callName(node.expression);
+    const provenanceBuiltin = PROVENANCE_BUILTINS.has(builtinName)
+      && (callExpression?.nodeType === 'Identifier' || callExpression?.expression?.name === 'abi');
     const calleeDeclaration = declarationByAstId.get(callExpression?.referencedDeclaration);
     if (callExpression?.nodeType === 'Identifier'
       && String(callExpression.typeDescriptions?.typeString ?? '').startsWith('function (')
-      && !['function', 'modifier'].includes(calleeDeclaration?.kind)) {
+      && !provenanceBuiltin && !['function', 'modifier'].includes(calleeDeclaration?.kind)) {
       markIncomplete('unresolved-function-pointer', node, block, { referencedDeclaration: callExpression.referencedDeclaration ?? null });
     }
     if (callExpression?.nodeType === 'NewExpression') evaluate(callExpression, block, state, true);
@@ -169,12 +178,19 @@ export function createTransferEngine({ program, callable, cfg, context, nodes, e
       const boundaryId = makeNode({ node: receiver, block, valueKind: 'expression', boundary: 'call-argument', provenance: 'call-argument:receiver', occurrence: `arg:receiver:call:${node.id}` });
       for (const origin of value.nodeIds) addEdge(origin, boundaryId, 'call-argument', block, state, 'call-argument');
     }
+    const argumentBoundaryIds = [];
     for (let index = 0; index < (node.arguments ?? []).length; index += 1) {
       const argument = evaluate(node.arguments[index], block, state, true);
       const boundaryId = makeNode({ node: node.arguments[index], block, valueKind: 'expression', boundary: 'call-argument', provenance: `call-argument:${index}`, occurrence: `arg:${index}:call:${node.id}` });
       for (const origin of argument.nodeIds) addEdge(origin, boundaryId, 'call-argument', block, state, 'call-argument');
+      argumentBoundaryIds.push(boundaryId);
     }
     if (!needResult) return ref([]);
+    if (provenanceBuiltin) {
+      const resultId = makeNode({ node, block, valueKind: 'expression', provenance: `builtin-transform:${builtinName}` });
+      for (const origin of argumentBoundaryIds) addEdge(origin, resultId, 'builtin-transform', block, state);
+      return ref([resultId]);
+    }
     const arity = tupleArity(node.typeDescriptions?.typeString);
     if (arity > 1) return tuple(Array.from({ length: arity }, (_, index) => ref([makeNode({
       node, block, valueKind: 'tuple-element', boundary: 'call-result', unknown: true,
@@ -190,7 +206,6 @@ export function createTransferEngine({ program, callable, cfg, context, nodes, e
     if (!path) return null;
     if (node.nodeType === 'IndexAccess') {
       evaluate(node.indexExpression, block, state, true);
-      if (node.indexExpression?.nodeType !== 'Literal') markIncomplete('dynamic-storage-alias-not-modeled', node, block, { storageAccessId: path.access.accessId });
     }
     const readId = makeNode({ node, block, valueKind: 'state-variable', symbolId: path.access.symbolId, storage: path.access, provenance: 'state-read' });
     for (const origin of currentValue(state, path.key)) addEdge(origin, readId, 'state-read-after-write', block, state);

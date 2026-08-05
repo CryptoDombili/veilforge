@@ -1,4 +1,5 @@
 const BUILTIN_CALLS = new Set(['require', 'assert', 'revert', 'keccak256', 'sha256', 'ripemd160', 'ecrecover', 'addmod', 'mulmod', 'selfdestruct']);
+const ABI_VALUE_CALLS = new Set(['encode', 'encodePacked', 'encodeWithSelector', 'encodeWithSignature']);
 
 export function unwrapCallExpression(expression) {
   let current = expression;
@@ -11,7 +12,9 @@ export function shouldSkipCall(call, context) {
   const parent = context.astById.get(context.parentById.get(call.id));
   if (['EmitStatement', 'RevertStatement'].includes(parent?.nodeType)) return true;
   const expression = unwrapCallExpression(call.expression);
-  return expression?.nodeType === 'Identifier' && BUILTIN_CALLS.has(expression.name);
+  if (expression?.nodeType === 'Identifier' && BUILTIN_CALLS.has(expression.name)) return true;
+  return expression?.nodeType === 'MemberAccess' && expression.expression?.nodeType === 'Identifier'
+    && expression.expression.name === 'abi' && ABI_VALUE_CALLS.has(expression.memberName);
 }
 
 export function resolveCall(call, caller, program, context) {

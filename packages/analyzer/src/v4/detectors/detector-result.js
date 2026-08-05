@@ -14,6 +14,7 @@ export class DetectorResult {
       sinkCandidateId: fields.sinkCandidateId,
       candidateTraceId: fields.candidateTraceId,
       semanticOccurrenceId: fields.semanticOccurrenceId ?? null,
+      semanticSinkKey: fields.semanticSinkKey ?? null,
       supportingCandidateTraceIds: fields.supportingCandidateTraceIds ?? [fields.candidateTraceId].filter(Boolean),
       dataClass: fields.dataClass,
       sinkClass: fields.sinkClass,

@@ -39,6 +39,7 @@ export function runDetectors(classification, registry, options = {}) {
       const acceptedRisk = context.acceptedRisk(decision);
       const globalIncomplete = context.globalIncomplete.filter((reason) => {
         if (reason === 'dynamic-function-pointer' && sink.reason === 'abi-encoding-boundary') return false;
+        if (sink.sinkClass === 'external-call' && trace.complete && reason === sink.reason) return false;
         const entry = classification.incomplete.find((item) => item.reason === reason);
         return !entry?.callableId || [source.callableId, sink.callableId].includes(entry.callableId);
       });
@@ -55,6 +56,7 @@ export function runDetectors(classification, registry, options = {}) {
         category: metadata.category, stableRuleKey: metadata.stableRuleKey, titleKey: metadata.titleKey, sourceClasses: metadata.sourceClasses, sinkClasses: metadata.sinkClasses,
         sourceCandidateId: source.sourceCandidateId, sinkCandidateId: sink.sinkCandidateId, candidateTraceId: trace.candidateTraceId,
         semanticOccurrenceId: semanticOccurrence?.semanticOccurrenceId ?? null,
+        semanticSinkKey: sink.semanticSinkKey ?? null,
         supportingCandidateTraceIds: semanticOccurrence?.records.map((item) => item.trace.candidateTraceId) ?? [trace.candidateTraceId],
         dataClass: source.dataClass, sinkClass: sink.sinkClass, contractId: sink.contractId ?? source.contractId,
         callableId: sink.callableId ?? source.callableId, primaryLocation: locationAnchor(sink.location ?? source.location),
