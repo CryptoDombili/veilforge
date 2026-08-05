@@ -7,3 +7,4 @@ export { writeAtomicFile, writeExportPackage, readExportDirectory } from './file
 export { EXIT_CODES } from './exit-codes.js';
 export { CliError, CLI_ERROR_CODES } from './errors.js';
 export { cliVersion, versionInfo } from './commands/version.js';
+export { benchmarkCommand } from './commands/benchmark.js';

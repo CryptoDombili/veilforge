@@ -9,7 +9,7 @@ export const SARIF_SCHEMA = 'https://json.schemastore.org/sarif-2.1.0.json';
 export const sarifPackageVersion = '4.0.0-gc.1';
 const sha = (value) => `sha256:${createHash('sha256').update(value).digest('hex')}`;
 const level = (severity) => ({ critical: 'error', high: 'error', medium: 'warning', low: 'note', info: 'note', informational: 'note' }[severity] ?? 'warning');
-const ruleId = (finding) => `${finding.domain}.${finding.category}`;
+const ruleId = (finding) => finding.detectorId ?? `${finding.domain}.${finding.category}`;
 const omitted = (finding) => finding.disposition === 'not-applicable';
 const suppressed = (finding) => ['accepted-risk', 'policy-approved', 'suppressed'].includes(finding.disposition) || finding.suppressionMetadata?.active === true;
 
@@ -26,7 +26,7 @@ function rules(findings) {
     shortDescription: { text: finding.title }, fullDescription: { text: finding.summary },
     defaultConfiguration: { level: level(finding.severity) },
     help: { text: [finding.explanation, ...(finding.remediationSteps ?? [])].filter(Boolean).join('\n\n') },
-    properties: { domain: finding.domain, category: finding.category, dataClass: finding.dataClass, sinkClass: finding.sinkClass, remediationKeys: [finding.remediationKey].filter(Boolean), tags: [finding.domain, finding.category].sort() },
+    properties: { detectorId: finding.detectorId ?? null, detectorVersion: finding.detectorVersion ?? null, stableRuleKey: finding.stableRuleKey ?? finding.detectorId ?? null, domain: finding.domain, category: finding.category, dataClass: finding.dataClass, sinkClass: finding.sinkClass, remediationKeys: [finding.remediationKey].filter(Boolean), tags: [finding.domain, finding.category].sort() },
   });
   return [...map.values()].sort((a, b) => a.id.localeCompare(b.id));
 }

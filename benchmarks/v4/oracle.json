@@ -1,0 +1,1892 @@
+{
+  "schemaVersion": "1.0.0",
+  "oracleVersion": "1.0.0",
+  "candidateVersion": "4.0.0-gc.1",
+  "cases": [
+    {
+      "caseId": "CRD-ADV-001",
+      "domain": "arc-private-credit",
+      "kind": "adversarial",
+      "compileDisposition": "compiled",
+      "analysisStatus": "incomplete",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-private-credit.public-getter-disclosure",
+          "category": "public-getter-disclosure",
+          "sourceClass": "collateral",
+          "sinkClass": "public-getter",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "separate-by-detector-and-semantic-sink"
+        },
+        {
+          "detectorId": "arc-private-credit.public-storage-disclosure",
+          "category": "public-storage-disclosure",
+          "sourceClass": "collateral",
+          "sinkClass": "public-storage",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "separate-by-detector-and-semantic-sink"
+        }
+      ],
+      "expectedIncompleteReasons": [
+        "inline-assembly-not-modeled"
+      ],
+      "allowedAdditionalFindings": [],
+      "notes": "Public storage/getter findings remain visible while inline assembly analysis is explicitly incomplete."
+    },
+    {
+      "caseId": "CRD-ADV-002",
+      "domain": "arc-private-credit",
+      "kind": "adversarial",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-private-credit.external-call-disclosure",
+          "category": "external-call-disclosure",
+          "sourceClass": "loan-terms",
+          "sinkClass": "external-call",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "CRD-ADV-003",
+      "domain": "arc-private-credit",
+      "kind": "adversarial",
+      "compileDisposition": "unsupported-compiler",
+      "analysisStatus": "unsupported",
+      "expectedFindings": [],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "CRD-ADV-004",
+      "domain": "arc-private-credit",
+      "kind": "adversarial",
+      "compileDisposition": "input-invalid",
+      "analysisStatus": "incomplete",
+      "expectedFindings": [],
+      "expectedIncompleteReasons": [
+        "source-input-invalid"
+      ],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "CRD-ADV-005",
+      "domain": "arc-private-credit",
+      "kind": "adversarial",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-private-credit.return-disclosure",
+          "category": "return-disclosure",
+          "sourceClass": "loan-terms",
+          "sinkClass": "return",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "CRD-ADV-006",
+      "domain": "arc-private-credit",
+      "kind": "adversarial",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-private-credit.event-disclosure",
+          "category": "event-disclosure",
+          "sourceClass": "loan-terms",
+          "sinkClass": "event",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "CRD-NEG-001",
+      "domain": "arc-private-credit",
+      "kind": "negative",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "CRD-NEG-002",
+      "domain": "arc-private-credit",
+      "kind": "negative",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "CRD-NEG-003",
+      "domain": "arc-private-credit",
+      "kind": "negative",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "CRD-NEG-004",
+      "domain": "arc-private-credit",
+      "kind": "negative",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-private-credit.public-getter-disclosure",
+          "category": "public-getter-disclosure",
+          "sourceClass": "interest-rate",
+          "sinkClass": "public-getter",
+          "disposition": "policy-approved",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "separate-by-detector-and-semantic-sink"
+        },
+        {
+          "detectorId": "arc-private-credit.public-storage-disclosure",
+          "category": "public-storage-disclosure",
+          "sourceClass": "interest-rate",
+          "sinkClass": "public-storage",
+          "disposition": "policy-approved",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "separate-by-detector-and-semantic-sink"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "CRD-NEG-005",
+      "domain": "arc-private-credit",
+      "kind": "negative",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-private-credit.event-disclosure",
+          "category": "event-disclosure",
+          "sourceClass": "settlement-reference",
+          "sinkClass": "event",
+          "disposition": "policy-approved",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "CRD-NEG-006",
+      "domain": "arc-private-credit",
+      "kind": "negative",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-private-credit.external-call-disclosure",
+          "category": "external-call-disclosure",
+          "sourceClass": "beneficiary",
+          "sinkClass": "external-call",
+          "disposition": "accepted-risk",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "CRD-POS-001",
+      "domain": "arc-private-credit",
+      "kind": "positive",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-private-credit.public-getter-disclosure",
+          "category": "public-getter-disclosure",
+          "sourceClass": "collateral",
+          "sinkClass": "public-getter",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "separate-by-detector-and-semantic-sink"
+        },
+        {
+          "detectorId": "arc-private-credit.public-storage-disclosure",
+          "category": "public-storage-disclosure",
+          "sourceClass": "collateral",
+          "sinkClass": "public-storage",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "separate-by-detector-and-semantic-sink"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": [],
+      "notes": "Public storage and generated getter are separate normative detector occurrences."
+    },
+    {
+      "caseId": "CRD-POS-002",
+      "domain": "arc-private-credit",
+      "kind": "positive",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-private-credit.event-disclosure",
+          "category": "event-disclosure",
+          "sourceClass": "loan-terms",
+          "sinkClass": "event",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "CRD-POS-003",
+      "domain": "arc-private-credit",
+      "kind": "positive",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-private-credit.calldata-observation",
+          "category": "calldata-observation",
+          "sourceClass": "customer-kyc-reference",
+          "sinkClass": "calldata",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "CRD-POS-004",
+      "domain": "arc-private-credit",
+      "kind": "positive",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-private-credit.return-disclosure",
+          "category": "return-disclosure",
+          "sourceClass": "interest-rate",
+          "sinkClass": "return",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "CRD-POS-005",
+      "domain": "arc-private-credit",
+      "kind": "positive",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-private-credit.revert-disclosure",
+          "category": "revert-disclosure",
+          "sourceClass": "settlement-reference",
+          "sinkClass": "revert-custom-error",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "CRD-POS-006",
+      "domain": "arc-private-credit",
+      "kind": "positive",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-private-credit.external-call-disclosure",
+          "category": "external-call-disclosure",
+          "sourceClass": "beneficiary",
+          "sinkClass": "external-call",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "CRD-POS-007",
+      "domain": "arc-private-credit",
+      "kind": "positive",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-private-credit.metadata-disclosure",
+          "category": "metadata-disclosure",
+          "sourceClass": "loan-terms",
+          "sinkClass": "metadata-uri",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "CRD-POS-008",
+      "domain": "arc-private-credit",
+      "kind": "positive",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-private-credit.event-disclosure",
+          "category": "event-disclosure",
+          "sourceClass": "loan-terms",
+          "sinkClass": "event",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        },
+        {
+          "detectorId": "arc-private-credit.external-call-disclosure",
+          "category": "external-call-disclosure",
+          "sourceClass": "loan-terms",
+          "sinkClass": "external-call",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "PAY-ADV-001",
+      "domain": "arc-payments",
+      "kind": "adversarial",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "PAY-ADV-002",
+      "domain": "arc-payments",
+      "kind": "adversarial",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "PAY-ADV-003",
+      "domain": "arc-payments",
+      "kind": "adversarial",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-payments.event-disclosure",
+          "category": "event-disclosure",
+          "sourceClass": "beneficiary",
+          "sinkClass": "event",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "PAY-ADV-004",
+      "domain": "arc-payments",
+      "kind": "adversarial",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-payments.event-disclosure",
+          "category": "event-disclosure",
+          "sourceClass": "customer-kyc-reference",
+          "sinkClass": "event",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "PAY-ADV-005",
+      "domain": "arc-payments",
+      "kind": "adversarial",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-payments.event-disclosure",
+          "category": "event-disclosure",
+          "sourceClass": "amount",
+          "sinkClass": "event",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 2,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "PAY-ADV-006",
+      "domain": "arc-payments",
+      "kind": "adversarial",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-payments.event-disclosure",
+          "category": "event-disclosure",
+          "sourceClass": "settlement-reference",
+          "sinkClass": "event",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "PAY-NEG-001",
+      "domain": "arc-payments",
+      "kind": "negative",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "PAY-NEG-002",
+      "domain": "arc-payments",
+      "kind": "negative",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "PAY-NEG-003",
+      "domain": "arc-payments",
+      "kind": "negative",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "PAY-NEG-004",
+      "domain": "arc-payments",
+      "kind": "negative",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-payments.public-getter-disclosure",
+          "category": "public-getter-disclosure",
+          "sourceClass": "beneficiary",
+          "sinkClass": "public-getter",
+          "disposition": "policy-approved",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "separate-by-detector-and-semantic-sink"
+        },
+        {
+          "detectorId": "arc-payments.public-storage-disclosure",
+          "category": "public-storage-disclosure",
+          "sourceClass": "beneficiary",
+          "sinkClass": "public-storage",
+          "disposition": "policy-approved",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "separate-by-detector-and-semantic-sink"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "PAY-NEG-005",
+      "domain": "arc-payments",
+      "kind": "negative",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-payments.event-disclosure",
+          "category": "event-disclosure",
+          "sourceClass": "customer-kyc-reference",
+          "sinkClass": "event",
+          "disposition": "policy-approved",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "PAY-NEG-006",
+      "domain": "arc-payments",
+      "kind": "negative",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-payments.external-call-disclosure",
+          "category": "external-call-disclosure",
+          "sourceClass": "invoice-reference",
+          "sinkClass": "external-call",
+          "disposition": "accepted-risk",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "PAY-POS-001",
+      "domain": "arc-payments",
+      "kind": "positive",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-payments.public-getter-disclosure",
+          "category": "public-getter-disclosure",
+          "sourceClass": "payer",
+          "sinkClass": "public-getter",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "separate-by-detector-and-semantic-sink"
+        },
+        {
+          "detectorId": "arc-payments.public-storage-disclosure",
+          "category": "public-storage-disclosure",
+          "sourceClass": "payer",
+          "sinkClass": "public-storage",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "separate-by-detector-and-semantic-sink"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": [],
+      "notes": "Public storage and generated getter are separate normative detector occurrences."
+    },
+    {
+      "caseId": "PAY-POS-002",
+      "domain": "arc-payments",
+      "kind": "positive",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-payments.event-disclosure",
+          "category": "event-disclosure",
+          "sourceClass": "payee",
+          "sinkClass": "event",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "PAY-POS-003",
+      "domain": "arc-payments",
+      "kind": "positive",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-payments.calldata-observation",
+          "category": "calldata-observation",
+          "sourceClass": "amount",
+          "sinkClass": "calldata",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "PAY-POS-004",
+      "domain": "arc-payments",
+      "kind": "positive",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-payments.return-disclosure",
+          "category": "return-disclosure",
+          "sourceClass": "beneficiary",
+          "sinkClass": "return",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "PAY-POS-005",
+      "domain": "arc-payments",
+      "kind": "positive",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-payments.revert-disclosure",
+          "category": "revert-disclosure",
+          "sourceClass": "customer-kyc-reference",
+          "sinkClass": "revert-custom-error",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "PAY-POS-006",
+      "domain": "arc-payments",
+      "kind": "positive",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-payments.external-call-disclosure",
+          "category": "external-call-disclosure",
+          "sourceClass": "invoice-reference",
+          "sinkClass": "external-call",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "PAY-POS-007",
+      "domain": "arc-payments",
+      "kind": "positive",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-payments.metadata-disclosure",
+          "category": "metadata-disclosure",
+          "sourceClass": "settlement-reference",
+          "sinkClass": "metadata-uri",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "PAY-POS-008",
+      "domain": "arc-payments",
+      "kind": "positive",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-payments.event-disclosure",
+          "category": "event-disclosure",
+          "sourceClass": "settlement-reference",
+          "sinkClass": "event",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        },
+        {
+          "detectorId": "arc-payments.external-call-disclosure",
+          "category": "external-call-disclosure",
+          "sourceClass": "settlement-reference",
+          "sinkClass": "external-call",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "TRE-ADV-001",
+      "domain": "arc-treasury",
+      "kind": "adversarial",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-treasury.public-getter-disclosure",
+          "category": "public-getter-disclosure",
+          "sourceClass": "employee-payroll",
+          "sinkClass": "public-getter",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "separate-by-detector-and-semantic-sink"
+        },
+        {
+          "detectorId": "arc-treasury.public-storage-disclosure",
+          "category": "public-storage-disclosure",
+          "sourceClass": "employee-payroll",
+          "sinkClass": "public-storage",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "separate-by-detector-and-semantic-sink"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "TRE-ADV-002",
+      "domain": "arc-treasury",
+      "kind": "adversarial",
+      "compileDisposition": "compiler-error",
+      "analysisStatus": "compiler-error",
+      "expectedFindings": [],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "TRE-ADV-003",
+      "domain": "arc-treasury",
+      "kind": "adversarial",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-treasury.event-disclosure",
+          "category": "event-disclosure",
+          "sourceClass": "treasury-operator",
+          "sinkClass": "event",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src\\\\TreasuryPath.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "TRE-ADV-004",
+      "domain": "arc-treasury",
+      "kind": "adversarial",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-treasury.event-disclosure",
+          "category": "event-disclosure",
+          "sourceClass": "beneficiary",
+          "sinkClass": "event",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "TRE-ADV-005",
+      "domain": "arc-treasury",
+      "kind": "adversarial",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-treasury.event-disclosure",
+          "category": "event-disclosure",
+          "sourceClass": "supplier",
+          "sinkClass": "event",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 2,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "TRE-ADV-006",
+      "domain": "arc-treasury",
+      "kind": "adversarial",
+      "compileDisposition": "compiler-error",
+      "analysisStatus": "compiler-error",
+      "expectedFindings": [],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "TRE-NEG-001",
+      "domain": "arc-treasury",
+      "kind": "negative",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "TRE-NEG-002",
+      "domain": "arc-treasury",
+      "kind": "negative",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "TRE-NEG-003",
+      "domain": "arc-treasury",
+      "kind": "negative",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "TRE-NEG-004",
+      "domain": "arc-treasury",
+      "kind": "negative",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-treasury.public-getter-disclosure",
+          "category": "public-getter-disclosure",
+          "sourceClass": "supplier",
+          "sinkClass": "public-getter",
+          "disposition": "policy-approved",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "separate-by-detector-and-semantic-sink"
+        },
+        {
+          "detectorId": "arc-treasury.public-storage-disclosure",
+          "category": "public-storage-disclosure",
+          "sourceClass": "supplier",
+          "sinkClass": "public-storage",
+          "disposition": "policy-approved",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "separate-by-detector-and-semantic-sink"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "TRE-NEG-005",
+      "domain": "arc-treasury",
+      "kind": "negative",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-treasury.event-disclosure",
+          "category": "event-disclosure",
+          "sourceClass": "settlement-reference",
+          "sinkClass": "event",
+          "disposition": "policy-approved",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "TRE-NEG-006",
+      "domain": "arc-treasury",
+      "kind": "negative",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-treasury.external-call-disclosure",
+          "category": "external-call-disclosure",
+          "sourceClass": "beneficiary",
+          "sinkClass": "external-call",
+          "disposition": "accepted-risk",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "TRE-POS-001",
+      "domain": "arc-treasury",
+      "kind": "positive",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-treasury.public-getter-disclosure",
+          "category": "public-getter-disclosure",
+          "sourceClass": "treasury-operator",
+          "sinkClass": "public-getter",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "separate-by-detector-and-semantic-sink"
+        },
+        {
+          "detectorId": "arc-treasury.public-storage-disclosure",
+          "category": "public-storage-disclosure",
+          "sourceClass": "treasury-operator",
+          "sinkClass": "public-storage",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "separate-by-detector-and-semantic-sink"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": [],
+      "notes": "Public storage and generated getter are separate normative detector occurrences."
+    },
+    {
+      "caseId": "TRE-POS-002",
+      "domain": "arc-treasury",
+      "kind": "positive",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-treasury.event-disclosure",
+          "category": "event-disclosure",
+          "sourceClass": "employee-payroll",
+          "sinkClass": "event",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "TRE-POS-003",
+      "domain": "arc-treasury",
+      "kind": "positive",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-treasury.calldata-observation",
+          "category": "calldata-observation",
+          "sourceClass": "amount",
+          "sinkClass": "calldata",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "TRE-POS-004",
+      "domain": "arc-treasury",
+      "kind": "positive",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-treasury.return-disclosure",
+          "category": "return-disclosure",
+          "sourceClass": "supplier",
+          "sinkClass": "return",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "TRE-POS-005",
+      "domain": "arc-treasury",
+      "kind": "positive",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-treasury.revert-disclosure",
+          "category": "revert-disclosure",
+          "sourceClass": "settlement-reference",
+          "sinkClass": "revert-custom-error",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "TRE-POS-006",
+      "domain": "arc-treasury",
+      "kind": "positive",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-treasury.external-call-disclosure",
+          "category": "external-call-disclosure",
+          "sourceClass": "beneficiary",
+          "sinkClass": "external-call",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "TRE-POS-007",
+      "domain": "arc-treasury",
+      "kind": "positive",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-treasury.metadata-disclosure",
+          "category": "metadata-disclosure",
+          "sourceClass": "invoice-reference",
+          "sinkClass": "metadata-uri",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    },
+    {
+      "caseId": "TRE-POS-008",
+      "domain": "arc-treasury",
+      "kind": "positive",
+      "compileDisposition": "compiled",
+      "analysisStatus": "supported",
+      "expectedFindings": [
+        {
+          "detectorId": "arc-treasury.event-disclosure",
+          "category": "event-disclosure",
+          "sourceClass": "invoice-reference",
+          "sinkClass": "event",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        },
+        {
+          "detectorId": "arc-treasury.external-call-disclosure",
+          "category": "external-call-disclosure",
+          "sourceClass": "invoice-reference",
+          "sinkClass": "external-call",
+          "disposition": "detected",
+          "minimumSeverity": "informational",
+          "minimumConfidence": "low",
+          "expectedOccurrenceCount": 1,
+          "expectedPrimaryLocation": {
+            "sourcePath": "src/Case.sol"
+          },
+          "requiredEvidenceKinds": [
+            "sink-location",
+            "source-location"
+          ],
+          "requiredTraceRoles": [
+            "sink",
+            "source"
+          ],
+          "groupingExpectation": "single-semantic-finding"
+        }
+      ],
+      "expectedIncompleteReasons": [],
+      "allowedAdditionalFindings": []
+    }
+  ]
+}

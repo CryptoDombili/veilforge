@@ -3,6 +3,7 @@ export * from './detector-disposition.js';
 export * from './detector-evidence.js';
 export * from './detector-registry.js';
 export * from './detector-result.js';
+export * from './detector-metadata.js';
 export * from './detector-runner.js';
 export * from './serialize.js';
 export * from './summary.js';

@@ -7,6 +7,7 @@ Commands:
   veilforge verify-export DIRECTORY
   veilforge gate --report FILE --config FILE
   veilforge gate --export DIRECTORY --config FILE
+  veilforge benchmark --corpus tests/corpus/manifest.json --output DIRECTORY
 
 Scan options:
   --project-id ID                 Stable project identifier (required)
@@ -25,11 +26,22 @@ Scan options:
   --baseline-report FILE          Verified prior report for new-only gating
   --gate-json                     Emit/write the deterministic gate result
 
+Benchmark options:
+  --corpus FILE                   Corpus manifest (default: tests/corpus/manifest.json)
+  --case ID / --domain NAME      Filter one case or domain
+  --output DIR                    Atomic JSON/Markdown output directory
+  --case-timeout MS              Per-case timeout
+  --global-timeout MS            Whole benchmark timeout
+  --release-gate FILE            Versioned release gate config
+  --progress                     Emit structured case progress
+  --fail-on-regression           Return exit 14 when the release gate fails
+
 Exit codes:
   ${EXIT_CODES.COMPLETED} completed  ${EXIT_CODES.ARGUMENT} arguments  ${EXIT_CODES.SOURCE} source  ${EXIT_CODES.SCAN_FAILED} scan failed
   ${EXIT_CODES.INCOMPLETE} incomplete  ${EXIT_CODES.TIMEOUT} timeout  ${EXIT_CODES.ABORTED} aborted
   ${EXIT_CODES.REPORT_INVALID} report invalid  ${EXIT_CODES.EXPORT_INVALID} export invalid
   ${EXIT_CODES.OUTPUT} output failure  ${EXIT_CODES.PROTOCOL} worker/protocol failure
   ${EXIT_CODES.GATE_FAILED} policy gate failed
+  ${EXIT_CODES.BENCHMARK_CONDITIONAL} benchmark conditional  ${EXIT_CODES.BENCHMARK_REGRESSION} benchmark regression
 `;
 export function helpCommand() { return HELP_TEXT; }

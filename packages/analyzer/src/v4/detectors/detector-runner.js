@@ -4,6 +4,7 @@ import { createDetectorContext } from './detector-context.js';
 import { detectorDisposition } from './detector-disposition.js';
 import { buildDetectorEvidence } from './detector-evidence.js';
 import { summarizeDetectorRun } from './summary.js';
+import { detectorMetadata } from './detector-metadata.js';
 
 export function runDetectors(classification, registry, options = {}) {
   const domain = registry.detectors[0]?.domain ?? options.domain ?? 'arc-payments';
@@ -27,8 +28,9 @@ export function runDetectors(classification, registry, options = {}) {
       const fingerprint = classificationId('detector-fingerprint', semantic);
       const incompleteReasons = [...new Set([...disposition.incompleteReasons, ...(detector.incompleteReasons?.({ context, source, sink, trace }) ?? [])])].sort(compare);
       const finalDisposition = incompleteReasons.length ? 'incomplete' : disposition.disposition;
-      const fields = {
+      const metadata = detectorMetadata(detector); const fields = {
         detectorId: detector.detectorId, detectorVersion: detector.detectorVersion ?? '1.0.0', domain,
+        category: metadata.category, stableRuleKey: metadata.stableRuleKey, titleKey: metadata.titleKey, sourceClasses: metadata.sourceClasses, sinkClasses: metadata.sinkClasses,
         sourceCandidateId: source.sourceCandidateId, sinkCandidateId: sink.sinkCandidateId, candidateTraceId: trace.candidateTraceId,
         dataClass: source.dataClass, sinkClass: sink.sinkClass, contractId: sink.contractId ?? source.contractId,
         callableId: sink.callableId ?? source.callableId, primaryLocation: locationAnchor(sink.location ?? source.location),

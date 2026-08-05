@@ -6,7 +6,7 @@ import { resolveSuppression, uniqueIds } from './disposition.js';
 import { mergeFindingEvidence } from './evidence.js';
 import { createFindingFingerprint, createFindingId, occurrenceId } from './fingerprint.js';
 import { groupDetectorResults } from './grouping.js';
-import { selectPrimaryLocation, uniqueLocations } from './locations.js';
+import { contextualLocation, selectPrimaryLocation, uniqueLocations } from './locations.js';
 import { calculateSeverity, findingCategory } from './severity.js';
 import { summarizeFindings } from './summary.js';
 
@@ -32,7 +32,9 @@ export function buildFindingRun(input, options = {}) {
     findings.push(new FindingV4({ ...fields, findingId: createFindingId(fingerprint), findingVersion: FINDING_VERSION, fingerprint,
       detectorId: primary.detectorId, detectorVersion: primary.detectorVersion, relatedDetectorIds: uniqueIds(results.map((item) => item.detectorId)), semanticCategories: group.semanticCategories,
       severity, confidence, titleKey: `finding.${group.category}`, remediationKey: primary.remediationKey,
-      primaryLocation: selectPrimaryLocation(results, options), sourceLocations: uniqueLocations(results.map((item) => item.sourceLocation), options), sinkLocations: uniqueLocations(results.map((item) => item.sinkLocation), options),
+      primaryLocation: contextualLocation(selectPrimaryLocation(results, options), { contractId: primary.contractId, callableId: primary.callableId }, options),
+      sourceLocations: uniqueLocations(results.map((item) => contextualLocation(item.sourceLocation, { contractId: item.contractId, callableId: item.callableId }, options)), options),
+      sinkLocations: uniqueLocations(results.map((item) => contextualLocation(item.sinkLocation, { contractId: item.contractId, callableId: item.callableId }, options)), options),
       detectorResultIds, candidateTraceIds: uniqueIds(results.map((item) => item.candidateTraceId)), orderedEvidence: mergeFindingEvidence(results, options),
       occurrenceCount: fields.groupedOccurrenceIds.length, complete, incompleteReasons,
       declassificationDecisionIds: uniqueIds(results.map((item) => item.declassificationDecisionId)), suppression,

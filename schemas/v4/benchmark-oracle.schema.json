@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://veilforge.dev/schemas/v4/benchmark-oracle.schema.json",
+  "title": "VeilForge V4 Benchmark Oracle",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "oracleVersion", "candidateVersion", "cases"],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "oracleVersion": { "const": "1.0.0" },
+    "candidateVersion": { "const": "4.0.0-gc.1" },
+    "cases": { "type": "array", "minItems": 60, "maxItems": 60, "items": { "$ref": "#/$defs/case" } }
+  },
+  "$defs": {
+    "location": { "type": "object", "additionalProperties": false, "required": ["sourcePath"], "properties": { "sourcePath": { "type": "string", "pattern": "^(?![A-Za-z]:)(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$" }, "startLine": { "type": "integer", "minimum": 1 }, "startColumn": { "type": "integer", "minimum": 1 }, "endLine": { "type": "integer", "minimum": 1 }, "endColumn": { "type": "integer", "minimum": 1 } } },
+    "finding": { "type": "object", "additionalProperties": false, "required": ["detectorId", "category", "sourceClass", "sinkClass", "disposition", "minimumSeverity", "minimumConfidence", "expectedOccurrenceCount", "expectedPrimaryLocation", "requiredEvidenceKinds", "requiredTraceRoles", "groupingExpectation"], "properties": { "detectorId": { "type": "string", "pattern": "^arc-(?:payments|treasury|private-credit)\\.[a-z0-9-]+$" }, "category": { "type": "string" }, "sourceClass": { "type": "string" }, "sinkClass": { "type": "string" }, "disposition": { "enum": ["detected", "policy-approved", "accepted-risk", "incomplete", "not-applicable"] }, "minimumSeverity": { "enum": ["informational", "low", "medium", "high", "critical"] }, "minimumConfidence": { "enum": ["low", "medium", "high"] }, "expectedOccurrenceCount": { "type": "integer", "minimum": 1 }, "expectedPrimaryLocation": { "$ref": "#/$defs/location" }, "requiredEvidenceKinds": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }, "requiredTraceRoles": { "type": "array", "items": { "enum": ["source", "flow", "sink"] }, "uniqueItems": true }, "groupingExpectation": { "enum": ["single-semantic-finding", "separate-by-detector-and-semantic-sink"] } } },
+    "case": { "type": "object", "additionalProperties": false, "required": ["caseId", "domain", "kind", "compileDisposition", "analysisStatus", "expectedFindings", "expectedIncompleteReasons", "allowedAdditionalFindings"], "properties": { "caseId": { "type": "string", "pattern": "^(?:PAY|TRE|CRD)-(?:POS|NEG|ADV)-[0-9]{3}$" }, "domain": { "enum": ["arc-payments", "arc-treasury", "arc-private-credit"] }, "kind": { "enum": ["positive", "negative", "adversarial"] }, "compileDisposition": { "enum": ["compiled", "compiler-error", "unsupported-compiler", "input-invalid"] }, "analysisStatus": { "enum": ["supported", "incomplete", "compiler-error", "unsupported"] }, "expectedFindings": { "type": "array", "items": { "$ref": "#/$defs/finding" } }, "expectedIncompleteReasons": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }, "allowedAdditionalFindings": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }, "notes": { "type": "string" } } }
+  }
+}

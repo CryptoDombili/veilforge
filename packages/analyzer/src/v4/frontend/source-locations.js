@@ -1,13 +1,10 @@
 import { normalizeSourceContent } from './standard-json.js';
 
-function clamp(value, minimum, maximum) {
-  return Math.min(Math.max(value, minimum), maximum);
-}
-
 export function byteOffsetToLineColumn(content, byteOffset) {
   const normalized = normalizeSourceContent(content);
   const bytes = Buffer.from(normalized, 'utf8');
-  const offset = clamp(Number(byteOffset) || 0, 0, bytes.length);
+  const offset = Number(byteOffset);
+  if (!Number.isInteger(offset) || offset < 0 || offset > bytes.length || (offset < bytes.length && (bytes[offset] & 0xc0) === 0x80)) return null;
   const prefix = bytes.subarray(0, offset).toString('utf8');
   const lines = prefix.split('\n');
   return { line: lines.length, column: Array.from(lines.at(-1)).length + 1 };
@@ -27,15 +24,16 @@ export function resolveSourceLocation(src, sourceById) {
   const byteEnd = range.byteStart + range.byteLength;
   const start = byteOffsetToLineColumn(source.content, range.byteStart);
   const end = byteOffsetToLineColumn(source.content, byteEnd);
-  return {
+  const result = {
     sourcePath: source.path,
     sourceId: range.sourceId,
+    startByte: range.byteStart,
+    endByte: byteEnd,
     byteStart: range.byteStart,
     byteLength: range.byteLength,
     byteEnd,
-    lineStart: start.line,
-    columnStart: start.column,
-    lineEnd: end.line,
-    columnEnd: end.column,
   };
+  if (start && end) Object.assign(result, { lineStart: start.line, columnStart: start.column, lineEnd: end.line, columnEnd: end.column, startLine: start.line, startColumn: start.column, endLine: end.line, endColumn: end.column });
+  else result.locationStatus = 'offset-only-invalid-utf8-boundary';
+  return result;
 }

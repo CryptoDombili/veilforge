@@ -9,8 +9,17 @@ export function canonicalSourcePath(value, projectRoot = null) {
 
 export function canonicalLocation(location, options = {}) {
   if (!location) return null;
-  return { sourcePath: canonicalSourcePath(location.sourcePath, options.projectRoot), byteStart: Number(location.byteStart ?? 0), byteEnd: Number(location.byteEnd ?? location.byteStart ?? 0) };
+  const byteStart = Number(location.startByte ?? location.byteStart ?? 0);
+  const byteEnd = Number(location.endByte ?? location.byteEnd ?? location.startByte ?? location.byteStart ?? 0);
+  const value = { sourcePath: canonicalSourcePath(location.sourcePath, options.projectRoot), startByte: byteStart, endByte: byteEnd, byteStart, byteEnd };
+  const fields = [['startLine', 'lineStart'], ['startColumn', 'columnStart'], ['endLine', 'lineEnd'], ['endColumn', 'columnEnd']];
+  for (const [name, legacy] of fields) { const item = location[name] ?? location[legacy]; if (Number.isInteger(item) && item > 0) value[name] = item; }
+  for (const name of ['sourceId', 'contractId', 'callableId', 'declarationId']) if (location[name] !== undefined && location[name] !== null) value[name] = location[name];
+  if (location.locationStatus) value.locationStatus = location.locationStatus;
+  return value;
 }
+
+export function contextualLocation(location, context = {}, options = {}) { const value = canonicalLocation(location, options); if (!value) return null; for (const name of ['contractId', 'callableId', 'declarationId']) if (context[name]) value[name] = context[name]; return value; }
 
 export function compareLocations(left, right) {
   return compare(left.sourcePath, right.sourcePath) || left.byteStart - right.byteStart || left.byteEnd - right.byteEnd;

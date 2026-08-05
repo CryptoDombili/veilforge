@@ -17,6 +17,7 @@
     "./cli/version": "./packages/cli/src/commands/version.js"
     ,"./sarif": "./packages/sarif/src/index.js"
     ,"./gate": "./packages/gate/src/index.js"
+    ,"./benchmark": "./packages/benchmark/src/index.js"
   },
   "bin": {
     "veilforge": "./packages/cli/bin/veilforge.js"
@@ -78,6 +79,12 @@
     "test:v4-action": "node --test --test-concurrency=1 tests/v4/action/action.test.mjs tests/v4/action/cli-integration.test.mjs",
     "test:v4-action-examples": "node --test tests/v4/action/examples.test.mjs",
     "smoke:v4-ci": "node scripts/smoke-v4-ci.mjs",
+    "test:v4-locations": "node --test tests/v4/locations/*.test.mjs",
+    "test:v4-detector-identity": "node --test tests/v4/detector-identity/*.test.mjs",
+    "test:v4-benchmark": "node --test --test-concurrency=1 tests/v4/benchmark/oracle.test.mjs tests/v4/benchmark/compile-disposition.test.mjs tests/v4/benchmark/comparator.test.mjs tests/v4/benchmark/metrics.test.mjs tests/v4/benchmark/release-gate.test.mjs tests/v4/benchmark/cli.test.mjs",
+    "test:v4-benchmark-determinism": "node --test --test-concurrency=1 tests/v4/benchmark/determinism.test.mjs",
+    "benchmark:v4": "node scripts/benchmark-v4.mjs --output output/benchmark-v4",
+    "smoke:v4-release-gate": "node scripts/smoke-v4-release-gate.mjs",
     "typecheck": "node scripts/typecheck.mjs",
     "smoke:browser": "node scripts/smoke-browser.mjs",
     "preflight": "node scripts/preflight.mjs",

@@ -41,10 +41,11 @@ test('README distinguishes legacy v3 from the unimplemented Grant Candidate', ()
   assert.match(readme, /not yet implemented/i);
 });
 
-test('all V4 schemas declare the frozen schema version', () => {
-  for (const name of ['finding', 'report', 'policy', 'attestation']) {
+test('all V4 schemas declare their frozen version', () => {
+  const versions = { finding: '4.1.0', report: '4.1.0', policy: '4.0.0', attestation: '4.0.0' };
+  for (const [name, version] of Object.entries(versions)) {
     const schema = JSON.parse(fs.readFileSync(`schemas/v4/${name}.schema.json`, 'utf8'));
     assert.equal(schema.$schema, 'https://json-schema.org/draft/2020-12/schema');
-    assert.equal(schema.properties.schemaVersion.const, '4.0.0');
+    assert.equal(schema.properties.schemaVersion.const, version);
   }
 });

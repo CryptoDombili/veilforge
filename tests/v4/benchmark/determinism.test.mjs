@@ -1,0 +1,2 @@
+import test from'node:test';import assert from'node:assert/strict';import{benchmarkJson,runBenchmark}from'../../../packages/benchmark/src/index.js';
+test('same filtered corpus and oracle produce byte-identical benchmark output',async()=>{const first=await runBenchmark({caseId:'PAY-POS-002'}),second=await runBenchmark({caseId:'PAY-POS-002'});assert.equal(benchmarkJson(first),benchmarkJson(second));});

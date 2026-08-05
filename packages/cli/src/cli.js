@@ -4,6 +4,7 @@ import { scanCommand } from './commands/scan.js';
 import { verifyReportCommand } from './commands/verify-report.js';
 import { verifyExportCommand } from './commands/verify-export.js';
 import { gateCommand } from './commands/gate.js';
+import { benchmarkCommand } from './commands/benchmark.js';
 import { helpCommand } from './commands/help.js';
 import { versionText } from './commands/version.js';
 import { publicCliError } from './errors.js';
@@ -21,9 +22,10 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
     if (parsed.command === 'scan') result = await scanCommand(options, { cwd: io.cwd, writeProgress: (text) => stderr(text) });
     else if (parsed.command === 'verify-report') result = await verifyReportCommand(parsed.positionals[0]);
     else if (parsed.command === 'verify-export') result = await verifyExportCommand(parsed.positionals[0]);
-    else result = await gateCommand(options);
+    else if (parsed.command === 'gate') result = await gateCommand(options);
+    else result = await benchmarkCommand(options,{cwd:io.cwd,writeProgress:(text)=>stderr(text)});
     if (options.json || options['gate-json']) stdout(jsonDocument(result));
-    else if (!options.quiet) stdout(parsed.command === 'scan' ? terminalSummary(result) : parsed.command === 'gate' ? `gate: ${result.status}\n` : `${parsed.command}: verified\n`);
+    else if (!options.quiet) stdout(parsed.command === 'scan' ? terminalSummary(result) : parsed.command === 'gate' ? `gate: ${result.status}\n` : parsed.command === 'benchmark' ? `benchmark: ${result.status}\n` : `${parsed.command}: verified\n`);
     return result.exitCode;
   } catch (error) {
     const item = publicCliError(error); const json = jsonRequested ? jsonDocument({ ok: false, status: 'failed', ...item, errors: [item] }) : null;

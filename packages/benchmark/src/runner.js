@@ -1,0 +1,8 @@
+import { readFile } from 'node:fs/promises';
+import { loadBenchmarkOracle, oracleCase } from './oracle.js';
+import { executeBenchmarkCase } from './case-runner.js';
+import { compareBenchmarkResult } from './comparator.js';
+import { buildBenchmarkReport } from './report.js';
+async function manifest(filename){return JSON.parse(await readFile(filename,'utf8'));}
+export async function runBenchmarkCase(caseId,options={}){const oracle=options.oracle??await loadBenchmarkOracle(options.oraclePath),entries=(await manifest(options.manifestPath??'tests/corpus/manifest.json')).cases;const entry=entries.find(x=>x.id===caseId);if(!entry)return oracleCase(oracle,caseId);options.onProgress?.({type:'case-started',caseId});const actual=await executeBenchmarkCase(entry,{caseTimeoutMs:options.caseTimeoutMs,onProgress:event=>options.onProgress?.({type:'scan-progress',caseId,event})});const result=compareBenchmarkResult(actual,oracleCase(oracle,caseId));options.onProgress?.({type:'case-completed',caseId,status:result.passed?'passed':'failed'});return result;}
+export async function runBenchmark(options={}){const oracle=await loadBenchmarkOracle(options.oraclePath),entries=(await manifest(options.manifestPath??'tests/corpus/manifest.json')).cases;let selected=[...entries].sort((a,b)=>a.id.localeCompare(b.id));if(options.caseId)selected=selected.filter(x=>x.id===options.caseId);if(options.domain)selected=selected.filter(x=>x.domain===options.domain);const results=[];for(const entry of selected)results.push(await runBenchmarkCase(entry.id,{...options,oracle}));return buildBenchmarkReport(results,{oracleVersion:oracle.oracleVersion,caseId:options.caseId,domain:options.domain,releaseGate:options.releaseGate});}

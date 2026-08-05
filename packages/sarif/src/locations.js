@@ -13,5 +13,5 @@ export function physicalLocation(location, artifactIndexes) {
   if (Number.isInteger(location.startColumn) && location.startColumn > 0) region.startColumn = location.startColumn;
   if (Number.isInteger(location.endLine) && location.endLine > 0) region.endLine = location.endLine;
   if (Number.isInteger(location.endColumn) && location.endColumn > 0) region.endColumn = location.endColumn;
-  return { artifactLocation: { uri, index: artifactIndexes.get(uri) }, ...(Object.keys(region).length ? { region } : {}), properties: { byteStart: location.byteStart ?? null, byteEnd: location.byteEnd ?? null } };
+  return { artifactLocation: { uri, index: artifactIndexes.get(uri) }, ...(Object.keys(region).length ? { region } : {}), properties: { startByte: location.startByte ?? location.byteStart ?? null, endByte: location.endByte ?? location.byteEnd ?? null } };
 }

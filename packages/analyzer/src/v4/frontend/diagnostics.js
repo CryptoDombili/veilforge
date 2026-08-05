@@ -23,8 +23,8 @@ export function normalizeDiagnostic(diagnostic, sourcesByPath = new Map()) {
     sourcePath,
     byteStart,
     byteLength: byteStart !== null && byteEnd !== null ? byteEnd - byteStart : null,
-    line: position.line,
-    column: position.column,
+    line: position?.line ?? null,
+    column: position?.column ?? null,
   };
 }
 

@@ -5,7 +5,7 @@ const REQUIRED = ['schema', 'schemaVersion', 'reportVersion', 'scanner', 'projec
 const ALLOWED = new Set(REQUIRED); const SEVERITY = new Set(['critical', 'high', 'medium', 'low', 'informational', 'unknown']); const DISPOSITION = new Set(['detected', 'policy-approved', 'accepted-risk', 'incomplete', 'not-applicable']);
 function validateShape(report) {
   if (!report || REQUIRED.some((key) => !(key in report)) || Object.keys(report).some((key) => !ALLOWED.has(key))) throw cliError('CLI_REPORT_INVALID');
-  if (report.schema !== 'veilforge.report.v4' || report.schemaVersion !== '4.0.0' || report.reportVersion !== '4.0.0' || !Array.isArray(report.findings)) throw cliError('CLI_REPORT_INVALID');
+  if (report.schema !== 'veilforge.report.v4' || !['4.0.0','4.1.0'].includes(report.schemaVersion) || report.reportVersion !== report.schemaVersion || !Array.isArray(report.findings)) throw cliError('CLI_REPORT_INVALID');
   if (report.findings.some((finding) => !SEVERITY.has(finding.severity) || !DISPOSITION.has(finding.disposition))) throw cliError('CLI_REPORT_INVALID');
 }
 export async function verifyReportCommand(filename) {

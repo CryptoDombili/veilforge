@@ -9,8 +9,8 @@ test('AST src ranges resolve UTF-8 byte offsets without using JS character index
   const byteLength = Buffer.byteLength('\u00d6deme', 'utf8');
   const location = resolveSourceLocation(`${byteStart}:${byteLength}:7`, new Map([[7, { path: 'src/U.sol', content }]]));
   assert.deepEqual(location, {
-    sourcePath: 'src/U.sol', sourceId: 7, byteStart, byteLength, byteEnd: byteStart + byteLength,
-    lineStart: 2, columnStart: 10, lineEnd: 2, columnEnd: 15,
+    sourcePath: 'src/U.sol', sourceId: 7, startByte: byteStart, endByte: byteStart + byteLength, byteStart, byteLength, byteEnd: byteStart + byteLength,
+    lineStart: 2, columnStart: 10, lineEnd: 2, columnEnd: 15, startLine: 2, startColumn: 10, endLine: 2, endColumn: 15,
   });
   assert.equal(Buffer.byteLength(canonical, 'utf8') > canonical.length, true);
 });

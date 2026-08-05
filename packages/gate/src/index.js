@@ -38,7 +38,7 @@ function baselineState(baseline, current) {
   const currentSet = new Set(current.map((finding) => finding.fingerprint)); return { fingerprints: new Set(values), disappeared: values.filter((item) => !currentSet.has(item)).sort() };
 }
 const invalidPolicy = (report) => report.policy?.evaluationStatus === 'invalid' || report.policy?.valid === false;
-const ruleId = (finding) => `${finding.domain}.${finding.category}`;
+const ruleId = (finding) => finding.detectorId ?? `${finding.domain}.${finding.category}`;
 const effectiveDisposition = (finding) => finding.suppressionMetadata?.kind === 'explicit' && finding.suppressionMetadata?.active === true ? 'suppressed' : finding.disposition;
 export async function evaluateGate(report, inputConfig = {}) {
   try { verifyReport(report); } catch (cause) { const error = new Error('The gate report is invalid.'); error.code = 'GATE_REPORT_INVALID'; error.cause = cause; throw error; }
