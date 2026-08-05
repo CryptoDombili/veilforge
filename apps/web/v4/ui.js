@@ -1,6 +1,6 @@
 import { createV4WebExport, verifyV4WebExport } from './export-adapter.js';
 import { browserFilesToScanInput } from './input-adapter.js';
-import { listV4Reports, readV3Storage, saveV4Report } from './persistence.js';
+import { clearV4Reports, listV4Reports, readV3Storage, removeV4Report, saveV4Report } from './persistence.js';
 import { verifyV4Report } from './report-adapter.js';
 import { createWorkerClient } from './runtime/worker-client.js';
 import { WEB_V4_LIMITS } from './runtime/limits.js';
@@ -34,7 +34,7 @@ export function v4ErrorMessage(error) {
     WEB_V4_LOCATION_UNSAFE: 'The report contains an unsafe source location and was rejected.',
     WEB_V4_PERSISTENCE_INVALID: 'A saved V4 report is corrupt or no longer compatible.',
     WEB_V4_PERSISTENCE_LIMIT: 'The verified report is too large for safe browser history.',
-    WEB_V4_STORAGE_QUOTA: 'The verified result is ready, but browser storage is full.',
+    WEB_V4_STORAGE_QUOTA: 'Browser storage is unavailable or full. Clear rejected V4 history or free site storage, then retry; V3 history is never removed.',
     WEB_V4_EXPORT_INVALID: 'Export verification failed. No file was downloaded.',
   };
   return messages[error?.code] ?? 'The V4 scan could not complete safely. No unverified result was displayed.';
@@ -97,7 +97,7 @@ export function v4UiTemplate() {
         </div>
         <div id="v4-findings" class="v4-findings" aria-live="polite"></div>
         <section id="v4-export" class="v4-secondary panel" hidden><header><div><small>VERIFIED EXPORT</small><b>Integrity-checked files</b></div></header><p>Each download is generated from the verified report and checked before release. SARIF and GitHub Action integration are CLI/CI-only.</p><div class="v4-button-row"><button data-v4-export="veilforge-report-v4.json" type="button">JSON report</button><button data-v4-export="veilforge-report-v4.md" type="button">Markdown</button><button data-v4-export="veilforge-web-export-manifest.json" type="button">Manifest</button></div></section>
-        <section class="v4-secondary panel"><header><div><small>LOCAL HISTORY</small><b>Verified V4 reports</b></div><button id="v4-refresh-history" type="button">Refresh</button></header><div id="v4-history"><p>No verified V4 history.</p></div></section>
+        <section class="v4-secondary panel"><header><div><small>LOCAL HISTORY</small><b>Verified V4 reports</b></div><div class="v4-history-actions"><button id="v4-refresh-history" type="button">Refresh</button><button id="v4-clear-history" type="button">Clear V4 history</button></div></header><div id="v4-history"><p>No verified V4 history.</p></div></section>
         <details class="v4-secondary panel"><summary>Legacy V3 history and modules</summary><p>Read-only V3 history remains separate. Genome, Intent, Shadow Lab, MRI, Twin, Treatment, Forge, Compare, Proof Lab, Bytecode Truth, Passport, Arc Proof and Release Gate are legacy-only, CLI-only, or deferred for V4 RC1.</p><div id="v3-history"></div></details>
       </section>
     </div>
@@ -157,8 +157,8 @@ export async function initV4Ui(options = {}) {
   };
   const renderHistory = async () => {
     const history = await listV4Reports(storage);
-    byId('v4-history').innerHTML = history.entries.length ? history.entries.map((item) => { const view = createV4ViewModel(item.verification); return `<article><div><b>${esc(item.projectId)}</b><small>${esc(item.createdAt)} · schema ${esc(view.reportVersion)} · ${view.analysis.complete ? 'complete' : 'incomplete'} · ${view.findings.length} findings</small></div><code>${esc(item.reportHash)}</code><button type="button" data-v4-history="${esc(item.projectId)}">Open verified report</button></article>`; }).join('') : '<p>No verified V4 history.</p>';
-    if (history.errors.length) byId('v4-history').insertAdjacentHTML('beforeend', `<p class="v4-history-error">${history.errors.length} corrupt V4 history entr${history.errors.length === 1 ? 'y was' : 'ies were'} rejected.</p>`);
+    byId('v4-history').innerHTML = history.entries.length ? history.entries.map((item) => { const view = createV4ViewModel(item.verification); return `<article><div><b>${esc(item.projectId)}</b><small>${esc(item.createdAt)} · schema ${esc(view.reportVersion)} · ${view.analysis.complete ? 'complete' : 'incomplete'} · ${view.findings.length} findings</small></div><code>${esc(item.reportHash)}</code><div class="v4-history-actions"><button type="button" data-v4-history="${esc(item.projectId)}">Open</button><button type="button" data-v4-delete="${esc(item.projectId)}">Delete</button></div></article>`; }).join('') : '<p>No verified V4 history.</p>';
+    if (history.errors.length) byId('v4-history').insertAdjacentHTML('beforeend', `<div class="v4-history-error" role="alert"><p>${history.errors.length} corrupt or inaccessible V4 history entr${history.errors.length === 1 ? 'y was' : 'ies were'} rejected. V3 history was not touched.</p><button id="v4-clear-rejected" type="button">Clear rejected V4 entries</button></div>`);
     const legacy = readV3Storage(storage);
     byId('v3-history').innerHTML = Array.isArray(legacy) && legacy.length ? `<p>${legacy.length} read-only V3 entr${legacy.length === 1 ? 'y' : 'ies'} retained. They are not converted to V4.</p>` : '<p>No V3 history found.</p>';
   };
@@ -188,9 +188,10 @@ export async function initV4Ui(options = {}) {
       const verification = await verifyV4Report(result?.report ?? result);
       const viewModel = createV4ViewModel(verification, { gate: result?.gate });
       state.verification = verification; state.viewModel = viewModel; state.exportBundle = null;
-      try { await saveV4Report(storage, verification, { viewModel }); } catch (error) { if (error?.code !== 'WEB_V4_STORAGE_QUOTA' && error?.code !== 'WEB_V4_PERSISTENCE_LIMIT') throw error; }
+      let persistenceWarning = null;
+      try { await saveV4Report(storage, verification, { viewModel }); } catch (error) { if (error?.code !== 'WEB_V4_STORAGE_QUOTA' && error?.code !== 'WEB_V4_PERSISTENCE_LIMIT') throw error; persistenceWarning = v4ErrorMessage(error); }
       byId('v4-progress').value = 100; byId('v4-progress-label').textContent = 'Verified V4 report ready.';
-      setStatus('Verified result ready', `${viewModel.findings.length} canonical finding${viewModel.findings.length === 1 ? '' : 's'} · ${viewModel.reportHash}`, 'success');
+      setStatus('Verified result ready', `${viewModel.findings.length} canonical finding${viewModel.findings.length === 1 ? '' : 's'} · ${viewModel.reportHash}${persistenceWarning ? ` · History not saved: ${persistenceWarning}` : ''}`, persistenceWarning ? 'warning' : 'success');
       renderReport(); await renderHistory();
     } catch (error) { byId('v4-progress').value = 0; byId('v4-progress-label').textContent = 'Scan did not produce a verified report.'; setStatus(error?.code === 'WEB_V4_ABORTED' ? 'Scan cancelled' : 'V4 scan blocked', v4ErrorMessage(error), 'error'); }
     finally { state.client?.dispose(); state.client = null; setBusy(false); }
@@ -205,7 +206,13 @@ export async function initV4Ui(options = {}) {
   byId('v4-drop-zone').addEventListener('drop', (event) => { event.preventDefault(); acceptFiles(event.dataTransfer.files); });
   byId('v4-policy-mode').addEventListener('change', (event) => { const show = event.target.value === 'custom'; byId('v4-policy').hidden = !show; byId('v4-policy-label').hidden = !show; });
   byId('v4-scan').addEventListener('click', runScan);
-  byId('v4-cancel').addEventListener('click', () => { if (state.client?.abort()) { byId('v4-progress-label').textContent = 'Cancellation requested…'; byId('v4-cancel').disabled = true; } });
+  byId('v4-cancel').addEventListener('click', () => {
+    if (!state.client) return;
+    state.client.abort();
+    if (!state.client.disposed) state.client.dispose();
+    byId('v4-progress-label').textContent = 'Cancellation requested…';
+    byId('v4-cancel').disabled = true;
+  });
   for (const [id, key, eventName] of [['v4-query', 'query', 'input'], ['v4-severity', 'severity', 'change'], ['v4-domain-filter', 'domain', 'change'], ['v4-disposition', 'disposition', 'change'], ['v4-confidence', 'confidence', 'change'], ['v4-completeness', 'completeness', 'change'], ['v4-detector', 'detector', 'input'], ['v4-sort', 'sort', 'change']]) byId(id).addEventListener(eventName, (event) => { state.filters[key] = event.target.value; renderFindings(); });
   byId('v4-findings').addEventListener('click', (event) => { const button = event.target.closest('[data-v4-finding]'); if (!button) return; const finding = state.viewModel.findings.find((item) => item.findingId === button.dataset.v4Finding); if (!finding) return; byId('v4-detail-content').innerHTML = findingDetail(finding); byId('v4-detail').showModal(); byId('v4-detail-close').focus(); });
   byId('v4-detail-close').addEventListener('click', () => byId('v4-detail').close());
@@ -213,7 +220,10 @@ export async function initV4Ui(options = {}) {
   byId('v4-detail').addEventListener('keydown', (event) => { if (event.key !== 'Tab') return; const focusable = [...byId('v4-detail').querySelectorAll('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])')]; if (!focusable.length) return; const first = focusable[0], last = focusable.at(-1); if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); } });
   byId('v4-export').addEventListener('click', async (event) => { const button = event.target.closest('[data-v4-export]'); if (!button || !state.verification) return; try { const bundle = state.exportBundle ?? await createV4WebExport(state.verification, state.viewModel); await verifyV4WebExport(bundle); state.exportBundle = bundle; const file = bundle.files.find((item) => item.filename === button.dataset.v4Export); if (!file) throw new Error('missing'); download(file.filename, file.bytes, file.mediaType); setStatus('Verified export ready', `${file.filename} passed digest verification before download.`, 'success'); } catch (error) { setStatus('Export blocked', v4ErrorMessage(error), 'error'); } });
   byId('v4-refresh-history').addEventListener('click', renderHistory);
+  byId('v4-clear-history').addEventListener('click', async () => { try { const count = clearV4Reports(storage); await renderHistory(); setStatus('V4 history cleared', `${count} V4 entr${count === 1 ? 'y' : 'ies'} removed. Legacy V3 history was preserved.`, 'success'); } catch (error) { setStatus('History recovery blocked', `${v4ErrorMessage(error)} Diagnostic: ${error?.code ?? 'WEB_V4_STORAGE_QUOTA'}`, 'error'); } });
   byId('v4-history').addEventListener('click', async (event) => { const button = event.target.closest('[data-v4-history]'); if (!button) return; try { const history = await listV4Reports(storage); const item = history.entries.find((entry) => entry.projectId === button.dataset.v4History); if (!item) throw Object.assign(new Error('history'), { code: 'WEB_V4_PERSISTENCE_INVALID' }); state.verification = item.verification; state.viewModel = createV4ViewModel(item.verification); state.exportBundle = null; renderReport(); setStatus('Verified history opened', item.reportHash, 'success'); } catch (error) { setStatus('History entry rejected', v4ErrorMessage(error), 'error'); } });
+  byId('v4-history').addEventListener('click', async (event) => { const button = event.target.closest('[data-v4-delete]'); if (!button) return; try { removeV4Report(storage, button.dataset.v4Delete); await renderHistory(); setStatus('V4 history entry deleted', 'Only the selected V4 report was removed.', 'success'); } catch (error) { setStatus('History recovery blocked', `${v4ErrorMessage(error)} Diagnostic: ${error?.code ?? 'WEB_V4_STORAGE_QUOTA'}`, 'error'); } });
+  byId('v4-history').addEventListener('click', async (event) => { if (!event.target.closest('#v4-clear-rejected')) return; try { const count = clearV4Reports(storage); await renderHistory(); setStatus('Rejected V4 history cleared', `${count} V4 entr${count === 1 ? 'y' : 'ies'} removed. Legacy V3 history was preserved.`, 'success'); } catch (error) { setStatus('History recovery blocked', `${v4ErrorMessage(error)} Diagnostic: ${error?.code ?? 'WEB_V4_STORAGE_QUOTA'}`, 'error'); } });
   document.querySelector('#heroDemo')?.addEventListener('click', () => root.scrollIntoView({ behavior: 'smooth' }));
   document.querySelector('#heroUpload')?.addEventListener('click', () => { root.scrollIntoView({ behavior: 'smooth' }); byId('v4-file-input').click(); });
   renderFiles(); await renderHistory();

@@ -5,7 +5,9 @@ import { pathToFileURL } from 'node:url';
 import { buildWebV4Runtime } from './build-web-v4-runtime.mjs';
 
 const root = process.cwd();
-const dist = path.join(root, 'dist');
+const outputDirectory = process.env.VEILFORGE_WEB_OUTPUT_DIR || 'dist';
+if (!/^(?:dist|dist-preview-v4)$/u.test(outputDirectory)) throw new Error('VEILFORGE_WEB_OUTPUT_DIR must be dist or dist-preview-v4.');
+const dist = path.join(root, outputDirectory);
 const web = path.join(root, 'apps', 'web');
 
 function copyDirectory(source, destination) {

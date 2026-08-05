@@ -47,8 +47,10 @@ export async function loadV4Report(storage, projectId, options = {}) {
 export async function listV4Reports(storage, options = {}) {
   const entries = [];
   const errors = [];
-  for (let index = 0; index < storage.length; index += 1) {
-    const key = storage.key(index);
+  let keys;
+  try { keys = Array.from({ length: storage.length }, (_, index) => storage.key(index)); }
+  catch { return deepFreeze({ entries, errors: [{ key: null, code: 'WEB_V4_STORAGE_QUOTA' }] }); }
+  for (const key of keys) {
     if (!key?.startsWith(V4_STORAGE_PREFIX)) continue;
     let projectId;
     try { projectId = decodeURIComponent(key.slice(V4_STORAGE_PREFIX.length)); }
@@ -60,6 +62,20 @@ export async function listV4Reports(storage, options = {}) {
   }
   entries.sort((left, right) => right.createdAt.localeCompare(left.createdAt) || left.projectId.localeCompare(right.projectId));
   return deepFreeze({ entries, errors });
+}
+
+export function removeV4Report(storage, projectId) {
+  try { storage.removeItem(keyFor(projectId)); }
+  catch { throw webV4Error('WEB_V4_STORAGE_QUOTA', 'V4 browser storage is unavailable.'); }
+}
+
+export function clearV4Reports(storage) {
+  let keys;
+  try { keys = Array.from({ length: storage.length }, (_, index) => storage.key(index)).filter((key) => key?.startsWith(V4_STORAGE_PREFIX)); }
+  catch { throw webV4Error('WEB_V4_STORAGE_QUOTA', 'V4 browser storage is unavailable.'); }
+  try { for (const key of keys) storage.removeItem(key); }
+  catch { throw webV4Error('WEB_V4_STORAGE_QUOTA', 'V4 browser storage is unavailable.'); }
+  return keys.length;
 }
 
 export function readV3Storage(storage, key = `${V3_STORAGE_PREFIX}scan-history`) {
