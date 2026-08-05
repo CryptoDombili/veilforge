@@ -2253,6 +2253,7 @@ body.app-page .veil-rain{opacity:.68!important}
 }
 
 /* V4 grant-candidate product polish. Scoped so the default V3 surface is unchanged. */
+.v4-preview-pending{visibility:hidden}
 body.v4-ui-mode{height:auto!important;overflow-x:hidden!important;overflow-y:auto!important}
 body.v4-ui-mode [hidden]{display:none!important}
 body.v4-ui-mode main{height:auto!important;overflow:visible!important}

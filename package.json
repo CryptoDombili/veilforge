@@ -118,6 +118,7 @@
     "test:web-v4-ui": "node --test tests/web/v4-ui/ui.test.mjs",
     "test:web-v4-product-polish": "node --test tests/web/v4-ui/product-polish.test.mjs",
     "test:grant-evidence": "node --test tests/grant/final-evidence.test.mjs",
+    "test:whitepaper-consistency": "node --test tests/grant/whitepaper-consistency.test.mjs",
     "test:web-v4-ui-accessibility": "node --test tests/web/v4-ui/accessibility.test.mjs",
     "test:web-v4-ui-history": "node --test tests/web/v4-ui/history.test.mjs",
     "test:web-v4-ui-export": "node --test tests/web/v4-ui/export.test.mjs",

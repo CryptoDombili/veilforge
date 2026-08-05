@@ -13,11 +13,13 @@
     "docs/grant/final/known-limitations.md",
     "docs/grant/final/submission-faq.md",
     "docs/grant/final/demo-script-foundation.md",
-    "docs/grant/final/grant-submission-checklist.md"
+    "docs/grant/final/grant-submission-checklist.md",
+    "docs/whitepaper/veilforge-v4-whitepaper.md",
+    "docs/whitepaper/veilforge-v4-whitepaper-executive-brief.md"
   ],
   "evidenceFileDigests": {
     "docs/grant/final/executive-summary.md": "sha256:c207198576fec86e2befcda8e69c9194f8f953701ba95453044e6aeb5775e2e5",
-    "docs/grant/final/technical-evidence-index.md": "sha256:2f050026219fec4096b23cb17b75dbef77dcf03dea8d079dd17f5e76a6b5fa59",
+    "docs/grant/final/technical-evidence-index.md": "sha256:824e37bd604d33d1d0b90fbb8d3f5decda189f8b921aa27fbc5d27575cb157ad",
     "docs/grant/final/benchmark-evidence.md": "sha256:2d21e9cf7a6adf4664c1e3de66d8edd868a3f314e3d5e770e3c05dc7cbf46fe9",
     "docs/grant/final/arc-testnet-proof-evidence.md": "sha256:fcb90b3b170ff6133d0e407366f65e7b64a2d0fcdf263466cfc56e9c0266aa4a",
     "docs/grant/final/mainnet-readiness-evidence.md": "sha256:1b8bfb33c4065186ba8fd477d29ea8b96843a6c990716378eb037abcba51defa",
@@ -26,7 +28,9 @@
     "docs/grant/final/known-limitations.md": "sha256:a1b9e2151c5b7078d834cb283b9134316ea30c116fa33dcca57d396d8bad6b52",
     "docs/grant/final/submission-faq.md": "sha256:a013f42e222a7759c96da0a0fed0478672def06bf9eec916e1fea64cc750106d",
     "docs/grant/final/demo-script-foundation.md": "sha256:569dad04edc8dcd72ece244293154fc99cc79739f2341de2d7eef8de1ccfc053",
-    "docs/grant/final/grant-submission-checklist.md": "sha256:95f78a0fb29d77ffd0476f09bb402b5f75c8ffd824f04e8672752fb84b5a679d"
+    "docs/grant/final/grant-submission-checklist.md": "sha256:658b6811fae6d5f57b7045db7b8e515d1cce0dbf2315f7949dbe8ab6c41cf383",
+    "docs/whitepaper/veilforge-v4-whitepaper.md": "sha256:377b54b7190992ae1de4a5eadfc43d845eeaad6dfcd518edcb98796b23e6ddab",
+    "docs/whitepaper/veilforge-v4-whitepaper-executive-brief.md": "sha256:ffafb30639b265d41944a136182017eadad23396054b48ef9f995c2f2c0f5185"
   },
   "claims": [
     {
@@ -108,6 +112,11 @@
       "id": "customers-partnerships-endorsement-revenue",
       "status": "not-claimed",
       "evidence": "docs/grant/final/known-limitations.md"
+    },
+    {
+      "id": "grant-whitepaper-package",
+      "status": "shipped-and-verified",
+      "evidence": "docs/whitepaper/veilforge-v4-whitepaper.md"
     }
   ],
   "transactionIdentity": {
@@ -224,5 +233,5 @@
     ]
   },
   "generatedAtOperational": "2026-08-05T21:30:40.7269324+03:00",
-  "integrityDigest": "sha256:df8730a83c26e322dd414d2c5d9ebb2dd3cee2e012b9397f03dc7af1fc93be15"
+  "integrityDigest": "sha256:8bf9001516fae8ab0aaf07a23d18d96c9b8830f81b8a1abf28cfeea207cd678e"
 }

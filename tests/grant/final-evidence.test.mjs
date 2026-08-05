@@ -26,7 +26,7 @@ test('grant evidence manifest parses and references existing evidence', () => {
   assert.equal(manifest.packageVersion, '1.0.0');
   assert.equal(manifest.productVersion, '4.0.0-gc.1');
   assert.match(manifest.gitCommit, /^[0-9a-f]{40}$/u);
-  assert.equal(manifest.evidenceFiles.length, 11);
+  assert.equal(manifest.evidenceFiles.length, 13);
   for (const relative of manifest.evidenceFiles) assert.equal(fs.existsSync(path.join(root, relative)), true, relative);
   for (const relative of manifest.evidenceFiles) assert.equal(manifest.evidenceFileDigests[relative], `sha256:${crypto.createHash('sha256').update(read(relative)).digest('hex')}`, relative);
   const statuses = new Set(['shipped-and-verified', 'shipped-with-bounded-limitations', 'roadmap', 'mainnet-unresolved', 'commercial-hypothesis', 'not-claimed']);

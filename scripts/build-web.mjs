@@ -55,8 +55,8 @@ if (webV4Enabled) {
     .replace(/<meta name="description" content="[^"]+" \/>/u, '<meta name="description" content="VeilForge V4 Grant Candidate — local, deterministic Solidity privacy analysis with verified findings and Arc Testnet proof workflows." />')
     .replace(/<title>[^<]+<\/title>/u, '<title>VeilForge V4 Grant Candidate — Verified Findings</title>')
     .replace('<a href="./app/index.html#scanner">Privacy OS</a><a href="#workflow">Architecture</a><a href="https://docs.arc.network/arc/concepts/opt-in-privacy" target="_blank" rel="noreferrer">Arc APS docs</a>', '<a href="./app/index.html#scanner">V4 Scanner</a><a href="#workflow">Workflow</a><a href="https://github.com/CryptoDombili/veilforge/tree/main/docs" target="_blank" rel="noreferrer">Documentation</a>')
-    .replace(/<span class="landing-version">[^<]+<\/span>/u, '<span class="landing-version">V4 GC</span>')
-    .replace(/<a class="release-badge"[^>]*>[\s\S]*?<\/a>/u, '<a class="release-badge" href="#product"><i></i> VeilForge V4 · GRANT CANDIDATE <span>→</span></a>')
+    .replace(/<span class="landing-version">[^<]+<\/span>/u, '<abbr class="landing-version" title="VeilForge V4 Grant Candidate" aria-label="VeilForge V4 Grant Candidate" tabindex="0">V4 GC</abbr>')
+    .replace(/<a class="release-badge"[^>]*>[\s\S]*?<\/a>/u, '<a class="release-badge" href="#product" aria-label="VeilForge V4 Grant Candidate"><i></i> VeilForge V4 — Grant Candidate <span>→</span></a>')
     .replace(/<h1>[\s\S]*?<\/h1>/u, '<h1>Find privacy exposure.<br />Verify the evidence.<br /><em>Ship with confidence.</em></h1>')
     .replace(/<p class="flow-intro-copy">[\s\S]*?<\/p>/u, '<p class="flow-intro-copy">Run deterministic Solidity analysis locally, review source-backed findings, and prepare a verified Arc Testnet proof without uploading source code.</p>')
     .replace('Launch the Privacy OS', 'Launch V4 Scanner')
@@ -66,6 +66,11 @@ if (webV4Enabled) {
     .replace('One mission.<br />Sixteen control surfaces.', 'One clear path.<br />Verified evidence end to end.')
     .replace('Move from Project X-Ray and Privacy Genome through Shadow simulation, Forge, Bytecode Truth, Arc rehearsal and release proof without losing the audit trail.', 'Configure, scan, review, verify, publish and export through one evidence-first workflow. Advanced technical detail stays available when you need it.');
   fs.writeFileSync(landingPath, landing);
+
+  const appPath = path.join(dist, 'app', 'index.html');
+  const app = fs.readFileSync(appPath, 'utf8')
+    .replace('<body class="app-page" data-ready="false">', '<body class="app-page v4-preview-pending" data-ready="false">');
+  fs.writeFileSync(appPath, app);
 }
 
 for (const file of fs.readdirSync(path.join(dist, 'proof-v4')).filter((name) => name.endsWith('.js'))) {

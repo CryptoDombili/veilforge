@@ -9,6 +9,7 @@ Items marked TODO are not claimed complete.
 - [ ] TODO: select and verify the coordinated V4 release/tag; this phase creates no tag or release.
 - [ ] TODO: update root README with final release/demo/evidence links after coordinated release approval.
 - [x] Technical architecture and V4 release boundaries are documented.
+- [x] Full grant whitepaper and executive brief are included in the canonical evidence manifest.
 - [x] License file exists and must be reviewed for submission fit.
 - [x] Deterministic release manifest exists.
 
@@ -34,6 +35,7 @@ Items marked TODO are not claimed complete.
 ## Demo and submission assets
 
 - [x] 30-second, 2-minute, and 3-minute demo foundations prepared.
+- [x] Whitepaper version terminology, evidence references, limitations, and grant-use milestones consistency-checked.
 - [ ] TODO: record and review final demo video.
 - [ ] TODO: capture current desktop/mobile screenshots without secrets, wallet UI, or sensitive report/source content.
 - [ ] TODO: verify live-site URL and cache headers after an authorized deployment; this phase performs no deploy.
@@ -51,4 +53,3 @@ Items marked TODO are not claimed complete.
 - [ ] TODO: perform logged-out GitHub/site/video verification from clean sessions.
 
 Submission readiness is **conditional** until every TODO required by the selected grant form is resolved. Evidence-package readiness does not authorize deployment, publication, tagging, or submission.
-

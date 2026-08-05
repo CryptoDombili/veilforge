@@ -156,9 +156,15 @@ export async function initV4Ui(options = {}) {
   const storage = options.storage ?? localStorage;
   if (!root) throw new Error('V4 scanner mount is unavailable.');
   document.body.classList.add('v4-ui-mode');
-  document.querySelector('.versionPill')?.replaceChildren('V4 RC1');
+  const versionPill = document.querySelector('.versionPill');
+  if (versionPill) {
+    versionPill.replaceChildren('V4 RC1');
+    versionPill.setAttribute('aria-label', 'VeilForge V4 Release Candidate 1');
+    versionPill.setAttribute('title', 'VeilForge V4 Release Candidate 1');
+    versionPill.setAttribute('tabindex', '0');
+  }
   document.title = 'VeilForge V4 Grant Candidate — Verified Findings';
-  const chip = document.querySelector('.chip'); if (chip) chip.innerHTML = '<i></i> VeilForge V4 · GRANT CANDIDATE';
+  const chip = document.querySelector('.chip'); if (chip) chip.innerHTML = '<i></i> VeilForge V4 — Grant Candidate';
   const hero = document.querySelector('.hero > div:first-child');
   if (hero) hero.querySelector('h1').innerHTML = 'Find privacy exposure and verify the evidence <em>before deployment.</em>';
   const nav = document.querySelector('.topbar .navlinks');
@@ -166,6 +172,7 @@ export async function initV4Ui(options = {}) {
   const navActions = document.querySelector('.topbar .navActions');
   if (navActions) navActions.insertAdjacentHTML('afterbegin', '<span class="v4-context-pill">LOCAL / PRIVATE</span><span class="v4-context-pill">ARC TESTNET</span>');
   root.innerHTML = v4UiTemplate();
+  document.body.classList.remove('v4-preview-pending');
   const byId = (id) => root.querySelector(`#${id}`);
   const state = { files: [], bytes: 0, inputError: null, client: null, verification: null, viewModel: null, exportBundle: null, proof: { envelope: null, wallet: buildWalletState(), preflight: null, networkPreflight: null, review: null, status: 'unavailable', receipt: null, provider: null }, filters: { query: '', severity: 'all', domain: 'all', disposition: 'all', confidence: 'all', completeness: 'all', detector: '', sort: 'severity' } };
   let detailTrigger = null;

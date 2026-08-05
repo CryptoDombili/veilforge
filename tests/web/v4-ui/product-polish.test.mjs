@@ -50,4 +50,25 @@ test('V4 preview build rewrites only copied landing content', () => {
   assert.match(build, /if \(webV4Enabled\)/u);
   assert.match(build, /VeilForge V4 Grant Candidate/u);
   assert.match(build, /Launch V4 Scanner/u);
+  assert.match(build, /VeilForge V4 Release Candidate 1|v4-preview-pending/u);
+});
+
+test('V4 GC and V4 RC1 remain distinct, accessible candidate labels', () => {
+  const build = fs.readFileSync(new URL('../../../scripts/build-web.mjs', import.meta.url), 'utf8');
+  const ui = fs.readFileSync(new URL('../../../apps/web/v4/ui.js', import.meta.url), 'utf8');
+  const css = fs.readFileSync(new URL('../../../apps/web/landing.css', import.meta.url), 'utf8');
+  assert.match(build, /aria-label="VeilForge V4 Grant Candidate"/u);
+  assert.match(build, />V4 GC<\/abbr>/u);
+  assert.match(ui, /VeilForge V4 Release Candidate 1/u);
+  assert.match(ui, /replaceChildren\('V4 RC1'\)/u);
+  assert.match(css, /margin-block-end:clamp\(72px,6\.2vw,108px\)/u);
+});
+
+test('V4 preview suppresses the legacy first frame and releases it after V4 mount', () => {
+  const build = fs.readFileSync(new URL('../../../scripts/build-web.mjs', import.meta.url), 'utf8');
+  const ui = fs.readFileSync(new URL('../../../apps/web/v4/ui.js', import.meta.url), 'utf8');
+  const css = fs.readFileSync(new URL('../../../apps/web/styles.css', import.meta.url), 'utf8');
+  assert.match(build, /app-page v4-preview-pending/u);
+  assert.match(css, /\.v4-preview-pending\{visibility:hidden\}/u);
+  assert.match(ui, /classList\.remove\('v4-preview-pending'\)/u);
 });

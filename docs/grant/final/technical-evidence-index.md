@@ -10,6 +10,7 @@ Status values: **Shipped and verified**, **Shipped with bounded limitations**, *
 | Arc detector packs and maintained oracle | Shipped and verified | `packages/analyzer/src/v4/detectors/`, `benchmarks/v4/oracle.json` |
 | CLI, SDK, SARIF, GitHub Action, policy gate | Shipped and verified | `packages/cli/`, `packages/sdk/`, `packages/sarif/`, `action.yml`, `packages/gate/` |
 | Browser V4 runtime and product polish | Shipped with bounded limitations | `apps/web/v4/`, `docs/releases/v4-web-browser-support.md` |
+| Grant whitepaper and executive brief | Shipped and verified | `docs/whitepaper/veilforge-v4-whitepaper.md`, `docs/whitepaper/veilforge-v4-whitepaper-executive-brief.md` |
 | Report schema/hash and proof envelope | Shipped and verified | `schemas/`, `packages/analyzer/src/v4/report/`, `packages/proof/v4/` |
 | Arc Testnet transaction/reconciliation/duplicate protection | Shipped and verified | `docs/releases/v4-arc-testnet-proof-acceptance.md` |
 | Mainnet readiness model/runbooks | Shipped with bounded limitations | `packages/proof/v4/mainnet-readiness.js`, `docs/releases/v4-arc-mainnet-readiness.md` |
@@ -40,6 +41,7 @@ Status values: **Shipped and verified**, **Shipped with bounded limitations**, *
 | Mainnet readiness controls | Shipped with bounded limitations | `packages/proof/v4/mainnet-readiness.js` | Readiness 9/9 baseline | Deployment values and operators unresolved | `npm.cmd run test:v4-mainnet-readiness` |
 | Rollback and incident response | Shipped with bounded limitations | `docs/releases/v4-arc-mainnet-rollback.md`, `v4-arc-mainnet-incident-response.md` | Deterministic fail-closed config | Cannot erase on-chain history | `npm.cmd run rehearse:arc-mainnet-registry` |
 | Commercial model | Commercial hypothesis | `docs/business/`, `docs/grant/grant-sustainability.md` | Arithmetic and boundary consistency checked | No live billing, customers, or revenue | `npm.cmd run test:grant-evidence` |
+| Whitepaper evidence consistency | Shipped and verified | `docs/whitepaper/` | Version, benchmark, proof, budget, mainnet and claim boundaries checked | Reader document; canonical sources remain authoritative | `npm.cmd run test:whitepaper-consistency` |
 
 ## Canonical grant story
 
@@ -50,4 +52,3 @@ Status values: **Shipped and verified**, **Shipped with bounded limitations**, *
 **Current evidence:** working scanner; CLI, SDK, SARIF, GitHub Action and gate; browser worker; verified reports; bounded 60-case benchmark; real Testnet publication; receipt/event verification; duplicate protection; mainnet readiness package; commercial sustainability plan.
 
 **Grant unlocks:** hosted CI; secure account and metering foundations; Team workflows; detector and benchmark expansion; independent security validation; Arc ecosystem integration and onboarding. These are future deliverables, not current product claims.
-
