@@ -1,0 +1,3 @@
+export const SCAN_ERROR_CODES=Object.freeze(['SCAN_INPUT_INVALID','SCAN_STAGE_FAILED','SCAN_STAGE_TIMEOUT','SCAN_ABORTED','SCAN_STAGE_ORDER_INVALID','SCAN_STAGE_RESULT_MISSING','SCAN_CACHE_MISMATCH','SCAN_PIPELINE_INCOMPLETE','SCAN_EXPORT_VERIFICATION_FAILED']);
+export class ScanError extends Error{constructor(code,message,{stage=null,causeCode=null,details={},partial=null,cause}={}){super(message,{cause});this.name='ScanError';this.code=code;this.stage=stage;this.causeCode=causeCode;this.details=details;this.partial=partial;}}
+export const scanError=(code,message,options)=>new ScanError(code,message,options);

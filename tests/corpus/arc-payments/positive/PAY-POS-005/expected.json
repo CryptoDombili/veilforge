@@ -1,0 +1,16 @@
+{
+  "caseId": "PAY-POS-005",
+  "classification": "positive",
+  "analysisStatus": "supported",
+  "expectedOpenFindingCount": 1,
+  "expectedFindings": [
+    {
+      "ruleId": "VF4-REVERT-DISCLOSURE",
+      "sourceClass": "customer-kyc-reference",
+      "sink": "revert-custom-error",
+      "occurrenceCount": 1,
+      "disposition": "open"
+    }
+  ],
+  "forbiddenRuleIds": []
+}

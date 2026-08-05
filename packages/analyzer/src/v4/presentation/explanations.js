@@ -1,0 +1,2 @@
+import{catalogMessage,catalogValue}from'./catalog.js';
+export function presentExplanation(finding,catalog){const data=catalogValue(catalog,'dataLabels',finding.dataClass),surface=catalogValue(catalog,'surfaceLabels',finding.sinkClass);const suffix=finding.incomplete?'incomplete':finding.disposition==='policy-approved'?'approved':finding.disposition==='accepted-risk'?'accepted':'detected';const key=`explanation.${suffix}`;return{explanationKey:key,explanation:catalogMessage(catalog,key,{data,surface})};}

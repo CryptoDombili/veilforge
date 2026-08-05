@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://veilforge.dev/schemas/v4/report.schema.json",
+  "title": "VeilForge V4 Canonical JSON Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schemaVersion", "reportVersion", "scanner", "project", "scan", "compiler", "inputs", "analysis", "policy", "summary", "findings", "integrity", "extensions"],
+  "properties": {
+    "schema": { "const": "veilforge.report.v4" },
+    "schemaVersion": { "const": "4.1.0" },
+    "reportVersion": { "const": "4.1.0" },
+    "scanner": { "type": "object", "required": ["name", "version", "engineVersion", "catalogVersion", "findingSchemaVersion", "reportSchemaVersion", "releaseManifestDigest"], "additionalProperties": false, "properties": { "name": {"const":"VeilForge"}, "version":{"type":"string"}, "engineVersion":{"type":"string"}, "catalogVersion":{"type":"string"}, "detectorVersions":{"type":"array","items":{"type":"string"}}, "findingSchemaVersion":{"const":"1.1.0"}, "reportSchemaVersion":{"const":"4.1.0"}, "releaseManifestDigest":{"type":"string"} } },
+    "project": { "type":"object" }, "scan": { "type":"object" }, "compiler": { "type":"object" }, "inputs": { "type":"object" }, "analysis": { "type":"object" }, "policy": { "type":"object" }, "summary": { "type":"object" },
+    "findings": { "type":"array", "items": { "$ref":"#/$defs/finding" } },
+    "integrity": { "type":"object", "required":["hashAlgorithm","hashPayloadVersion","reportHash","canonicalByteLength","exclusions","verified"], "properties": { "hashAlgorithm":{"const":"sha256"}, "hashPayloadVersion":{"const":"veilforge.report.hash.v2"}, "reportHash":{"$ref":"#/$defs/digest"}, "canonicalByteLength":{"type":"integer","minimum":1}, "sourceManifestDigest":{"$ref":"#/$defs/digest"}, "compilerDigest":{"$ref":"#/$defs/digest"}, "policyDigest":{"$ref":"#/$defs/digest"}, "findingsDigest":{"$ref":"#/$defs/digest"}, "summaryDigest":{"$ref":"#/$defs/digest"}, "exclusions":{"type":"array","items":{"type":"string"}}, "verified":{"type":"boolean"} }, "additionalProperties":false },
+    "extensions": { "type":"object", "propertyNames": { "pattern":"^[a-z][a-z0-9]*(?:\\.[a-z0-9-]+){2,}$" }, "additionalProperties": true }
+  },
+  "$defs": {
+    "digest":{"type":"string","pattern":"^sha256:[0-9a-f]{64}$"},
+    "finding":{"type":"object","required":["findingId","fingerprint","detectorId","detectorVersion","stableRuleKey","domain","category","dataClass","sinkClass","severity","confidence","disposition","title","summary","explanation","impact","remediationSteps","primaryLocation","evidenceView","traceView","occurrenceCount","complete","incomplete"],"properties":{"detectorId":{"type":"string","pattern":"^arc-(?:payments|treasury|private-credit)\\.[a-z0-9-]+$"},"detectorVersion":{"type":"string"},"stableRuleKey":{"type":"string","pattern":"^arc-(?:payments|treasury|private-credit)\\.[a-z0-9-]+$"},"severity":{"enum":["critical","high","medium","low","informational","unknown"]},"confidence":{"enum":["high","medium","low","unknown"]},"disposition":{"enum":["detected","policy-approved","accepted-risk","incomplete","not-applicable"]}},"additionalProperties":true}
+  }
+}

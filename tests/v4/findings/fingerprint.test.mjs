@@ -1,0 +1,3 @@
+import test from'node:test';import assert from'node:assert/strict';import{detectorResult,findings}from'./helpers.mjs';
+test('line insertion does not change semantic fingerprint',()=>{const a=findings(detectorResult({token:'stable',sinkLocation:{sourcePath:'src/A.sol',byteStart:10,byteEnd:20}})).findings[0];const b=findings(detectorResult({token:'stable',sinkLocation:{sourcePath:'src/A.sol',byteStart:110,byteEnd:120}})).findings[0];assert.equal(a.fingerprint,b.fingerprint);});
+test('different semantic occurrence changes fingerprint',()=>{const a=findings(detectorResult({token:'one'})).findings[0];const b=findings(detectorResult({token:'two'})).findings[0];assert.notEqual(a.fingerprint,b.fingerprint);});

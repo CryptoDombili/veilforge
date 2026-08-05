@@ -1,0 +1,17 @@
+{
+  "language": "Solidity",
+  "version": "0.8.24",
+  "mode": "exact",
+  "sourcePath": "src/CreditPath.sol",
+  "declaredSourcePaths": [
+    "src/CreditPath.sol",
+    "src/creditpath.sol"
+  ],
+  "settings": {
+    "optimizer": {
+      "enabled": false,
+      "runs": 200
+    },
+    "evmVersion": "shanghai"
+  }
+}

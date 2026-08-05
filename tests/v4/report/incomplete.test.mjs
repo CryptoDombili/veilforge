@@ -1,0 +1,2 @@
+import test from'node:test';import assert from'node:assert/strict';import{report}from'./helpers.mjs';
+test('incomplete reasons and invalid policy are not hidden',()=>{const r=report({analysis:{statuses:{frontend:'complete',ir:'incomplete'},incompleteReasons:['unsupported-expression']},policy:{present:true,valid:false,errors:['invalid'],policy:{policyId:'bad'}}});assert.equal(r.analysis.complete,false);assert.equal(r.policy.evaluationStatus,'invalid');assert.equal(r.summary.analysisComplete,false);});

@@ -1,0 +1,2 @@
+import { catalogMessage, catalogValue } from './catalog.js';
+export function presentSummary(finding,catalog){const data=catalogValue(catalog,'dataLabels',finding.dataClass),surface=catalogValue(catalog,'surfaceLabels',finding.sinkClass);const key=finding.category==='calldata-observation'?'summary.observation':finding.incomplete?'summary.incomplete':'summary.detected';return{summaryKey:key,summary:catalogMessage(catalog,key,{data,surface})};}

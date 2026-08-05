@@ -1,5 +1,7 @@
 # Arc Proof Registry Integration
 
+> **Registry V2 scope:** The integration below is the existing publication registry, not the planned v4.0.0-gc.1 deployment attestation system. Registry V3 issuer trust is specified in [`adr/0002-attester-trust-model.md`](adr/0002-attester-trust-model.md) and is not yet implemented.
+
 ## Registry contract
 
 VeilForge uses the deployed `VeilForgeReportRegistry` interface on Arc Testnet.

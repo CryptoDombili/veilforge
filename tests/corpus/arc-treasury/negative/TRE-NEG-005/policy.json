@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "4.0.0",
+  "policyId": "tre-neg-005",
+  "version": "1.0.0",
+  "domain": "arc-treasury",
+  "approvedWrappers": [
+    {
+      "id": "TRE-NEG-005-WRAPPER",
+      "callable": "TreasuryCaseNegative5.approvedCommitment(bytes32)",
+      "kind": "commitment",
+      "scope": "TreasuryCaseNegative5.publish(bytes32)"
+    }
+  ],
+  "publicFields": [],
+  "acceptedRisks": []
+}

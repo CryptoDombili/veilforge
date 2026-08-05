@@ -1,0 +1,3 @@
+import test from'node:test';import assert from'node:assert/strict';import{scanCase}from'./helpers.mjs';
+test('incomplete corpus result remains incomplete through report and export',async()=>{const result=await scanCase('CRD-ADV-001');assert.equal(result.status,'incomplete');assert.equal(result.report.analysis.complete,false);assert.ok(result.report.analysis.incompleteReasons.length>0);assert.equal(result.verification.verified,true);});
+test('stage failures are structured with partial summary',async()=>{await assert.rejects(()=>scanCase('PAY-POS-001',{stageExecutors:{ir:()=>{throw new Error('safe failure');}}}),error=>error.code==='SCAN_STAGE_FAILED'&&error.stage==='ir'&&error.partial.completedStages.includes('compilation'));});

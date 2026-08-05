@@ -1,0 +1,16 @@
+{
+  "caseId": "TRE-ADV-001",
+  "classification": "adversarial",
+  "analysisStatus": "supported",
+  "expectedOpenFindingCount": 1,
+  "expectedFindings": [
+    {
+      "ruleId": "VF4-PUBLIC-STORAGE",
+      "sourceClass": "employee-payroll",
+      "sink": "public-storage-getter",
+      "occurrenceCount": 1,
+      "disposition": "open"
+    }
+  ],
+  "forbiddenRuleIds": []
+}

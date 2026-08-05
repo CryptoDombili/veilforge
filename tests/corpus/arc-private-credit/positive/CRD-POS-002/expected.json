@@ -1,0 +1,16 @@
+{
+  "caseId": "CRD-POS-002",
+  "classification": "positive",
+  "analysisStatus": "supported",
+  "expectedOpenFindingCount": 1,
+  "expectedFindings": [
+    {
+      "ruleId": "VF4-EVENT-DISCLOSURE",
+      "sourceClass": "loan-terms",
+      "sink": "event",
+      "occurrenceCount": 1,
+      "disposition": "open"
+    }
+  ],
+  "forbiddenRuleIds": []
+}

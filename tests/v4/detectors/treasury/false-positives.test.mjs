@@ -1,0 +1,7 @@
+import test from 'node:test'; import assert from 'node:assert/strict'; import { detect, results } from './helpers.mjs';
+test('unconnected source sink negative',()=>{const {detectorRun}=detect('contract TreasuryCase {event Out(address); function f(address treasuryOperator)external{treasuryOperator; emit Out(address(1));}}'); assert.equal(results(detectorRun,'event-disclosure').length,0);});
+test('non-financial owner admin negative',()=>{const {detectorRun}=detect('contract Misc {event Out(address); function f(address owner,address admin)external{emit Out(owner);emit Out(admin);}}'); assert.equal(detectorRun.results.length,0);});
+test('constant event argument negative',()=>{const {detectorRun}=detect('contract TreasuryCase {event Out(uint); function f(uint treasuryBalance)external{treasuryBalance; emit Out(1);}}'); assert.equal(results(detectorRun,'event-disclosure').length,0);});
+test('public constant negative',()=>{const {detectorRun}=detect('contract TreasuryCase {uint public constant treasuryBalance=1;}'); assert.equal(results(detectorRun,'public-storage-disclosure').length,0);});
+test('function name only negative',()=>{const {detectorRun}=detect('contract TreasuryWithdrawVault {event Out(uint); function withdraw(uint value)external{emit Out(value);}}'); assert.equal(detectorRun.results.length,0);});
+test('local-only value negative',()=>{const {detectorRun}=detect('contract TreasuryCase {function f(uint withdrawalAmount)internal pure{uint x=withdrawalAmount;x;}}'); assert.equal(detectorRun.results.length,0);});

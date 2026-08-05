@@ -1,0 +1,4 @@
+import test from'node:test';import assert from'node:assert/strict';import{projection}from'./helpers.mjs';
+test('Treasury approval getter summary names the public surface',()=>assert.match(projection({domain:'arc-treasury',dataClass:'treasury-operator',detectorId:'arc-treasury.public-getter-disclosure',sinkClass:'public-storage-getter'}).summary,/Public Storage or Getter/u));
+test('loan terms public return summary is concise and trace based',()=>{const s=projection({domain:'arc-private-credit',dataClass:'loan-terms',detectorId:'arc-private-credit.return-disclosure',sinkClass:'return'}).summary;assert.match(s,/Loan Terms/u);assert.ok(s.split(/[.!?]/u).filter(Boolean).length<=2);});
+test('collateral metadata summary uses Private Credit data label',()=>assert.match(projection({domain:'arc-private-credit',dataClass:'collateral',detectorId:'arc-private-credit.metadata-disclosure',sinkClass:'metadata-uri'}).summary,/Collateral Data/u));

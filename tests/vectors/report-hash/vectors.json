@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "1.0.0",
+  "vectors": [
+    {
+      "name": "empty-payroll-report",
+      "report": {
+        "schemaVersion": "4.0.0",
+        "scannerVersion": "4.0.0-gc.1",
+        "analysis": {
+          "status": "complete",
+          "compilerVersion": "0.8.24",
+          "compilerSettings": { "optimizer": { "enabled": false, "runs": 200 } }
+        },
+        "project": {
+          "projectId": "payroll",
+          "domain": "arc-payments",
+          "sources": [
+            { "path": "src/Payroll.sol", "contentHash": "0x2222222222222222222222222222222222222222222222222222222222222222" }
+          ]
+        },
+        "canonicalSourceHash": "0x3333333333333333333333333333333333333333333333333333333333333333",
+        "compilerInputHash": "0x4444444444444444444444444444444444444444444444444444444444444444",
+        "policyHash": "0xdaecaa00f9db25c521dbaf04c5fbdeeed89da8742653404356d09c2e74e89725",
+        "findings": [],
+        "summary": { "total": 0, "critical": 0, "high": 0, "medium": 0, "low": 0, "informational": 0 },
+        "limitations": []
+      },
+      "expectedReportHash": "0xba027d4a84126d588bdc0c7239fc0eef6a3aaaf2e12cd4ce13b73762191e91cb"
+    }
+  ]
+}

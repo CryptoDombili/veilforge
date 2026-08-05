@@ -1,0 +1,3 @@
+import test from'node:test';import assert from'node:assert/strict';import{detect,results}from'./helpers.mjs';
+test('KYC reference to custom error',()=>{const{detectorRun}=detect('contract CreditCase{error Bad(bytes32);function f(bytes32 kycReference)external pure{revert Bad(kycReference);}}');assert.ok(results(detectorRun,'revert-disclosure').length);});
+test('generic loan-not-found revert negative',()=>{const{detectorRun}=detect('contract CreditCase{function f(address borrower)external pure{borrower;revert("loan not found");}}');assert.equal(results(detectorRun,'revert-disclosure').length,0);});

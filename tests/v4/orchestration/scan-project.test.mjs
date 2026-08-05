@@ -1,0 +1,3 @@
+import test from'node:test';import assert from'node:assert/strict';import{SCAN_STAGES}from'../../../packages/analyzer/src/v4/orchestration/index.js';import{scanCase}from'./helpers.mjs';
+test('single call runs the complete supported scan',async()=>{const result=await scanCase('PAY-POS-001');assert.equal(result.status,'completed');assert.deepEqual(result.stages.map(x=>x.stageName),SCAN_STAGES);assert.equal(result.session.metrics.compilerInvocations,1);assert.equal(result.report.integrity.verified,true);assert.equal(result.verification.verified,true);});
+test('invalid input is a structured error',async()=>await assert.rejects(()=>import('../../../packages/analyzer/src/v4/orchestration/index.js').then(x=>x.scanProject({sources:{}})),{code:'SCAN_INPUT_INVALID'}));

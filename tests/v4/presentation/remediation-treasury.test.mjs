@@ -1,0 +1,3 @@
+import test from'node:test';import assert from'node:assert/strict';import{projection}from'./helpers.mjs';
+test('Treasury getter remediation recommends controlled access',()=>assert.ok(projection({domain:'arc-treasury',detectorId:'arc-treasury.public-getter-disclosure',sinkClass:'public-storage-getter'}).remediationSteps.some(x=>x.includes('role- or policy-controlled'))));
+test('Spending limit external call remediation minimizes boundary data',()=>assert.ok(projection({domain:'arc-treasury',dataClass:'amount',detectorId:'arc-treasury.external-call-disclosure',sinkClass:'external-call'}).remediationSteps.some(x=>x.includes('external trust boundary'))));

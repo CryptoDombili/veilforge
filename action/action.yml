@@ -1,0 +1,71 @@
+name: VeilForge V4 Scan
+description: Run an isolated VeilForge scan, emit verified SARIF, and enforce a deterministic policy gate.
+inputs:
+  project-id:
+    description: Stable project identifier
+    required: true
+  source:
+    description: Newline-separated source directories
+    required: true
+  domains:
+    description: Comma-separated VeilForge domains
+    required: false
+    default: payments
+  compiler-version:
+    description: Exact Solidity compiler version
+    required: false
+    default: 0.8.24
+  policy:
+    description: Optional policy JSON path
+    required: false
+  taxonomy:
+    description: Optional taxonomy path
+    required: false
+  output:
+    description: Relative artifact directory
+    required: false
+    default: veilforge-output
+  gate-config:
+    description: Path to gate configuration JSON
+    required: true
+  baseline-report:
+    description: Optional path to a verified previous report
+    required: false
+  fail-on-gate:
+    description: Fail the action when the policy gate fails
+    required: false
+    default: 'true'
+  upload-sarif:
+    description: Generate SARIF for a later upload-sarif step
+    required: false
+    default: 'true'
+  stage-timeout:
+    description: Per-stage timeout in milliseconds
+    required: false
+    default: '120000'
+  global-timeout:
+    description: Hard worker timeout in milliseconds
+    required: false
+    default: '300000'
+outputs:
+  status:
+    description: CLI scan status
+  passed:
+    description: Whether the gate passed
+  findings-count:
+    description: Total projected findings
+  active-findings-count:
+    description: Findings matched by the gate
+  incomplete-count:
+    description: Analysis incomplete reason count
+  sarif-path:
+    description: Verified SARIF path
+  export-path:
+    description: Verified export directory
+  report-hash:
+    description: Canonical report integrity hash
+  gate-decision:
+    description: allow or deny
+runs:
+  using: node20
+  main: entrypoint.mjs

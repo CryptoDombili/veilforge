@@ -1,0 +1,23 @@
+schemaVersion: "1.0.0"
+candidateVersion: "4.0.0-gc.1"
+domains:
+  arc-payments:
+    sensitiveClasses: [payer, payee, beneficiary, supplier, amount, invoice-reference, customer-kyc-reference, settlement-reference]
+  arc-treasury:
+    sensitiveClasses: [treasury-operator, supplier, beneficiary, employee-payroll, amount, invoice-reference, settlement-reference]
+  arc-private-credit:
+    sensitiveClasses: [customer-kyc-reference, beneficiary, loan-terms, collateral, interest-rate, settlement-reference]
+sinks:
+  - public-storage-getter
+  - event
+  - calldata
+  - return
+  - revert-custom-error
+  - external-call
+  - metadata-uri
+inferencePolicy:
+  declaredPolicy: authoritative
+  knownFinancialAbi: high-confidence
+  storageAndFlowContext: high-confidence
+  identifierNameOnly: low-confidence
+  functionNameOnly: insufficient-for-declassification

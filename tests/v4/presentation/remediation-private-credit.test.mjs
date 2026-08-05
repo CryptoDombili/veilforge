@@ -1,0 +1,3 @@
+import test from'node:test';import assert from'node:assert/strict';import{projection}from'./helpers.mjs';
+test('Loan terms return remediation removes public return data',()=>assert.ok(projection({domain:'arc-private-credit',dataClass:'loan-terms',detectorId:'arc-private-credit.return-disclosure',sinkClass:'return'}).remediationSteps.some(x=>x.includes('return values'))));
+test('Collateral metadata remediation avoids raw references',()=>assert.ok(projection({domain:'arc-private-credit',dataClass:'collateral',detectorId:'arc-private-credit.metadata-disclosure',sinkClass:'metadata-uri'}).remediationSteps.some(x=>x.includes('raw financial references'))));

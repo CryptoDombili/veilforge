@@ -1,0 +1,8 @@
+{
+  "caseId": "PAY-ADV-001",
+  "classification": "adversarial",
+  "analysisStatus": "supported",
+  "expectedOpenFindingCount": 0,
+  "expectedFindings": [],
+  "forbiddenRuleIds": []
+}

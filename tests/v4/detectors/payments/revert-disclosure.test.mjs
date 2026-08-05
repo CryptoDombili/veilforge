@@ -1,0 +1,4 @@
+import test from 'node:test'; import assert from 'node:assert/strict'; import { detect, results } from './helpers.mjs';
+test('sensitive value to revert string', () => { const { detectorRun } = detect('contract PaymentCase { function f(string calldata payer) external pure { revert(payer); } }'); assert.ok(results(detectorRun, 'revert-disclosure').length); });
+test('sensitive value to custom error', () => { const { detectorRun } = detect('contract PaymentCase { error Bad(bytes32); function f(bytes32 invoiceReference) external pure { revert Bad(invoiceReference); } }'); assert.ok(results(detectorRun, 'revert-disclosure').length); });
+test('generic revert negative', () => { const { detectorRun } = detect('contract PaymentCase { function f(address payer) external pure { payer; revert("failed"); } }'); assert.equal(results(detectorRun, 'revert-disclosure').length, 0); });

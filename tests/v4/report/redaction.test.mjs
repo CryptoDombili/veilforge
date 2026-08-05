@@ -1,0 +1,5 @@
+import test from'node:test';import assert from'node:assert/strict';import{context,report}from'./helpers.mjs';import{buildReport}from'../../../packages/analyzer/src/v4/report/index.js';
+test('source code is not embedded in report',()=>{const r=report(),text=JSON.stringify(r);assert.ok(!text.includes('contract Case {}'));assert.ok(r.inputs.sourceManifest[0].contentDigest.startsWith('sha256:'));});
+test('secret-looking metadata is redacted with digest',()=>{const r=report({extensions:{'org.veilforge.experimental':{apiToken:'super-secret-token'}}});assert.equal(r.extensions['org.veilforge.experimental'].apiToken.redacted,true);});
+test('unsafe literal is redacted',()=>{const secret='-----BEGIN PRIVATE KEY----- value';const r=report({extensions:{'org.veilforge.experimental':{note:secret}}});assert.ok(!JSON.stringify(r).includes(secret));});
+test('checkout root is removed when explicitly supplied',()=>{const c=context();c.inputs.sources=[{path:'C:\\repo\\src\\Case.sol',content:'contract Case {}'}];const r=buildReport(c,{projectRoot:'C:\\repo'});assert.equal(r.inputs.sourceManifest[0].path,'src/Case.sol');});

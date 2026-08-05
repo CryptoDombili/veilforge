@@ -1,0 +1,16 @@
+{
+  "caseId": "TRE-POS-003",
+  "classification": "positive",
+  "analysisStatus": "supported",
+  "expectedOpenFindingCount": 1,
+  "expectedFindings": [
+    {
+      "ruleId": "VF4-CALLDATA-DISCLOSURE",
+      "sourceClass": "amount",
+      "sink": "calldata",
+      "occurrenceCount": 1,
+      "disposition": "open"
+    }
+  ],
+  "forbiddenRuleIds": []
+}

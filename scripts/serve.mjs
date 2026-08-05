@@ -10,7 +10,9 @@ const valueAfter = (flag) => {
 };
 const port = Number(valueAfter('--port') || process.env.PORT || 4174);
 const host = valueAfter('--host') || process.env.HOST || '127.0.0.1';
-const root = path.resolve(process.cwd(), 'dist');
+const rootDirectory = valueAfter('--root') || 'dist';
+if (!['dist', 'dist-preview-v4'].includes(rootDirectory)) throw new Error('Preview root must be dist or dist-preview-v4.');
+const root = path.resolve(process.cwd(), rootDirectory);
 
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error(`Invalid port: ${port}`);
 
@@ -20,6 +22,7 @@ const mimeTypes = new Map([
   ['.js', 'text/javascript; charset=utf-8'],
   ['.json', 'application/json; charset=utf-8'],
   ['.png', 'image/png'],
+  ['.pdf', 'application/pdf'],
   ['.sol', 'text/plain; charset=utf-8'],
   ['.svg', 'image/svg+xml; charset=utf-8'],
   ['.txt', 'text/plain; charset=utf-8'],

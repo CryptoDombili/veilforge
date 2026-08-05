@@ -1,0 +1,5 @@
+import{createHash}from'node:crypto';import{canonicalReportBytes}from'../report/canonical-json.js';
+export const EXPORT_MANIFEST_VERSION='veilforge.export.v1';
+export const byteDigest=bytes=>`sha256:${createHash('sha256').update(bytes).digest('hex')}`;
+export function packageDigest(manifest){const payload={...manifest,packageDigest:null};return byteDigest(canonicalReportBytes(payload));}
+export function buildExportManifest(report,files){const entries=[...files].sort((a,b)=>a.filename<b.filename?-1:a.filename>b.filename?1:0).map(file=>({filename:file.filename,mediaType:file.mediaType,byteLength:file.bytes.length,sha256:byteDigest(file.bytes),deterministic:true,role:file.role}));const manifest={manifestVersion:EXPORT_MANIFEST_VERSION,reportId:report.scan?.scanId??report.integrity.reportHash,reportHash:report.integrity.reportHash,files:entries,packageDigest:null,createdBy:`${report.scanner.name}/${report.scanner.version}`,exclusions:['manifest.packageDigest','scan.operational','extensions.uiState'],verified:true};manifest.packageDigest=packageDigest(manifest);return manifest;}

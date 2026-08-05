@@ -1,0 +1,3 @@
+import test from'node:test';import assert from'node:assert/strict';import{renderMarkdownReport}from'../../../packages/analyzer/src/v4/export/index.js';import{report}from'./helpers.mjs';
+test('integrity section renders every canonical digest and exclusion',()=>{const value=report(),md=renderMarkdownReport(value);for(const key of['reportHash','sourceManifestDigest','compilerDigest','policyDigest','findingsDigest','summaryDigest'])assert.ok(md.includes(value.integrity[key]),key);for(const exclusion of value.integrity.exclusions)assert.ok(md.includes(exclusion));});
+test('report hash and Markdown digest are explicitly distinct',()=>assert.match(renderMarkdownReport(report()),/Markdown file digest is a separate export-file digest/));

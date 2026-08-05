@@ -1,2 +1,3 @@
 export const REGISTRY_ADDRESS = '0x88B4055eaB061CEa9BdfefF524f65ff461B5401d';
 export const BUILD_VERSION = '3.2.2';
+export const WEB_V4_ENABLED = false;

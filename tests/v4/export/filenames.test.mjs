@@ -1,0 +1,3 @@
+import test from'node:test';import assert from'node:assert/strict';import{assertSafeFilename,defaultExportFilenames}from'../../../packages/analyzer/src/v4/export/index.js';
+test('default filenames are stable and safe',()=>assert.deepEqual(defaultExportFilenames(),['veilforge-report-v4.json','veilforge-report-v4.md','veilforge-export-manifest.json']));
+test('path traversal absolute paths reserved names controls and long names are rejected',()=>{for(const value of['../x','/tmp/x','C:\\tmp\\x','CON','nul.txt','a/b','a\\b','x\u0000y',`${'x'.repeat(129)}.md`])assert.throws(()=>assertSafeFilename(value),{code:'EXPORT_UNSAFE_FILENAME'});});

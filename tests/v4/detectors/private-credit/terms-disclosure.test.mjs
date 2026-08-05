@@ -1,0 +1,3 @@
+import test from'node:test';import assert from'node:assert/strict';import{detect,results}from'./helpers.mjs';
+for(const [name,type,param]of[['loan amount','uint','loanAmount'],['loan-specific interest rate','uint','interestRate'],['repayment schedule reference','bytes32','repaymentScheduleReference'],['credit agreement reference','bytes32','creditAgreementReference']])test(`${name} to terms detector`,()=>{const{detectorRun}=detect(`contract CreditCase{event Out(${type});function f(${type} ${param})external{emit Out(${param});}}`);assert.ok(results(detectorRun,'terms-disclosure').length);});
+test('general protocol interest rate negative',()=>{const{detectorRun}=detect('contract ProtocolConfig{uint public interestRate;}');assert.equal(detectorRun.results.length,0);});

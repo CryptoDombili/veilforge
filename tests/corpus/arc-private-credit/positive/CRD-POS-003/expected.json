@@ -1,0 +1,16 @@
+{
+  "caseId": "CRD-POS-003",
+  "classification": "positive",
+  "analysisStatus": "supported",
+  "expectedOpenFindingCount": 1,
+  "expectedFindings": [
+    {
+      "ruleId": "VF4-CALLDATA-DISCLOSURE",
+      "sourceClass": "customer-kyc-reference",
+      "sink": "calldata",
+      "occurrenceCount": 1,
+      "disposition": "open"
+    }
+  ],
+  "forbiddenRuleIds": []
+}

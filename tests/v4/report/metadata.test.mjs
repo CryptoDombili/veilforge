@@ -1,0 +1,4 @@
+import test from'node:test';import assert from'node:assert/strict';import{context,report}from'./helpers.mjs';import{buildReport}from'../../../packages/analyzer/src/v4/report/index.js';
+test('project and deterministic scan metadata contain stable identities',()=>{const r=report();assert.ok(r.project.projectFingerprint.startsWith('sha256:'));assert.ok(r.scan.scanId.startsWith('sha256:'));assert.equal(r.project.sourceUnitCount,1);});
+test('absolute source path is rejected without project root',()=>{const c=context();c.inputs.sources=[{path:'C:\\Users\\alice\\repo\\src\\Case.sol',content:'contract Case {}'}];assert.throws(()=>buildReport(c),e=>e.code==='REPORT_UNSAFE_METADATA');});
+test('operational metadata is separated and optional',()=>{assert.equal(report().scan.operational,null);assert.ok(report({}, {includeOperational:true}).scan.operational.generatedAt);});

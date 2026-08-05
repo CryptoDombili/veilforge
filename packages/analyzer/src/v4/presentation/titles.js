@@ -1,0 +1,2 @@
+import { catalogMessage, catalogValue } from './catalog.js';
+export function presentTitle(finding, catalog) { const data=catalogValue(catalog,'dataLabels',finding.dataClass),surface=catalogValue(catalog,'surfaceLabels',finding.sinkClass);const key=finding.category==='calldata-observation'?'title.observation':finding.incomplete?'title.incomplete':'title.disclosure';return{titleKey:key,title:catalogMessage(catalog,key,{data,surface})}; }

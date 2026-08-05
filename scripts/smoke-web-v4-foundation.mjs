@@ -1,0 +1,23 @@
+import { report } from '../tests/v4/report/helpers.mjs';
+import { browserFilesToScanInput } from '../apps/web/v4/input-adapter.js';
+import { createV4WebExport, verifyV4WebExport } from '../apps/web/v4/export-adapter.js';
+import { DEFAULT_WEB_V4_ENABLED, selectWebRuntime } from '../apps/web/v4/feature-flags.js';
+import { loadV4Report, saveV4Report } from '../apps/web/v4/persistence.js';
+import { verifyV4Report } from '../apps/web/v4/report-adapter.js';
+import { createWorkerMessage } from '../apps/web/v4/runtime/protocol.js';
+import { createWorkerRuntime } from '../apps/web/v4/runtime/worker-runtime.js';
+import { createV4ViewModel } from '../apps/web/v4/view-models.js';
+
+const data = new TextEncoder().encode('contract Case {}');
+const input = await browserFilesToScanInput([{ name: 'Case.sol', async arrayBuffer() { return data.buffer; } }], { projectId: 'smoke', domains: ['arc-payments'] });
+const verification = await verifyV4Report(report());
+const view = createV4ViewModel(verification);
+const bundle = await createV4WebExport(verification, view);
+await verifyV4WebExport(bundle);
+const values = new Map(); const storage = { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) };
+await saveV4Report(storage, verification, { now: () => new Date('2026-08-05T00:00:00Z') });
+await loadV4Report(storage, verification.report.project.projectId);
+const messages = []; const runtime = createWorkerRuntime({ postMessage: (message) => messages.push(message), scan: async () => ({ report: verification.report }) });
+runtime.start(); await runtime.handle(createWorkerMessage('scan-request', 'smoke', { scanInput: input, limits: {} }));
+if (DEFAULT_WEB_V4_ENABLED !== false || selectWebRuntime({ enabled: false, v3Runtime: 'v3', v4Runtime: 'v4' }) !== 'v3' || messages.at(-1)?.messageType !== 'result') throw new Error('Web V4 foundation smoke failed.');
+process.stdout.write(JSON.stringify({ passed: true, flagDefault: false, protocol: messages[0].protocolVersion, reportHash: verification.reportHash, exportFiles: bundle.files.length }) + '\n');

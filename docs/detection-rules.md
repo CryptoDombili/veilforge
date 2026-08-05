@@ -1,5 +1,7 @@
 # Detection Rules and Custom Rules
 
+> **Legacy v3 rules:** The rules below describe the current v3.2.2 prototype and are not evidence of v4.0.0-gc.1 AST/dataflow support. Grant Candidate acceptance criteria are defined in [`grant-candidate/acceptance-criteria.md`](grant-candidate/acceptance-criteria.md).
+
 ## Built-in rule contract
 
 Every finding contains:

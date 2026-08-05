@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "4.0.0",
+  "policyId": "tre-pos-007",
+  "version": "1.0.0",
+  "domain": "arc-treasury",
+  "approvedWrappers": [],
+  "publicFields": [],
+  "acceptedRisks": []
+}

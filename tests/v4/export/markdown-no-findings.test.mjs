@@ -1,0 +1,3 @@
+import test from'node:test';import assert from'node:assert/strict';import{renderMarkdownReport}from'../../../packages/analyzer/src/v4/export/index.js';import{report}from'./helpers.mjs';
+test('no-findings report is explicit',()=>{const md=renderMarkdownReport(report({findingRun:{summary:{total:0}},presentationRun:{findings:[]}}));assert.match(md,/0 grouped finding/);assert.match(md,/No detailed findings/);});
+test('informational observations have a separate section',()=>{const value=report();value.findings[0].severity='informational';const md=renderMarkdownReport(value);assert.match(md,/## Informational observations\n\n- /);});

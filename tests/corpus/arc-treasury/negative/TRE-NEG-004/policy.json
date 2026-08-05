@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "4.0.0",
+  "policyId": "tre-neg-004",
+  "version": "1.0.0",
+  "domain": "arc-treasury",
+  "approvedWrappers": [],
+  "publicFields": [
+    {
+      "id": "TRE-NEG-004-PUBLIC",
+      "field": "TreasuryCaseNegative4.supplierReference",
+      "justification": "The integration identifier is intentionally public.",
+      "scope": "TreasuryCaseNegative4"
+    }
+  ],
+  "acceptedRisks": []
+}

@@ -191,6 +191,10 @@ footer>.brand b{
   main>.flow-hero{padding-top:calc(clamp(58px,7vh,88px) + 15px)!important}
 }
 
+@media(min-width:981px) and (max-height:760px){
+  main>.flow-hero{padding:42px 0 54px!important}
+}
+
 @media(prefers-reduced-motion:reduce){
   body:after{animation:none}
 }

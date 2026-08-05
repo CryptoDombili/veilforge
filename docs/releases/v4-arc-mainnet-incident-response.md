@@ -1,0 +1,36 @@
+# V4 Arc Mainnet Incident Response
+
+Status: pre-deployment runbook. Registry V2 is immutable and has no owner, admin, pause, upgrade, or deletion capability. “Disable” therefore means disabling client trust, read/publish gates, sending, or deployment automation—not modifying chain history.
+
+## Common first response
+
+Assign an incident lead, preserve logs without secrets/source, freeze new sends and config changes, set `publishEnabled=false`, set the production feature flag false, and record the trusted chain/address/config/manifest version. Never request a private key or seed phrase during triage.
+
+## Scenario matrix
+
+| Scenario | Detect | Contain | Disable | Investigate | Recover | Communicate |
+| --- | --- | --- | --- | --- | --- | --- |
+| Wrong chain config | Provider chain differs from signed config or official evidence | Freeze rollout; preserve provider responses | Disable mainnet read/publish and wallet metadata | Compare official sources, config history, signatures, and affected sessions | Issue reviewed config version; repeat read-only acceptance | State affected versions/times; do not imply transactions moved chains |
+| Wrong registry address | Receipt/runtime/address differs from deployment evidence | Stop all interactions with the address | Remove address from trusted config; sending false | Trace config provenance and check whether any tx targeted it | Verify correct deployment or begin new reviewed deployment | Publish exact affected address and that on-chain tx cannot be deleted |
+| Compromised deployer | Unauthorized deployer activity or custody alert | Revoke infrastructure/RPC access; isolate release system | Cancel pending deployment and release signing | Review account history, CI access, manifests, and credential exposure | Rotate before deployment; after deployment document that Registry V2 grants deployer no role | Provide scope and tx evidence without exposing key material |
+| Compromised publisher wallet | Unexpected publisher-scoped record or wallet alert | Freeze that publisher and dependent automation | Disable proof publishing; remove wallet authorization | Reconcile records/txs and determine overwrite window | Move to a new publisher identity; preserve old chain-aware history | Clearly identify old/new publisher and affected proofs |
+| RPC outage | Timeouts or inconsistent responses across approved providers | Stop preflight/send; retain local reports | Read/publish false if chain state cannot be trusted | Compare provider status and independent read-only sources | Resume only after bounded requests and state binding pass | Report degraded proof availability, not lost local analysis |
+| Explorer outage | Explorer links unavailable but RPC/receipts may remain valid | Avoid substituting an untrusted explorer | Disable explorer links; publishing may remain disabled by policy | Verify chain data directly through approved RPCs | Restore only the configured trusted explorer after validation | Distinguish explorer visibility from chain finality |
+| Duplicate publication | `hasReport` or persistence shows already published | Prevent request construction and wallet review | Keep second-send boundary disabled | Verify chain/registry/publisher/report hash and existing receipt/event | Present `already-published` and verified original tx | Explain no second fee/tx was sent; retain both network identities if applicable |
+| Receipt/event mismatch | Successful receipt lacks expected trusted event/fields | Quarantine result; do not mark confirmed | Disable publish and persistence of confirmed state | Compare chain, registry, publisher, topics, hashes, block, calldata | Reconcile from trusted provider or mark unverified; never fabricate identity | State that confirmation failed despite transaction status |
+| High fee | Estimate/fee parameters exceed approved threshold or balance | Stop user review and invalidate stale estimate | Disable sending for affected network/provider | Check fee asset, current network conditions, calldata, and provider response | Re-estimate later under a new user gesture and approval | Show units/asset/time; never quote Testnet fee as mainnet price |
+| Contract revert | `eth_call`, estimate, or mined receipt indicates revert | Stop retries and duplicate attempts | Disable affected publish workflow | Validate inputs, value zero, chain/address/runtime, duplicate state, revert data safely | Correct off-chain cause and repeat read-only simulation; redeploy only for contract defect | Report failure without raw secret/provider data |
+| Registry code mismatch | Runtime digest/selectors/version differ from manifest | Treat address as untrusted | Disable read/publish and remove trusted address | Compare deployment receipt, compiler manifest, proxy indicators, and provider consistency | Verify correct address or execute a newly approved deployment | Publish expected/actual digests and affected config version |
+| UI stale config | UI shows prior chain/address/gates after config release | Stop distribution and invalidate caches | Feature flag false; send disabled; previous build restored | Check build/config digests, cache headers, and active sessions | Redeploy signed prior config/build through authorized process | Instruct hard refresh and list impacted build identifier |
+| Tampered release manifest | Signature/digest/check fails | Quarantine artefact and release system | Cancel deploy/publish approvals | Compare trusted commit, CI provenance, signing logs, and file digests | Rebuild from reviewed commit and rotate signing credentials if needed | Disclose integrity failure and replacement manifest identity |
+| Report hash mismatch | Envelope/report/event/record hashes differ | Quarantine proof and retain source locally | Disable confirmation/persistence and additional send | Recompute report `4.1.0` hash payload v2 and trace identity inputs | Produce a fresh verified report; never rewrite chain event | State which identity failed without exposing report/source content |
+| Private key exposure | Secret scanner, log, operator, or custody system reports exposure | Isolate host/account and revoke provider/CI access | Cancel deployment; disable publishing/signing workflows | Determine key, time window, addresses, txs, and log distribution | Rotate all affected credentials; migrate publisher identity; redeploy only if pre-deployment artefact trust failed | Follow legal/security disclosure process; never transmit the secret itself |
+
+## Severity and resumption
+
+Any unauthorized transaction, key exposure, wrong chain/address, code mismatch, or receipt/event mismatch is critical. Resumption requires root cause, affected-identity reconciliation, reviewed configuration/manifest, repeated targeted tests, and a rollback drill. An explorer-only outage may be operationally lower severity, but the UI must not create an alternative untrusted link.
+
+## Evidence retention
+
+Retain timestamps, config/manifest digests, chain ID, addresses, transaction hashes, block numbers, safe error codes, and responsible approvals. Do not retain source code, report contents, RPC URLs containing credentials, private keys, seed phrases, wallet screenshots, or raw exceptions that may expose local paths/secrets.
+

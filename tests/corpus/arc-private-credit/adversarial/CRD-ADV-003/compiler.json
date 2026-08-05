@@ -1,0 +1,13 @@
+{
+  "language": "Solidity",
+  "version": "0.8.23",
+  "mode": "exact",
+  "sourcePath": "src/Case.sol",
+  "settings": {
+    "optimizer": {
+      "enabled": false,
+      "runs": 200
+    },
+    "evmVersion": "shanghai"
+  }
+}

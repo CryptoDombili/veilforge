@@ -1,0 +1,3 @@
+import test from 'node:test'; import assert from 'node:assert/strict'; import { capture } from './helpers.mjs';
+test('help documents commands options and exit codes', async () => { const result = await capture(['--help']); assert.equal(result.exitCode, 0); for (const text of ['scan', 'verify-report', 'verify-export', '--global-timeout', '--output', '--json', 'Exit codes']) assert.match(result.stdout, new RegExp(text)); });
+test('unknown command is structured', async () => { const result = await capture(['unknown']); assert.equal(result.exitCode, 2); assert.match(result.stderr, /CLI_ARGUMENT_INVALID/u); });

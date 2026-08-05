@@ -1,0 +1,8 @@
+{
+  "caseId": "CRD-ADV-004",
+  "classification": "adversarial",
+  "analysisStatus": "analysis-incomplete",
+  "expectedOpenFindingCount": 0,
+  "expectedFindings": [],
+  "forbiddenRuleIds": []
+}

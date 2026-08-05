@@ -1,0 +1,99 @@
+name: V4 web cross-browser acceptance
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/grant-candidate-phase-5b3-web-acceptance-readiness
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v4-web-cross-browser-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PLAYWRIGHT_VERSION: 1.60.0
+
+jobs:
+  targeted:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npm run test:web-v4-acceptance
+      - run: npm run test:web-v4-security
+      - run: npm run test:web-v4-rollback
+      - run: node --test tests/web/v4-acceptance/lifecycle-diagnostic.test.mjs
+      - run: node --test tests/web/v4-acceptance/repeated-worker-stress.test.mjs
+
+  browser:
+    needs: targeted
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - browser: chromium
+            os: ubuntu-latest
+            install: chromium
+          - browser: firefox
+            os: ubuntu-latest
+            install: firefox
+          - browser: webkit
+            os: ubuntu-latest
+            install: webkit
+          - browser: edge
+            os: windows-latest
+            install: none
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npm install --no-save --package-lock=false playwright@${{ env.PLAYWRIGHT_VERSION }}
+      - if: matrix.install != 'none'
+        run: npx playwright install --with-deps ${{ matrix.install }}
+      - run: npm run build:web-v4-preview
+      - name: Real browser acceptance
+        run: node scripts/smoke-web-v4-cross-browser.mjs --browser=${{ matrix.browser }} --summary=output/ci-safe/${{ matrix.browser }}.json
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v4-web-${{ matrix.browser }}-safe-summary
+          path: output/ci-safe/${{ matrix.browser }}.json
+          if-no-files-found: error
+          retention-days: 7
+
+  regression:
+    needs: [targeted, browser]
+    if: always() && needs.targeted.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npm run build:web-v4-preview
+      - run: npm run smoke:web-v4-rollback
+      - run: npm run build && npm run smoke:browser
+      - run: npm run test:web-v4-ui && npm run test:web-v4-ui-accessibility && npm run test:web-v4-ui-history && npm run test:web-v4-ui-export
+      - run: npm run smoke:web-v4-ui && npm run smoke:web-v4-ui-responsive
+      - run: npm run build:web-v4-runtime && npm run verify:web-v4-runtime && npm run smoke:web-v4-real-scan
+      - run: npm run benchmark:v4
+      - run: npm run smoke:v4-release-gate
+      - run: npm run test:v4-sdk && npm run test:v4-report && npm run test:v4-export && npm run test:v4-orchestration
+      - run: npm run typecheck
+      - run: npm run manifest:check

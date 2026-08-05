@@ -1,0 +1,9 @@
+import { DetectorRegistry } from '../detector-registry.js';
+import { privateCreditCalldataObservation } from './private-credit-calldata-observation.js'; import { privateCreditCollateralDisclosure } from './private-credit-collateral-disclosure.js';
+import { privateCreditEventDisclosure } from './private-credit-event-disclosure.js'; import { privateCreditExternalCallDisclosure } from './private-credit-external-call-disclosure.js';
+import { privateCreditMetadataDisclosure } from './private-credit-metadata-disclosure.js'; import { privateCreditPublicGetterDisclosure } from './private-credit-public-getter-disclosure.js';
+import { privateCreditPublicStorageDisclosure } from './private-credit-public-storage-disclosure.js'; import { privateCreditReturnDisclosure } from './private-credit-return-disclosure.js';
+import { privateCreditRevertDisclosure } from './private-credit-revert-disclosure.js'; import { privateCreditTermsDisclosure } from './private-credit-terms-disclosure.js';
+export const privateCreditDetectors=Object.freeze([privateCreditCalldataObservation,privateCreditCollateralDisclosure,privateCreditEventDisclosure,privateCreditExternalCallDisclosure,privateCreditMetadataDisclosure,privateCreditPublicGetterDisclosure,privateCreditPublicStorageDisclosure,privateCreditReturnDisclosure,privateCreditRevertDisclosure,privateCreditTermsDisclosure]);
+export function createPrivateCreditDetectorRegistry(){return new DetectorRegistry(privateCreditDetectors);}
+export {privateCreditCalldataObservation,privateCreditCollateralDisclosure,privateCreditEventDisclosure,privateCreditExternalCallDisclosure,privateCreditMetadataDisclosure,privateCreditPublicGetterDisclosure,privateCreditPublicStorageDisclosure,privateCreditReturnDisclosure,privateCreditRevertDisclosure,privateCreditTermsDisclosure};

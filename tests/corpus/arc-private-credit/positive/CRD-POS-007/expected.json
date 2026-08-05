@@ -1,0 +1,16 @@
+{
+  "caseId": "CRD-POS-007",
+  "classification": "positive",
+  "analysisStatus": "supported",
+  "expectedOpenFindingCount": 1,
+  "expectedFindings": [
+    {
+      "ruleId": "VF4-METADATA-DISCLOSURE",
+      "sourceClass": "loan-terms",
+      "sink": "metadata-uri",
+      "occurrenceCount": 1,
+      "disposition": "open"
+    }
+  ],
+  "forbiddenRuleIds": []
+}

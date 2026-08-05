@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://veilforge.dev/schemas/v4/finding.schema.json",
+  "title": "VeilForge V4 Finding",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "findingId", "detectorId", "detectorVersion", "stableRuleKey", "ruleId", "domain", "sourceClass", "sinkClass", "severity", "confidence", "traceHash", "occurrences", "disposition"],
+  "properties": {
+    "schemaVersion": { "const": "4.1.0" },
+    "detectorId": { "type": "string", "pattern": "^arc-(?:payments|treasury|private-credit)\\.[a-z0-9-]+$" },
+    "detectorVersion": { "type": "string", "minLength": 1 },
+    "stableRuleKey": { "type": "string", "pattern": "^arc-(?:payments|treasury|private-credit)\\.[a-z0-9-]+$" },
+    "findingId": { "$ref": "#/$defs/hash" },
+    "ruleId": { "type": "string", "pattern": "^arc-(?:payments|treasury|private-credit)\\.[a-z0-9-]+$" },
+    "domain": { "enum": ["arc-payments", "arc-treasury", "arc-private-credit"] },
+    "sourceClass": { "$ref": "#/$defs/sourceClass" },
+    "sinkClass": { "$ref": "#/$defs/sinkClass" },
+    "severity": { "enum": ["critical", "high", "medium", "low", "informational"] },
+    "confidence": { "enum": ["high", "medium", "low"] },
+    "traceHash": { "$ref": "#/$defs/hash" },
+    "occurrences": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/occurrence" }
+    },
+    "disposition": { "enum": ["open", "approved-public", "declassified", "accepted-risk", "suppressed"] },
+    "policyReference": { "type": ["string", "null"] },
+    "limitations": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true }
+  },
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^0x[0-9a-f]{64}$" },
+    "sourceClass": {
+      "enum": ["payer", "payee", "beneficiary", "supplier", "employee-payroll", "amount", "invoice-reference", "customer-kyc-reference", "loan-terms", "collateral", "interest-rate", "settlement-reference", "treasury-operator"]
+    },
+    "sinkClass": { "enum": ["public-storage-getter", "event", "calldata", "return", "revert-custom-error", "external-call", "metadata-uri"] },
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "startByte", "endByte", "startLine", "startColumn", "endLine", "endColumn"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1, "pattern": "^(?![A-Za-z]:)(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$" },
+        "startByte": { "type": "integer", "minimum": 0 },
+        "endByte": { "type": "integer", "minimum": 0 },
+        "startLine": { "type": "integer", "minimum": 1 },
+        "startColumn": { "type": "integer", "minimum": 1 },
+        "endLine": { "type": "integer", "minimum": 1 },
+        "endColumn": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "occurrence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["occurrenceId", "ordinal", "sourceLocation", "sinkLocation"],
+      "properties": {
+        "occurrenceId": { "$ref": "#/$defs/hash" },
+        "ordinal": { "type": "integer", "minimum": 0 },
+        "sourceLocation": { "$ref": "#/$defs/location" },
+        "sinkLocation": { "$ref": "#/$defs/location" }
+      }
+    }
+  }
+}

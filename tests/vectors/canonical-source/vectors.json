@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "1.0.0",
+  "equivalentGroups": [
+    {
+      "name": "windows-path-bom-crlf-equivalence",
+      "variants": [
+        [{ "path": "src\\Payroll.sol", "content": "﻿pragma solidity 0.8.24;\r\ncontract Payroll {}\r\n" }],
+        [{ "path": "./src/Payroll.sol", "content": "pragma solidity 0.8.24;\ncontract Payroll {}\n" }]
+      ],
+      "expectedPaths": ["src/Payroll.sol"],
+      "expectedHash": "0x0439dfd9397858b1973959393717f5107bba6d0180d6de7d2ee3ea49e3ea8b94"
+    },
+    {
+      "name": "unicode-path-nfc-equivalence",
+      "variants": [
+        [{ "path": "src/Café.sol", "content": "pragma solidity 0.8.24;\ncontract Cafe {}\n" }],
+        [{ "path": "src/Café.sol", "content": "pragma solidity 0.8.24;\ncontract Cafe {}\n" }]
+      ],
+      "expectedPaths": ["src/Café.sol"],
+      "expectedHash": "0x7b3a8b022150fccdedd93791e1d887a08b3eee8afcc8b9979cb2f3df511d0979"
+    }
+  ],
+  "rejectedPathSets": [
+    { "name": "windows-absolute", "paths": ["C:\\repo\\Contract.sol"] },
+    { "name": "posix-absolute", "paths": ["/repo/Contract.sol"] },
+    { "name": "parent-segment", "paths": ["src/../Contract.sol"] },
+    { "name": "case-folded-collision", "paths": ["src/Credit.sol", "src/credit.sol"] },
+    { "name": "separator-collision", "paths": ["src\\Payment.sol", "src/Payment.sol"] }
+  ]
+}
