@@ -15,6 +15,8 @@
     "./cli": "./packages/cli/src/index.js",
     "./cli/protocol": "./packages/cli/src/worker-protocol.js",
     "./cli/version": "./packages/cli/src/commands/version.js"
+    ,"./sarif": "./packages/sarif/src/index.js"
+    ,"./gate": "./packages/gate/src/index.js"
   },
   "bin": {
     "veilforge": "./packages/cli/bin/veilforge.js"
@@ -69,6 +71,13 @@
     "test:v4-cli-examples": "node --test tests/v4/cli/examples.test.mjs",
     "smoke:v4-cli": "node scripts/smoke-v4-cli.mjs",
     "smoke:v4-e2e": "node scripts/smoke-v4-e2e.mjs",
+    "test:v4-sarif": "node --test tests/v4/sarif/render.test.mjs tests/v4/sarif/dispositions.test.mjs tests/v4/sarif/verify.test.mjs",
+    "test:v4-sarif-determinism": "node --test tests/v4/sarif/determinism.test.mjs",
+    "test:v4-gate": "node --test tests/v4/gate/gate.test.mjs tests/v4/gate/baseline.test.mjs",
+    "test:v4-gate-determinism": "node --test tests/v4/gate/determinism.test.mjs",
+    "test:v4-action": "node --test --test-concurrency=1 tests/v4/action/action.test.mjs tests/v4/action/cli-integration.test.mjs",
+    "test:v4-action-examples": "node --test tests/v4/action/examples.test.mjs",
+    "smoke:v4-ci": "node scripts/smoke-v4-ci.mjs",
     "typecheck": "node scripts/typecheck.mjs",
     "smoke:browser": "node scripts/smoke-browser.mjs",
     "preflight": "node scripts/preflight.mjs",

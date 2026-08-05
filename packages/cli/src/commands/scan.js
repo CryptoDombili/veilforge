@@ -1,7 +1,9 @@
 import { readFile } from 'node:fs/promises';
 import { discoverSources } from '../source-discovery.js';
 import { createWorkerScan } from '../worker-client.js';
-import { writeExportPackage } from '../file-writer.js';
+import { writeAtomicFile, writeExportPackage } from '../file-writer.js';
+import { renderSarifJson, verifySarif } from '../../../sarif/src/index.js';
+import { evaluateGate, loadGateConfig } from '../../../gate/src/index.js';
 import { createProgressWriter } from '../progress.js';
 import { scanSummary } from '../output.js';
 import { cliError } from '../errors.js';
@@ -29,9 +31,23 @@ export async function scanCommand(options, io = {}) {
   let sigints = 0; const onSigint = () => { sigints += 1; if (sigints === 1) controller.abort(); else worker.forceKill(); };
   process.on('SIGINT', onSigint);
   try {
-    const result = await worker.promise; let outputFiles = [];
+    const result = await worker.promise; let outputFiles = []; const integrations = {};
     if (!options['no-export']) outputFiles = await writeExportPackage(result.exportPackage, options.output, { overwrite: Boolean(options.overwrite) });
+    const integrationRoot = options.output ?? io.cwd ?? process.cwd();
+    if (options.sarif || options['sarif-output']) {
+      const sarif = renderSarifJson(result.report); verifySarif(JSON.parse(sarif), { reportHash: result.report.integrity.reportHash, canonicalBytes: sarif });
+      const requested = options['sarif-output']; const target = requested ? requested.toLowerCase().endsWith('.sarif') ? requested : path.join(requested, 'veilforge-results-v4.sarif') : path.join(integrationRoot, 'veilforge-results-v4.sarif');
+      await writeAtomicFile(target, sarif, { overwrite: Boolean(options.overwrite) }); integrations.sarifPath = path.resolve(target); outputFiles.push(path.basename(target));
+    }
+    if (options['gate-config'] || options['gate-json'] || options['baseline-report']) {
+      const gateConfig = await loadGateConfig(options['gate-config']).catch((error) => { throw cliError('CLI_CONFIG_INVALID', { causeCode: error.code }); });
+      const config = options['baseline-report'] ? { ...gateConfig, baseline: { mode: 'new-only', report: await jsonFile(options['baseline-report'], 'CLI_REPORT_INVALID') } } : gateConfig;
+      integrations.gate = await evaluateGate(result.report, config);
+      if (options['gate-json']) { const target = path.join(integrationRoot, 'veilforge-gate-result-v4.json'); await writeAtomicFile(target, `${JSON.stringify(integrations.gate, null, 2)}\n`, { overwrite: Boolean(options.overwrite) }); integrations.gatePath = path.resolve(target); outputFiles.push(path.basename(target)); }
+    }
     const outputLabel = options['no-export'] ? null : path.isAbsolute(options.output) ? path.basename(options.output) : options.output.replaceAll('\\', '/');
-    return scanSummary(result, input.projectId, outputFiles, outputLabel);
+    const summary = scanSummary(result, input.projectId, outputFiles, outputLabel, integrations);
+    if (integrations.gate?.passed === false) return { ...summary, ok: false, status: 'gate-failed', exitCode: 12 };
+    return summary;
   } finally { process.removeListener('SIGINT', onSigint); }
 }

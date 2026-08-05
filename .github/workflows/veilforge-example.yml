@@ -1,0 +1,31 @@
+name: VeilForge example
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  security-events: write
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - id: veilforge
+        uses: ./action
+        with:
+          project-id: ${{ github.repository }}
+          source: contracts
+          domains: payments,treasury,private-credit
+          output: veilforge-output
+          gate-config: examples/github-actions/veilforge-gate.json
+      - uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: ${{ steps.veilforge.outputs.sarif-path }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: veilforge-v4-results
+          path: ${{ steps.veilforge.outputs.export-path }}

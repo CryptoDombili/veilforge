@@ -1,9 +1,9 @@
 import { cliError } from './errors.js';
 
-const BOOLEAN = new Set(['overwrite', 'json', 'quiet', 'no-progress', 'include-operational-metadata', 'no-export']);
+const BOOLEAN = new Set(['overwrite', 'json', 'quiet', 'no-progress', 'include-operational-metadata', 'no-export', 'sarif', 'gate-json']);
 const MULTI = new Set(['domain', 'source', 'file']);
-const VALUE = new Set(['project-id', 'project-name', 'compiler-version', 'settings', 'policy', 'taxonomy', 'output', 'stage-timeout', 'global-timeout', 'config', 'max-file-bytes', 'max-project-bytes']);
-const COMMANDS = new Set(['scan', 'verify-report', 'verify-export']);
+const VALUE = new Set(['project-id', 'project-name', 'compiler-version', 'settings', 'policy', 'taxonomy', 'output', 'stage-timeout', 'global-timeout', 'config', 'max-file-bytes', 'max-project-bytes', 'sarif-output', 'gate-config', 'baseline-report', 'report', 'export']);
+const COMMANDS = new Set(['scan', 'verify-report', 'verify-export', 'gate']);
 export function parseArgs(argv) {
   const tokens = [...argv];
   if (!tokens.length || tokens[0] === '--help' || tokens[0] === '-h') return { command: 'help', options: {}, positionals: [] };

@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { cliError } from './errors.js';
 
-const KEYS = new Set(['schemaVersion', 'project-id', 'project-name', 'compiler-version', 'settings', 'policy', 'taxonomy', 'output', 'stage-timeout', 'global-timeout', 'domain', 'source', 'file', 'max-file-bytes', 'max-project-bytes', 'overwrite', 'json', 'quiet', 'no-progress', 'include-operational-metadata', 'no-export']);
+const KEYS = new Set(['schemaVersion', 'project-id', 'project-name', 'compiler-version', 'settings', 'policy', 'taxonomy', 'output', 'stage-timeout', 'global-timeout', 'domain', 'source', 'file', 'max-file-bytes', 'max-project-bytes', 'overwrite', 'json', 'quiet', 'no-progress', 'include-operational-metadata', 'no-export', 'sarif', 'sarif-output', 'gate-config', 'baseline-report', 'gate-json']);
 export async function mergeExplicitConfig(options) {
   if (!options.config) return { ...options };
   try {

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "1.0.0",
+  "failOnSeverity": ["critical", "high"],
+  "minimumConfidence": "low",
+  "dispositions": ["detected"],
+  "includedDomains": [],
+  "includedCategories": [],
+  "excludedRuleIds": [],
+  "maxActiveFindings": null,
+  "maxFindingsBySeverity": {},
+  "failOnIncomplete": true,
+  "failOnInvalidPolicy": true,
+  "baseline": null
+}
