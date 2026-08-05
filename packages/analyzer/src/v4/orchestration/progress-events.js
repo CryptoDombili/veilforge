@@ -1,0 +1,2 @@
+export const PROGRESS_EVENT_TYPES=Object.freeze(['scan-started','stage-started','stage-progress','stage-completed','stage-incomplete','stage-failed','stage-timeout','scan-completed','scan-aborted']);
+export function emitProgress(session,type,stageName=null,metadata={}){const event=Object.freeze({type,stageName,sequence:session.events.length,metadata:Object.freeze({...metadata})});session.events.push(event);session.options.onProgress?.(event);return event;}

@@ -1,0 +1,3 @@
+import{canonicalReportJson}from'../report/canonical-json.js';import{deterministicTelemetry}from'./stage-telemetry.js';
+export function deterministicSessionResult(session){const final=session.results.get('export-verification')?.value??null,report=session.results.get('report')?.value??null,exportPackage=session.results.get('markdown-export')?.value??null;return{sessionId:session.sessionId,status:session.status,stages:deterministicTelemetry(session),incompleteReasons:[...session.incompleteReasons].sort(),report,reportHash:report?.integrity?.reportHash??null,exportManifest:exportPackage?.manifest??null,verification:final};}
+export const serializeScanSession=session=>canonicalReportJson(deterministicSessionResult(session));

@@ -7,8 +7,8 @@ function scopeMatches(actual, expected) { return actual === expected || actual?.
 export function decideDeclassification(program, analysis, traces, sources, sinks, policyState, acceptedRisks) {
   const callableById = new Map(program.declarations.filter((item) => item.kind === 'function').map((item) => [item.id, item]));
   const valueNodeById = new Map(analysis.callableAnalyses.flatMap((item) => item.valueNodes).map((item) => [item.valueNodeId, item]));
-  const astById = new Map(); const parentById = new Map();
-  function visit(node, parent = null) { if (!node?.nodeType) return; astById.set(node.id, node); if (parent) parentById.set(node.id, parent); for (const value of Object.values(node)) {
+  const astById = new Map(); const parentByNode = new WeakMap();
+  function visit(node, parent = null) { if (!node?.nodeType) return; if (!astById.has(node.id)) astById.set(node.id, node); if (parent) parentByNode.set(node, parent); for (const value of Object.values(node)) {
     if (Array.isArray(value)) for (const item of value) visit(item, node); else if (value?.nodeType) visit(value, node);
   } }
   for (const item of Object.values(program._compilation?.output?.sources ?? {})) visit(item.ast);
@@ -21,7 +21,7 @@ export function decideDeclassification(program, analysis, traces, sources, sinks
           const name = expression?.memberName ?? expression?.name ?? '';
           if (/^(?:keccak256|sha256|ripemd160)$/u.test(name) || /(?:hash|encrypt|private|commitment)/iu.test(name)) return { name, astNodeId: node.id };
         }
-        node = parentById.get(node.id);
+        node = parentByNode.get(node);
       }
     }
     return null;

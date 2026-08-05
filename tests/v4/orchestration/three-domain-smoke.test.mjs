@@ -1,0 +1,2 @@
+import test from'node:test';import assert from'node:assert/strict';import{scanCase}from'./helpers.mjs';
+for(const[id,domain]of[['PAY-POS-001','arc-payments'],['TRE-POS-001','arc-treasury'],['CRD-POS-001','arc-private-credit']])test(`${domain} positive completes full orchestration`,async()=>{const result=await scanCase(id);assert.ok(result.report.summary.activeDetected>0);assert.equal(result.report.integrity.verified,true);assert.equal(result.verification.verified,true);assert.equal(result.session.metrics.compilerInvocations,1);});

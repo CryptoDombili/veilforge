@@ -1,0 +1,2 @@
+export function freezeValue(value,seen=new Set()){if(value===null||typeof value!=='object'||Buffer.isBuffer(value)||ArrayBuffer.isView(value)||seen.has(value))return value;seen.add(value);for(const child of Object.values(value))freezeValue(child,seen);return Object.freeze(value);}
+export function stageResult(fields){return Object.freeze({...fields,value:freezeValue(fields.value),incompleteReasons:Object.freeze([...(fields.incompleteReasons??[])])});}
