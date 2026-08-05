@@ -7,7 +7,7 @@ import path from 'node:path';
 const root = process.cwd();
 const manifestPath = path.join(root, 'docs/grant/final/grant-evidence-manifest.json');
 const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-const read = (relative) => fs.readFileSync(path.join(root, relative), 'utf8');
+const read = (relative) => fs.readFileSync(path.join(root, relative), 'utf8').replace(/\r\n?/gu, '\n');
 
 function canonicalize(value) {
   if (Array.isArray(value)) return value.map(canonicalize);
