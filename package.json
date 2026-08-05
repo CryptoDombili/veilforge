@@ -91,6 +91,7 @@
     "smoke:v4-calldata-regression": "node scripts/smoke-v4-calldata-regression.mjs",
     "test:v4-negative-precision": "node --test --test-concurrency=1 tests/v4/negative-precision/precision.test.mjs tests/v4/negative-precision/corpus.test.mjs",
     "test:v4-negative-precision-determinism": "node --test tests/v4/negative-precision/determinism.test.mjs",
+    "test:v4-fn-recovery": "node --test --test-concurrency=1 tests/v4/interprocedural/unresolved-boundaries.test.mjs tests/v4/classification/invalid-policy.test.mjs tests/v4/classification/sink-external-metadata.test.mjs tests/v4/detectors/payments/declassification-disposition.test.mjs tests/v4/detectors/payments/external-call-disclosure.test.mjs tests/v4/detectors/payments/incomplete.test.mjs tests/v4/detectors/payments/metadata-disclosure.test.mjs tests/v4/detectors/payments/return-disclosure.test.mjs tests/v4/detectors/private-credit/external-call-disclosure.test.mjs tests/v4/detectors/private-credit/incomplete.test.mjs tests/v4/detectors/private-credit/return-disclosure.test.mjs tests/v4/detectors/treasury/incomplete.test.mjs tests/v4/detectors/treasury/return-disclosure.test.mjs tests/v4/findings/grouping.test.mjs tests/v4/negative-precision/corpus.test.mjs tests/v4/benchmark/comparator.test.mjs",
     "benchmark:v4-negative": "node scripts/benchmark-v4-negative.mjs",
     "smoke:v4-negative-regression": "node scripts/smoke-v4-negative-regression.mjs",
     "typecheck": "node scripts/typecheck.mjs",
