@@ -87,6 +87,20 @@ body.v4-ui-mode .v4-heading > div > p { max-width: 680px; color: var(--muted); }
 .v4-history-actions { display: flex !important; flex-direction: row !important; flex-wrap: wrap; gap: 6px !important; }
 .v4-history-actions button { margin: 0; }
 .v4-status.warning { border-color: rgba(255,191,90,.42); }
+.v4-proof { min-width: 0; }
+.v4-proof-state { color: var(--mint); font-size: 10px; font-weight: 800; letter-spacing: .08em; overflow-wrap: anywhere; }
+.v4-proof-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin: 12px 0; }
+.v4-proof-grid > div { min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 9px; }
+.v4-proof-grid dt { color: var(--muted); font-size: 11px; }
+.v4-proof-grid dd { margin: 5px 0 0; overflow-wrap: anywhere; }
+.v4-proof-grid code { overflow-wrap: anywhere; word-break: break-word; }
+.v4-proof-disclosure { margin: 12px 0; padding: 12px; border: 1px solid rgba(255,191,90,.35); border-radius: 10px; background: rgba(255,191,90,.06); }
+.v4-proof-disclosure label { display: flex; align-items: flex-start; gap: 9px; line-height: 1.55; }
+.v4-proof-check-list { display: grid; gap: 7px; padding: 0; list-style: none; }
+.v4-proof-check-list li { display: grid; grid-template-columns: 22px minmax(120px,.5fr) minmax(0,1fr); gap: 8px; align-items: center; padding: 9px; border: 1px solid var(--line); border-radius: 8px; }
+.v4-proof-check-list li.passed > span { color: var(--mint); }.v4-proof-check-list li.blocked > span { color: var(--crit); }
+.v4-proof-check-list small, .v4-proof-boundary, #v4-proof-wallet { color: var(--muted); }
+.v4-proof details { margin-top: 12px; }.v4-proof details > summary { cursor: pointer; }
 .v4-detail { width: min(760px, calc(100vw - 28px)); max-height: 88vh; overflow: auto; border: 1px solid var(--line); border-radius: 16px; background: #090d16; color: #f7f8fb; padding: 25px; }
 .v4-detail::backdrop { background: rgba(0,0,0,.76); backdrop-filter: blur(6px); }
 .v4-detail-close { position: sticky; top: 0; float: right; z-index: 1; border: 1px solid var(--line); border-radius: 99px; width: 38px; height: 38px; background: #111827; color: #f7f8fb; font-size: 20px; }
@@ -98,8 +112,8 @@ body.v4-ui-mode .v4-heading > div > p { max-width: 680px; color: var(--muted); }
 .v4-empty { grid-column: 1 / -1; padding: 24px; }.v4-empty p { color: var(--muted); }
 body.v4-ui-mode :focus-visible { outline: 3px solid #6fd5ff; outline-offset: 3px; }
 @media (max-width: 1100px) { .v4-shell { grid-template-columns: 310px minmax(0,1fr); }.v4-summary-grid { grid-template-columns: repeat(3, 1fr); }.v4-controls { grid-template-columns: repeat(3, 1fr); }.v4-findings { grid-template-columns: 1fr; } }
-@media (max-width: 760px) { .v4-shell { grid-template-columns: 1fr; }.v4-intake { position: static; }.v4-controls { grid-template-columns: repeat(2, 1fr); }.v4-summary-grid { grid-template-columns: repeat(2, 1fr); } #v4-history article { grid-template-columns: 1fr; }.v4-detail dl { grid-template-columns: 1fr; } }
-@media (max-width: 430px) { .v4-controls, .v4-summary-grid { grid-template-columns: 1fr; }.v4-heading { align-items: flex-start; }.v4-scan-actions > * { width: 100%; }.v4-finding-meta { align-items: flex-start; flex-direction: column; } }
+@media (max-width: 760px) { .v4-shell { grid-template-columns: 1fr; }.v4-intake { position: static; }.v4-controls { grid-template-columns: repeat(2, 1fr); }.v4-summary-grid { grid-template-columns: repeat(2, 1fr); } #v4-history article { grid-template-columns: 1fr; }.v4-detail dl { grid-template-columns: 1fr; }.v4-proof-check-list li { grid-template-columns: 22px 1fr; }.v4-proof-check-list small { grid-column: 2; } }
+@media (max-width: 430px) { .v4-controls, .v4-summary-grid, .v4-proof-grid { grid-template-columns: 1fr; }.v4-heading { align-items: flex-start; }.v4-scan-actions > *, .v4-proof .v4-button-row > * { width: 100%; }.v4-finding-meta { align-items: flex-start; flex-direction: column; } }
 @media (prefers-reduced-motion: reduce) { body.v4-ui-mode *, body.v4-ui-mode *::before, body.v4-ui-mode *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
 .remediation-panel-header > div { display:flex; flex-direction:column; gap:5px; }
 .remediation-panel-header small { color:#69758a; font-size:10.5px; letter-spacing:.13em; font-weight:800; }

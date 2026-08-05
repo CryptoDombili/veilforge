@@ -5,6 +5,11 @@ import { verifyV4Report } from './report-adapter.js';
 import { createWorkerClient } from './runtime/worker-client.js';
 import { WEB_V4_LIMITS } from './runtime/limits.js';
 import { createV4ViewModel } from './view-models.js';
+import { createWebProofEnvelope, prepareWebRegistryPublish } from './proof-adapter.js';
+import { saveWebProofState } from './proof-persistence.js';
+import { normalizeWebRegistryReceipt } from './proof-receipt.js';
+import { proofSectionTemplate, renderPreflightChecks, renderProofExplorerLink, renderProofSummary, renderTransactionSummary } from './proof-ui.js';
+import { attachProviderListeners, buildWalletState, disposeProviderListeners, inspectProvider } from './proof-wallet.js';
 
 const DOMAIN_LABELS = Object.freeze({
   'arc-payments': 'Arc Payments',
@@ -15,6 +20,7 @@ const SEVERITY_ORDER = Object.freeze({ critical: 0, high: 1, medium: 2, low: 3, 
 
 const esc = (value) => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
 const formatBytes = (bytes) => bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(bytes < 10240 ? 1 : 0)} KiB`;
+const shortAddress = (value) => value ? `${value.slice(0, 6)}…${value.slice(-4)}` : '—';
 const locationText = (location) => location ? `${location.sourcePath}:${location.startLine ?? '?'}:${location.startColumn ?? '?'}` : 'No safe source location';
 const slug = (value) => String(value || 'veilforge-project').toLowerCase().replace(/[^a-z0-9]+/gu, '-').replace(/^-|-$/gu, '') || 'veilforge-project';
 
@@ -36,6 +42,21 @@ export function v4ErrorMessage(error) {
     WEB_V4_PERSISTENCE_LIMIT: 'The verified report is too large for safe browser history.',
     WEB_V4_STORAGE_QUOTA: 'Browser storage is unavailable or full. Clear rejected V4 history or free site storage, then retry; V3 history is never removed.',
     WEB_V4_EXPORT_INVALID: 'Export verification failed. No file was downloaded.',
+    WEB_V4_PROOF_UNAVAILABLE: 'Run and verify a V4 scan before preparing a registry proof.',
+    WEB_V4_PROOF_ENVELOPE_INVALID: 'The proof envelope failed integrity verification.',
+    WEB_V4_PROVIDER_UNAVAILABLE: 'No previously authorized injected EVM wallet is available. No connection popup was opened.',
+    WEB_V4_ACCOUNT_UNAVAILABLE: 'The wallet has no previously authorized account for this site.',
+    WEB_V4_WRONG_NETWORK: 'The wallet is not on the trusted Arc Testnet chain. Network switching is intentionally disabled in this phase.',
+    WEB_V4_REGISTRY_MISMATCH: 'The proof does not target the trusted Arc Testnet Registry V2 address.',
+    WEB_V4_PROOF_DISCLOSURE_REQUIRED: 'Acknowledge the incomplete-analysis disclosure before preflight.',
+    WEB_V4_PROOF_PREFLIGHT_FAILED: 'Proof preflight failed closed. No transaction request was released.',
+    WEB_V4_PROOF_DUPLICATE: 'This publisher-scoped proof is already present in the registry.',
+    WEB_V4_USER_REJECTED: 'The simulated wallet request was rejected.',
+    WEB_V4_TX_INVALID: 'The transaction identity is invalid.',
+    WEB_V4_RECEIPT_REVERTED: 'The simulated registry transaction reverted.',
+    WEB_V4_RECEIPT_INVALID: 'The simulated receipt failed verification.',
+    WEB_V4_EVENT_MISMATCH: 'The registry publication event does not match this report and publisher.',
+    WEB_V4_PROOF_PERSISTENCE_FAILED: 'The local proof state failed verification and was not loaded.',
   };
   return messages[error?.code] ?? 'The V4 scan could not complete safely. No unverified result was displayed.';
 }
@@ -85,6 +106,7 @@ export function v4UiTemplate() {
       <section class="v4-results" aria-label="Verified V4 results">
         <div id="v4-status" class="v4-status panel" role="status"><strong>Awaiting a verified report</strong><p>Unverified or partial worker output is never rendered.</p></div>
         <div id="v4-summary" class="v4-summary panel" hidden></div>
+        ${proofSectionTemplate()}
         <div id="v4-controls" class="v4-controls panel" hidden>
           <label>Search <input id="v4-query" type="search" autocomplete="off"></label>
           <label>Severity <select id="v4-severity"><option value="all">All</option><option>critical</option><option>high</option><option>medium</option><option>low</option><option>info</option></select></label>
@@ -132,10 +154,88 @@ export async function initV4Ui(options = {}) {
   const chip = document.querySelector('.chip'); if (chip) chip.innerHTML = '<i></i> VeilForge V4 RC1 · VERIFIED FINDINGS';
   root.innerHTML = v4UiTemplate();
   const byId = (id) => root.querySelector(`#${id}`);
-  const state = { files: [], bytes: 0, inputError: null, client: null, verification: null, viewModel: null, exportBundle: null, filters: { query: '', severity: 'all', domain: 'all', disposition: 'all', confidence: 'all', completeness: 'all', detector: '', sort: 'severity' } };
+  const state = { files: [], bytes: 0, inputError: null, client: null, verification: null, viewModel: null, exportBundle: null, proof: { envelope: null, wallet: buildWalletState(), preflight: null, status: 'unavailable', receipt: null, provider: null }, filters: { query: '', severity: 'all', domain: 'all', disposition: 'all', confidence: 'all', completeness: 'all', detector: '', sort: 'severity' } };
 
   const setStatus = (title, text, kind = '') => { const node = byId('v4-status'); node.className = `v4-status panel ${kind}`; node.innerHTML = `<strong>${esc(title)}</strong><p>${esc(text)}</p>`; };
   const setBusy = (busy) => { byId('v4-scan').disabled = busy; byId('v4-cancel').disabled = !busy; byId('v4-file-input').disabled = busy; byId('v4-folder-input').disabled = busy; };
+  const renderProof = () => {
+    const proof = state.proof;
+    byId('v4-proof-state').textContent = proof.status.replaceAll('-', ' ').toUpperCase();
+    if (!proof.envelope) {
+      byId('v4-proof-status').innerHTML = '<p>Run and verify a V4 scan to prepare a proof envelope.</p>';
+      byId('v4-proof-summary').hidden = true; byId('v4-proof-wallet').hidden = true; byId('v4-proof-checks').hidden = true; byId('v4-proof-transaction').hidden = true;
+      byId('v4-proof-inspect-wallet').disabled = true; byId('v4-proof-preflight').disabled = true; byId('v4-proof-disclosure').hidden = true;
+      return;
+    }
+    byId('v4-proof-summary').hidden = false; byId('v4-proof-summary').innerHTML = renderProofSummary(proof.envelope);
+    byId('v4-proof-disclosure').hidden = proof.envelope.complete;
+    const wallet = proof.wallet;
+    byId('v4-proof-wallet').hidden = false;
+    byId('v4-proof-wallet').innerHTML = `<p><b>Wallet boundary:</b> ${wallet.providerAvailable ? wallet.connected ? `${esc(shortAddress(wallet.account))} on chain ${esc(wallet.chainId)}` : 'provider available; no authorized account' : 'provider unavailable'}.</p>`;
+    byId('v4-proof-inspect-wallet').disabled = false;
+    const acknowledged = proof.envelope.complete || byId('v4-proof-ack').checked;
+    byId('v4-proof-preflight').disabled = !(wallet.connected && acknowledged);
+    const statusMessages = {
+      'already-published': 'An identical publisher-scoped proof already exists; no new transaction was prepared.',
+      'ready-to-publish': 'Preflight passed. The transaction request is prepared but cannot be sent in this phase.',
+      confirmed: 'The mock receipt and Registry V2 publication event were verified.',
+      reverted: 'The mock registry transaction reverted; the proof was not confirmed.',
+      'receipt-invalid': 'The mock receipt failed verification; the proof was not confirmed.',
+      'wrong-network': 'The connected wallet is not on the trusted Arc Testnet chain.',
+      'wallet-not-connected': 'No previously authorized wallet account is available.',
+      'preflight-checking': 'Running deterministic proof preflight checks…',
+      'preflight-failed': 'Proof preflight failed closed; no transaction request was released.',
+      'user-rejected': 'The simulated wallet request was rejected; no transaction was sent.',
+      cancelled: 'The simulated publication request was cancelled; no transaction was sent.',
+      pending: 'The simulated transaction is pending receipt verification.',
+    };
+    const fallback = proof.envelope.complete ? 'Verified proof envelope ready for read-only wallet inspection.' : 'Verified incomplete report. Disclosure acknowledgement is required before preflight.';
+    byId('v4-proof-status').innerHTML = `<p>${esc(statusMessages[proof.status] ?? fallback)}</p>${renderProofExplorerLink(proof.receipt ?? proof.preflight?.transactionIdentity)}`;
+    byId('v4-proof-preflight').textContent = proof.status === 'already-published' ? 'Reverify registry status' : 'Prepare transaction request';
+    byId('v4-proof-checks').hidden = !proof.preflight; byId('v4-proof-checks').innerHTML = proof.preflight ? renderPreflightChecks(proof.preflight) : '';
+    const summary = proof.preflight?.transactionSummary;
+    byId('v4-proof-transaction').hidden = !summary; byId('v4-proof-transaction-summary').innerHTML = renderTransactionSummary(summary);
+  };
+  const initializeProof = async () => {
+    try {
+      state.proof.envelope = await createWebProofEnvelope(state.verification);
+      state.proof.preflight = null; state.proof.receipt = null;
+      state.proof.status = state.proof.envelope.complete ? 'ready' : 'incomplete-warning';
+    } catch { state.proof = { ...state.proof, envelope: null, preflight: null, receipt: null, status: 'report-unverified' }; }
+    renderProof();
+  };
+  const inspectProofWallet = async () => {
+    const provider = options.proofProvider ?? globalThis.ethereum;
+    state.proof.provider = provider ?? null;
+    state.proof.wallet = await inspectProvider(provider);
+    state.proof.status = !state.proof.wallet.providerAvailable ? 'wallet-not-connected' : !state.proof.wallet.connected ? 'wallet-not-connected' : state.proof.wallet.chainId !== state.proof.envelope.chainId ? 'wrong-network' : state.proof.envelope.complete ? 'ready' : 'incomplete-warning';
+    if (provider) attachProviderListeners(provider, {
+      onAccountsChanged(accounts) { state.proof.wallet = buildWalletState({ providerAvailable: true, accounts, chainId: state.proof.wallet.chainId }); state.proof.status = accounts.length ? 'ready' : 'wallet-not-connected'; renderProof(); },
+      onChainChanged(chainId) { state.proof.wallet = buildWalletState({ providerAvailable: true, accounts: state.proof.wallet.accounts, chainId }); state.proof.status = chainId === state.proof.envelope.chainId ? 'ready' : 'wrong-network'; renderProof(); },
+      onDisconnect() { state.proof.wallet = buildWalletState({ providerAvailable: true, disconnected: true }); state.proof.status = 'wallet-not-connected'; renderProof(); },
+    });
+    renderProof(); return state.proof.wallet;
+  };
+  const runProofPreflight = async () => {
+    state.proof.status = 'preflight-checking'; renderProof();
+    try {
+      const lookup = typeof options.proofRecordLookup === 'function' ? await options.proofRecordLookup(state.proof.envelope, state.proof.wallet) : null;
+      const existingRecord = lookup?.record ?? lookup;
+      const existingTransactionIdentity = lookup?.transactionIdentity ?? null;
+      state.proof.preflight = await prepareWebRegistryPublish({ verification: state.verification, envelope: state.proof.envelope, walletState: state.proof.wallet, disclosureAcknowledged: byId('v4-proof-ack').checked, existingRecord, existingTransactionIdentity });
+      state.proof.status = state.proof.preflight.status;
+      await saveWebProofState(storage, { envelope: state.proof.envelope, preflight: state.proof.preflight, status: state.proof.status });
+    } catch (error) { state.proof.status = 'preflight-failed'; state.proof.preflight = { status: 'preflight-failed', checks: [], blockingReasons: [error?.code ?? 'WEB_V4_PROOF_PREFLIGHT_FAILED'], warnings: [], transactionRequest: null }; }
+    renderProof(); return state.proof.preflight;
+  };
+  const acceptMockReceipt = async (receipt) => {
+    try {
+      state.proof.receipt = await normalizeWebRegistryReceipt(receipt, state.proof.envelope, { verification: state.verification, publisher: state.proof.wallet.account, providerChainId: state.proof.wallet.chainId });
+      state.proof.status = 'confirmed';
+      await saveWebProofState(storage, { envelope: state.proof.envelope, preflight: state.proof.preflight, status: 'confirmed', transactionHash: state.proof.receipt.transactionHash, receiptSummary: state.proof.receipt });
+    } catch (error) { state.proof.status = error?.code === 'WEB_V4_RECEIPT_REVERTED' ? 'reverted' : 'receipt-invalid'; }
+    renderProof(); return state.proof.receipt;
+  };
   const renderFiles = () => {
     byId('v4-files').innerHTML = state.files.length ? state.files.map((file) => `<div><span>${esc(file.webkitRelativePath || file.name)}</span><small>${formatBytes(file.size)}</small></div>`).join('') : '<p>No Solidity files selected.</p>';
     byId('v4-file-count').textContent = `${state.files.length} / ${WEB_V4_LIMITS.maxFileCount} files`;
@@ -192,8 +292,8 @@ export async function initV4Ui(options = {}) {
       try { await saveV4Report(storage, verification, { viewModel }); } catch (error) { if (error?.code !== 'WEB_V4_STORAGE_QUOTA' && error?.code !== 'WEB_V4_PERSISTENCE_LIMIT') throw error; persistenceWarning = v4ErrorMessage(error); }
       byId('v4-progress').value = 100; byId('v4-progress-label').textContent = 'Verified V4 report ready.';
       setStatus('Verified result ready', `${viewModel.findings.length} canonical finding${viewModel.findings.length === 1 ? '' : 's'} · ${viewModel.reportHash}${persistenceWarning ? ` · History not saved: ${persistenceWarning}` : ''}`, persistenceWarning ? 'warning' : 'success');
-      renderReport(); await renderHistory();
-    } catch (error) { byId('v4-progress').value = 0; byId('v4-progress-label').textContent = 'Scan did not produce a verified report.'; setStatus(error?.code === 'WEB_V4_ABORTED' ? 'Scan cancelled' : 'V4 scan blocked', v4ErrorMessage(error), 'error'); }
+      renderReport(); await initializeProof(); await renderHistory();
+    } catch (error) { state.proof.status = 'report-unverified'; state.proof.envelope = null; renderProof(); byId('v4-progress').value = 0; byId('v4-progress-label').textContent = 'Scan did not produce a verified report.'; setStatus(error?.code === 'WEB_V4_ABORTED' ? 'Scan cancelled' : 'V4 scan blocked', v4ErrorMessage(error), 'error'); }
     finally { state.client?.dispose(); state.client = null; setBusy(false); }
   };
 
@@ -213,6 +313,9 @@ export async function initV4Ui(options = {}) {
     byId('v4-progress-label').textContent = 'Cancellation requested…';
     byId('v4-cancel').disabled = true;
   });
+  byId('v4-proof-inspect-wallet').addEventListener('click', inspectProofWallet);
+  byId('v4-proof-preflight').addEventListener('click', runProofPreflight);
+  byId('v4-proof-ack').addEventListener('change', renderProof);
   for (const [id, key, eventName] of [['v4-query', 'query', 'input'], ['v4-severity', 'severity', 'change'], ['v4-domain-filter', 'domain', 'change'], ['v4-disposition', 'disposition', 'change'], ['v4-confidence', 'confidence', 'change'], ['v4-completeness', 'completeness', 'change'], ['v4-detector', 'detector', 'input'], ['v4-sort', 'sort', 'change']]) byId(id).addEventListener(eventName, (event) => { state.filters[key] = event.target.value; renderFindings(); });
   byId('v4-findings').addEventListener('click', (event) => { const button = event.target.closest('[data-v4-finding]'); if (!button) return; const finding = state.viewModel.findings.find((item) => item.findingId === button.dataset.v4Finding); if (!finding) return; byId('v4-detail-content').innerHTML = findingDetail(finding); byId('v4-detail').showModal(); byId('v4-detail-close').focus(); });
   byId('v4-detail-close').addEventListener('click', () => byId('v4-detail').close());
@@ -221,11 +324,11 @@ export async function initV4Ui(options = {}) {
   byId('v4-export').addEventListener('click', async (event) => { const button = event.target.closest('[data-v4-export]'); if (!button || !state.verification) return; try { const bundle = state.exportBundle ?? await createV4WebExport(state.verification, state.viewModel); await verifyV4WebExport(bundle); state.exportBundle = bundle; const file = bundle.files.find((item) => item.filename === button.dataset.v4Export); if (!file) throw new Error('missing'); download(file.filename, file.bytes, file.mediaType); setStatus('Verified export ready', `${file.filename} passed digest verification before download.`, 'success'); } catch (error) { setStatus('Export blocked', v4ErrorMessage(error), 'error'); } });
   byId('v4-refresh-history').addEventListener('click', renderHistory);
   byId('v4-clear-history').addEventListener('click', async () => { try { const count = clearV4Reports(storage); await renderHistory(); setStatus('V4 history cleared', `${count} V4 entr${count === 1 ? 'y' : 'ies'} removed. Legacy V3 history was preserved.`, 'success'); } catch (error) { setStatus('History recovery blocked', `${v4ErrorMessage(error)} Diagnostic: ${error?.code ?? 'WEB_V4_STORAGE_QUOTA'}`, 'error'); } });
-  byId('v4-history').addEventListener('click', async (event) => { const button = event.target.closest('[data-v4-history]'); if (!button) return; try { const history = await listV4Reports(storage); const item = history.entries.find((entry) => entry.projectId === button.dataset.v4History); if (!item) throw Object.assign(new Error('history'), { code: 'WEB_V4_PERSISTENCE_INVALID' }); state.verification = item.verification; state.viewModel = createV4ViewModel(item.verification); state.exportBundle = null; renderReport(); setStatus('Verified history opened', item.reportHash, 'success'); } catch (error) { setStatus('History entry rejected', v4ErrorMessage(error), 'error'); } });
+  byId('v4-history').addEventListener('click', async (event) => { const button = event.target.closest('[data-v4-history]'); if (!button) return; try { const history = await listV4Reports(storage); const item = history.entries.find((entry) => entry.projectId === button.dataset.v4History); if (!item) throw Object.assign(new Error('history'), { code: 'WEB_V4_PERSISTENCE_INVALID' }); state.verification = item.verification; state.viewModel = createV4ViewModel(item.verification); state.exportBundle = null; renderReport(); await initializeProof(); setStatus('Verified history opened', item.reportHash, 'success'); } catch (error) { setStatus('History entry rejected', v4ErrorMessage(error), 'error'); } });
   byId('v4-history').addEventListener('click', async (event) => { const button = event.target.closest('[data-v4-delete]'); if (!button) return; try { removeV4Report(storage, button.dataset.v4Delete); await renderHistory(); setStatus('V4 history entry deleted', 'Only the selected V4 report was removed.', 'success'); } catch (error) { setStatus('History recovery blocked', `${v4ErrorMessage(error)} Diagnostic: ${error?.code ?? 'WEB_V4_STORAGE_QUOTA'}`, 'error'); } });
   byId('v4-history').addEventListener('click', async (event) => { if (!event.target.closest('#v4-clear-rejected')) return; try { const count = clearV4Reports(storage); await renderHistory(); setStatus('Rejected V4 history cleared', `${count} V4 entr${count === 1 ? 'y' : 'ies'} removed. Legacy V3 history was preserved.`, 'success'); } catch (error) { setStatus('History recovery blocked', `${v4ErrorMessage(error)} Diagnostic: ${error?.code ?? 'WEB_V4_STORAGE_QUOTA'}`, 'error'); } });
   document.querySelector('#heroDemo')?.addEventListener('click', () => root.scrollIntoView({ behavior: 'smooth' }));
   document.querySelector('#heroUpload')?.addEventListener('click', () => { root.scrollIntoView({ behavior: 'smooth' }); byId('v4-file-input').click(); });
-  renderFiles(); await renderHistory();
-  return Object.freeze({ runScan, renderHistory });
+  renderFiles(); renderProof(); await renderHistory();
+  return Object.freeze({ runScan, renderHistory, inspectProofWallet, runProofPreflight, acceptMockReceipt, dispose() { if (state.proof.provider) disposeProviderListeners(state.proof.provider); state.client?.dispose(); } });
 }

@@ -29,6 +29,7 @@ fs.rmSync(dist, { recursive: true, force: true });
 copyDirectory(web, dist);
 copyDirectory(path.join(root, 'packages', 'analyzer', 'src'), path.join(dist, 'engine'));
 copyDirectory(path.join(root, 'packages', 'proof', 'src'), path.join(dist, 'proof'));
+copyDirectory(path.join(root, 'packages', 'proof', 'v4'), path.join(dist, 'proof-v4'));
 copyDirectory(path.join(root, 'examples'), path.join(dist, 'examples'));
 
 const proofPath = path.join(dist, 'proof', 'registry.js');
@@ -47,6 +48,21 @@ fs.writeFileSync(
   path.join(dist, 'config.js'),
   `export const REGISTRY_ADDRESS = '${configuredAddress}';\nexport const BUILD_VERSION = '3.2.2';\nexport const WEB_V4_ENABLED = ${webV4Enabled};\n`,
 );
+
+for (const file of fs.readdirSync(path.join(dist, 'proof-v4')).filter((name) => name.endsWith('.js'))) {
+  const target = path.join(dist, 'proof-v4', file);
+  fs.writeFileSync(target, fs.readFileSync(target, 'utf8')
+    .replaceAll('../../analyzer/src/', '../engine/')
+    .replaceAll('../src/registry.js', '../proof/registry.js'));
+}
+
+for (const file of fs.readdirSync(path.join(dist, 'v4')).filter((name) => name.startsWith('proof-') && name.endsWith('.js'))) {
+  const target = path.join(dist, 'v4', file);
+  fs.writeFileSync(target, fs.readFileSync(target, 'utf8')
+    .replaceAll('../../../packages/proof/src/registry.js', '../proof/registry.js')
+    .replaceAll('../../../packages/proof/v4/network.js', '../proof-v4/network.js')
+    .replaceAll('../../../packages/analyzer/src/keccak.js', '../engine/keccak.js'));
+}
 
 const manifest = {
   name: 'VeilForge Privacy Operating System',
@@ -73,7 +89,7 @@ fs.writeFileSync(path.join(dist, 'build-manifest.json'), `${JSON.stringify(manif
 
 buildWebV4Runtime({ root, dist });
 
-for (const required of ['index.html', 'app.js', 'styles.css', 'engine/index.js', 'proof/registry.js', 'config.js']) {
+for (const required of ['index.html', 'app.js', 'styles.css', 'engine/index.js', 'proof/registry.js', 'proof-v4/network.js', 'v4/proof-adapter.js', 'config.js']) {
   if (!fs.existsSync(path.join(dist, required))) throw new Error(`Build output is missing ${required}.`);
 }
 
