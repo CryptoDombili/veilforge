@@ -20,6 +20,16 @@ The normative sink identifiers are:
 
 Every positive finding must identify at least one source, one sink, and the trace connecting them. A public calldata finding may use the public/external ABI entry itself as both the observable boundary and sink.
 
+### Calldata observation semantics
+
+Public or external ABI membership is a compiler-backed fact, but it is not by itself a privacy-relevant observation. A calldata observation requires a supported financial source classification. An identifier heuristic without financial context, an explicit policy label, or a taxonomy alias is insufficient.
+
+One ABI parameter produces at most one semantic calldata occurrence per detector, financial data class, callable, contract, and policy disposition. Declaration, reference, and dataflow-path variants are supporting traces of that occurrence; they are merged deterministically and do not produce separate findings.
+
+When the same raw parameter is already represented by a stronger disclosure boundary such as an event, external call, metadata URI, revert, raw return, or public storage exposure, the redundant calldata observation is omitted. A derived expression such as a boolean comparison is not a raw disclosure and does not hide the ABI observation. Filtering never changes source labels, accepted-risk records, approved-public decisions, or the oracle.
+
+Compiler-backed ABI evidence remains complete when unrelated downstream analysis is incomplete. Genuine source, sink, trace, policy, or budget uncertainty continues to be represented as incomplete.
+
 ## Approved declassification
 
 Only these mechanisms may declassify data:
