@@ -11,6 +11,9 @@ export { decodeWebReportPublishedLog, normalizeWebRegistryReceipt, safeWebExplor
 export { proofLifecycleState, simulateTransactionBoundary, WEB_PROOF_STATES } from './proof-lifecycle.js';
 export { loadWebProofState, saveWebProofState, webProofStorageKey, WEB_PROOF_PERSISTENCE_VERSION, WEB_PROOF_STORAGE_PREFIX } from './proof-persistence.js';
 export { createProofSummary, proofSectionTemplate, renderPreflightChecks, renderProofSummary, renderTransactionSummary } from './proof-ui.js';
+export { boundedReadOnlyRequest, invalidateNetworkPreflight, preflightArcTestnetProvider, REGISTRY_GET_LATEST_REPORT_SELECTOR, REGISTRY_HAS_REPORT_SELECTOR, WEB_PROOF_READ_ONLY_METHODS } from './proof-network-preflight.js';
+export { connectWalletOnUserGesture } from './proof-connect-boundary.js';
+export { createUserGatedProofReview, WEB_PROOF_SEND_ENABLED } from './proof-send-boundary.js';
 export { WebV4Error, WEB_V4_ERROR_CODES } from './errors.js';
 export * from './runtime/index.js';
 export * from './version.js';
