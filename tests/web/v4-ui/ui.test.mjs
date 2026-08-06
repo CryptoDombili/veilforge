@@ -30,3 +30,26 @@ test('controlled errors do not expose worker internals or source content', () =>
   assert.match(v4ErrorMessage({ code: 'WEB_V4_RUNTIME_UNAVAILABLE', message: 'secret source' }), /unavailable/u);
   assert.doesNotMatch(v4ErrorMessage({ code: 'WEB_V4_WORKER_CRASH', message: 'PRIVATE_SENTINEL' }), /PRIVATE_SENTINEL/u);
 });
+
+test('Clear and Cancel share a bounded current-session reset without deleting local history', () => {
+  const source = fs.readFileSync(new URL('../../../apps/web/v4/ui.js', import.meta.url), 'utf8');
+  assert.match(source, /const resetCurrentSession = \(\{ clearFiles = false, cancelled = false \} = \{\}\) =>/u);
+  assert.match(source, /state\.runId \+= 1/u);
+  assert.match(source, /if \(runId !== state\.runId\) return;/u);
+  assert.match(source, /v4-clear'\)\.addEventListener\('click', \(\) => resetCurrentSession\(\{ clearFiles: true \}\)\)/u);
+  assert.match(source, /v4-cancel'\)\.addEventListener\('click', \(\) => resetCurrentSession\(\{ cancelled: state\.scanStatus === 'scanning' \}\)\)/u);
+  const resetBody = source.slice(source.indexOf('const resetCurrentSession'), source.indexOf("byId('v4-file-input').addEventListener"));
+  assert.doesNotMatch(resetBody, /clearV4Reports|removeV4Report/u);
+});
+
+test('existing proof and connected wallet UI are provider-backed and stale state is cleared', () => {
+  const source = fs.readFileSync(new URL('../../../apps/web/v4/ui.js', import.meta.url), 'utf8');
+  assert.match(source, /reconcileVerifiedProofPublication\(\{ provider: state\.proof\.provider, transactionHash: identity\.transactionHash/u);
+  assert.match(source, /state\.proof\.receipt = null; state\.proof\.identityVerified = false/u);
+  assert.match(source, /deriveProofWalletUiState/u);
+  assert.match(source, /state\.proof\.wallet\.connected && state\.proof\.wallet\.chainId === state\.proof\.envelope\.chainId\) return/u);
+  assert.match(source, /completionState = 'existing-proof-verified'/u);
+  assert.match(source, /'new-transaction-reconciled'/u);
+  assert.match(source, /Already published/u);
+  assert.match(source, /No new transaction required/u);
+});

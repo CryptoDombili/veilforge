@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createUserGatedProofReview, WEB_PROOF_SEND_ENABLED } from '../../../apps/web/v4/proof-send-boundary.js';
-import { reconcileVerifiedProofPublication, submitUserApprovedProofTransaction, waitForVerifiedProofReceipt, WEB_PROOF_USER_APPROVED_SEND_ENABLED } from '../../../apps/web/v4/proof-transaction-acceptance.js';
+import { inspectExistingProofTransaction, isValidProofTransactionHash, reconcileVerifiedProofPublication, submitUserApprovedProofTransaction, waitForVerifiedProofReceipt, WEB_PROOF_USER_APPROVED_SEND_ENABLED } from '../../../apps/web/v4/proof-transaction-acceptance.js';
 import { PUBLISH_REPORT_SELECTOR } from '../../../packages/proof/src/registry.js';
 import { REGISTRY_GET_LATEST_REPORT_SELECTOR, REGISTRY_HAS_REPORT_SELECTOR } from '../../../apps/web/v4/proof-network-preflight.js';
 import { renderTransactionSummary } from '../../../apps/web/v4/proof-ui.js';
@@ -23,9 +23,11 @@ function provider(handler) {
 }
 
 const word = (value) => `0x${BigInt(value).toString(16).padStart(64, '0')}`;
+const publishInput = (reportHash) => `${PUBLISH_REPORT_SELECTOR}${'0'.repeat(128)}${String(reportHash).replace(/^0x/u, '')}`;
 function reconciliationProvider(input, { duplicate = true, receiptHash = TX_HASH } = {}) {
   return provider(({ method, params = [] }) => {
     if (method === 'eth_getTransactionReceipt') return receipt(input.envelope, input.preflight, { transactionHash: receiptHash });
+    if (method === 'eth_getTransactionByHash') return { hash: TX_HASH, from: ACCOUNT, to: input.envelope.registryAddress, input: publishInput(input.preflight.payload.reportHash), blockNumber: '0x10' };
     if (method === 'eth_chainId') return '0x4cef52';
     if (method === 'eth_getCode') return `0x6000${PUBLISH_REPORT_SELECTOR.slice(2)}6000`;
     if (method === 'eth_blockNumber') return '0x100';
@@ -39,6 +41,48 @@ function reconciliationProvider(input, { duplicate = true, receiptHash = TX_HASH
     throw new Error(`unsupported ${method}`);
   });
 }
+
+test('existing transaction hash validation happens before provider access', async () => {
+  const input = await context(); const mock = provider(() => { throw new Error('must not be called'); });
+  assert.equal(isValidProofTransactionHash(TX_HASH), true); assert.equal(isValidProofTransactionHash('0x1234'), false);
+  await assert.rejects(() => inspectExistingProofTransaction({ provider: mock, transactionHash: '0x1234', envelope: input.envelope, verification: input.verification, walletState: input.walletState }), (error) => error.code === 'WEB_V4_TX_INVALID');
+  assert.equal(mock.calls.length, 0);
+});
+
+test('existing transaction inspection verifies chain, transaction, receipt and matching event', async () => {
+  const input = await context(); const mock = reconciliationProvider(input);
+  const result = await inspectExistingProofTransaction({ provider: mock, transactionHash: TX_HASH, envelope: input.envelope, verification: input.verification, walletState: input.walletState });
+  assert.equal(result.status, 'verified'); assert.equal(result.match, true); assert.equal(result.receipt.status, 'confirmed'); assert.equal(result.identity.currentReportHash, input.envelope.reportHash);
+  assert.deepEqual(mock.calls.slice(0, 3).map((call) => call.method), ['eth_chainId', 'eth_getTransactionByHash', 'eth_getTransactionReceipt']);
+  assert.equal(mock.calls.some((call) => call.method === 'eth_sendTransaction'), false);
+});
+
+test('valid existing transaction with another report remains an explicit mismatch', async () => {
+  const input = await context(); const otherReportHash = `0x${'cd'.repeat(32)}`;
+  const mock = provider(({ method }) => {
+    if (method === 'eth_chainId') return '0x4cef52';
+    if (method === 'eth_getTransactionByHash') return { hash: TX_HASH, from: ACCOUNT, to: input.envelope.registryAddress, input: publishInput(otherReportHash), blockNumber: '0x10' };
+    if (method === 'eth_getTransactionReceipt') return receipt(input.envelope, input.preflight, { logs: [publicationLog(input.envelope, input.preflight, { reportHash: otherReportHash })] });
+    throw new Error(`unsupported ${method}`);
+  });
+  const result = await inspectExistingProofTransaction({ provider: mock, transactionHash: TX_HASH, envelope: input.envelope, verification: input.verification, walletState: input.walletState });
+  assert.equal(result.status, 'report-hash-mismatch'); assert.equal(result.match, false); assert.equal(result.identity.transactionReportHash, `sha256:${'cd'.repeat(32)}`); assert.equal(result.identity.currentReportHash, input.envelope.reportHash);
+});
+
+test('existing transaction inspection exposes not-found, pending and reverted classifications', async () => {
+  const input = await context();
+  for (const [receiptValue, transactionValue, code] of [[null, null, 'WEB_V4_TX_NOT_FOUND'], [null, {}, 'WEB_V4_RECEIPT_PENDING'], [{ status: '0x0' }, {}, 'WEB_V4_RECEIPT_REVERTED']]) {
+    const transaction = { hash: TX_HASH, from: ACCOUNT, to: input.envelope.registryAddress, input: publishInput(input.preflight.payload.reportHash), blockNumber: '0x10', ...transactionValue };
+    const receiptValueFull = receiptValue && { ...receipt(input.envelope, input.preflight), ...receiptValue };
+    const mock = provider(({ method }) => method === 'eth_chainId' ? '0x4cef52' : method === 'eth_getTransactionByHash' ? (transactionValue === null ? null : transaction) : receiptValueFull);
+    await assert.rejects(() => inspectExistingProofTransaction({ provider: mock, transactionHash: TX_HASH, envelope: input.envelope, verification: input.verification, walletState: input.walletState }), (error) => error.code === code);
+  }
+});
+
+test('existing transaction inspection reports provider unavailable without leaking provider details', async () => {
+  const input = await context();
+  await assert.rejects(() => inspectExistingProofTransaction({ provider: null, transactionHash: TX_HASH, envelope: input.envelope, verification: input.verification, walletState: input.walletState }), (error) => error.code === 'WEB_V4_PROVIDER_UNAVAILABLE' && !error.message.includes('secret'));
+});
 
 test('user-approved capability does not enable automatic sending', () => {
   assert.equal(WEB_PROOF_USER_APPROVED_SEND_ENABLED, true);

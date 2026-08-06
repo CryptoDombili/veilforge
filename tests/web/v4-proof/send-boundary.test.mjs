@@ -72,6 +72,26 @@ test('failed network preflight blocks review', async () => {
   assert.ok(result.blockingReasons.includes('network-preflight-passed'));
 });
 
+test('provider-verified existing proof completes review without a transaction request', async () => {
+  const input = await reviewInput({ preflight: { status: 'already-published', transactionRequest: null }, networkPreflight: network({ duplicate: true }) });
+  const result = await createUserGatedProofReview({ ...input, existingProofVerified: true });
+  assert.equal(result.reviewReady, true); assert.equal(result.transactionDigest, null);
+  assert.deepEqual(result.checks.filter((item) => ['publish-preflight-passed', 'transaction-request-safe'].includes(item.id)).map((item) => ({ passed: item.passed, applicable: item.applicable })), [
+    { passed: false, applicable: false }, { passed: false, applicable: false },
+  ]);
+  assert.ok(!result.blockingReasons.includes('publish-preflight-passed'));
+  assert.ok(!result.blockingReasons.includes('transaction-request-safe'));
+  assert.match(result.sendDisabledReason, /already published/u);
+});
+
+test('duplicate flag alone cannot complete the existing-proof path', async () => {
+  const input = await reviewInput({ preflight: { status: 'already-published', transactionRequest: null }, networkPreflight: network({ duplicate: true }) });
+  const result = await createUserGatedProofReview(input);
+  assert.equal(result.reviewReady, false);
+  assert.ok(result.blockingReasons.includes('publish-preflight-passed'));
+  assert.ok(result.blockingReasons.includes('transaction-request-safe'));
+});
+
 test('UI exposes distinct Connect Wallet, review and user-approved publish actions', () => {
   const html = proofSectionTemplate();
   assert.match(html, />Connect Wallet</u); assert.match(html, />Review &amp; Publish Proof</u); assert.match(html, /id="v4-proof-send"[^>]*disabled/u);

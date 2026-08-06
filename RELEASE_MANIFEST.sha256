@@ -37,10 +37,10 @@ c5be52cd2bd3d787a1dc89cce5be31844c67c1e3296058cc734942567ac0cc64  apps/web/lib/b
 61a94a78e485bb9694ebd3e3eb87790a6c5669b0ffdf44c6d6b4b392b70d750e  apps/web/lib/proof-lab.js
 ed3992a67ffe8299d21cb23043aad78496d919dfbc4f83f1832f821efba6286f  apps/web/lib/unzip.js
 17b5d7d0371cfa69e77100525e0ad0360ccd5b65cf146f0b5e83e7e6c96ac208  apps/web/lib/zip.js
-df71e86197be9f726dd734b4a9a18be152ac7315fefa302452f68350065f54d8  apps/web/styles.css
+ec34008ed7090559d6b4e4a9a8b10a3952f205cb5650016a95be23d6ab52776c  apps/web/styles.css
 8f502a37798d1db55680fec537189921db231f8f5aa8df981be66ca94fc5ac8a  apps/web/v4-grant-landing.css
 38f301f377e0de739e50c6493129a084e1824fe5fafff3bf8f7e4e2a9c649f56  apps/web/v4/canonical.js
-f3bbcd00c785cb51a0cecff998af8b42e76619354e5d320e57c2971f33fed8cf  apps/web/v4/errors.js
+25f5451ef74789fc15cf142f37918e42712c53e1de94cb02b1adb60e5393aafc  apps/web/v4/errors.js
 2f3ec606823e4f83637efc091145d0c9d2fc69fc3bff7236f3278f931fc43feb  apps/web/v4/export-adapter.js
 67f5a86489a68fd4db84841850994724b6d004bb8d8a1e22baec4a597b30293a  apps/web/v4/feature-flags.js
 74ac2d0b5fad82c383e129412dd0a05a29d9804dd48313e13d0d4f71aefa4cf5  apps/web/v4/index.js
@@ -52,9 +52,9 @@ c090dfe02a6387691589b4630aa94995694d81d70f9bc0a6c928c068a1318225  apps/web/v4/pr
 bd0402c3fde6176e0906ca57409c900270536513b4055e1cbd53b5e92450cee6  apps/web/v4/proof-network-preflight.js
 7e89a835ae1950a18af7126c08cbc83f664aede066afa85d995f6ac8692d207c  apps/web/v4/proof-persistence.js
 da47b5e002fe3f823574cac80289e70592a646c38bcf470a26beef860f51d51a  apps/web/v4/proof-receipt.js
-7a55df3defcbeba584be506c079c75db2ec0e5b38e3038380baad2150ad2bff4  apps/web/v4/proof-send-boundary.js
-e10c78eca893ed416768c5772b7063502aed1b0b4142c05da583fabd742511fe  apps/web/v4/proof-transaction-acceptance.js
-08361ed43c0aaebdd5f004553dfa9f289edb0194a8992e0fb13086f4e583ed35  apps/web/v4/proof-ui.js
+2c6d95d228ddcf42429ee45de5a99dc111f9761ab1ce6fa9c643329709d52ba2  apps/web/v4/proof-send-boundary.js
+888587bdd1a5a1ed371d3de4aeb7df7d1e11cc9e5726481eb27148921a727d89  apps/web/v4/proof-transaction-acceptance.js
+cf6410cae7750a400bd734e58a7ef015df89085c5d18742088d0c58426c00ddc  apps/web/v4/proof-ui.js
 189c8db9daf60c34acee8e176afe410d37d83f83b1748724852ecd04540d2419  apps/web/v4/proof-wallet.js
 c23fa858fbd180916567ae3217c75084fdfc705dc1ad7acc53f031f8e4b10e18  apps/web/v4/report-adapter.js
 feedb54ebf5c8eb40b2601e6d193587dac8de50aaddc593f869d58306e0b382a  apps/web/v4/runtime/browser-scanner-entry.js
@@ -72,7 +72,7 @@ eacd09cfe24e9b99a51fab6324ffe2eca15531c18eb362084a50f41d4c16bbb1  apps/web/v4/ru
 c04880445169bb06a71cdf5df5a618771cd710970e2518cd5a80a874774d2242  apps/web/v4/runtime/worker-client.js
 a6e609af1b25c00bf604040bbe1fc744da4c62c7644cf1f2638ab04d54a37c5e  apps/web/v4/runtime/worker-entry.js
 da63d206f0ccd748a03a304c3e4c02c8308e8f9facdd063a623cf48debeb4ee7  apps/web/v4/runtime/worker-runtime.js
-536096ea66b159e4b21ea167dcfd9ee2661d613953726d2a4eb94792f7e7a606  apps/web/v4/ui.js
+d53ecf27cf15daf41b1f823296a2e5751428aa9e074b32f4b8db254d918bf9d9  apps/web/v4/ui.js
 c86ddf82b926c92883d03eabc85810bb00837220cfe3f2d4d8516ec8958b534f  apps/web/v4/version.js
 ff6619f89c2cd268a788627290604b83c32c140830a89f4e6293e229fff84ae3  apps/web/v4/view-models.js
 9fab2378cccf23048c826e875a07864de7c6a8f9f8d794301d82a5c02063ef21  apps/web/whitepaper/VeilForge_V4_Executive_Brief.pdf
@@ -1101,9 +1101,9 @@ c12de2ac9499d48d60f01959b958d929103d7b206b9b5c581c79329c092c9728  tests/web/v4-p
 770d4689db00dfe6dc0f9194ea5408645b7b22a8b80da07429697158dcc3e9fa  tests/web/v4-proof/preflight.test.mjs
 5a1955ffc21ad298df82cc0ae5692736b63035c23c7b0d392ec14121b691f4ce  tests/web/v4-proof/receipt.test.mjs
 8791dde75a8542d11c4df503d5386fd9f98c9178f20f460ccc06744c81a71aef  tests/web/v4-proof/security.test.mjs
-cd7af10891ed8f38635ed9b48df68be9a018cd4e8dc36b08d94afa68554d60aa  tests/web/v4-proof/send-boundary.test.mjs
-cc4737e9685bf00f2b39768f3c65331310757d76024968f9efa294ecd63e91c8  tests/web/v4-proof/transaction-acceptance.test.mjs
-23bf75792879d90e00291f177624b0059d174da517fbca66aa8ce3050af941c6  tests/web/v4-proof/ui.test.mjs
+a639b4f0173c9be684f13422b05204cf96d3e46e6324392f53bd195bf86674df  tests/web/v4-proof/send-boundary.test.mjs
+61d3fb25c8643ee918206c942e23ac4fc9996e679c7a3f2b2117316ac522b567  tests/web/v4-proof/transaction-acceptance.test.mjs
+1b9dd9d78ae56d19538df29431031bc2f1023a6d10bd649efa5cb4f79f943dd6  tests/web/v4-proof/ui.test.mjs
 fd9b63eba677e00402daf8f6c467285e793e8a6d6459ba5be92648f80e04a3cf  tests/web/v4-proof/wallet.test.mjs
 3607cf44a3b21daa8983260cfefbbe49530e01d0e0359ab8ae444a2377b1bbce  tests/web/v4-runtime/determinism.test.mjs
 8e44bb36eb6421a5dba227dc554e278ebec527d7e51e7b125d45d3f68136f0e8  tests/web/v4-runtime/helpers.mjs
@@ -1115,7 +1115,8 @@ f392a577f24b5c1b310b1fbcef95cae3de2a610b3b6f95ba042340d2feda52c1  tests/web/v4-u
 e3be3c063edd51a7e35bbcda28a30fd4962e44efbbc1b123d7f7a160f252a33e  tests/web/v4-ui/export.test.mjs
 5ff8dc46fb9f4f07084942f3fc151b8c2c60b9a82f8efb1b780dd1ea9a298760  tests/web/v4-ui/history.test.mjs
 0cd0ac48b5fbcbb152609116a7fcca329215b7b6dae1f5623e84ed3a29f27e90  tests/web/v4-ui/product-polish.test.mjs
-65b53ab7c594d3bd4af2bad2fd3f790e058d1aaf0773ed445143b2d0edd4d262  tests/web/v4-ui/ui.test.mjs
+dfd8e1dd298fa68e92b75b564a3787f4e959a64e3c32520129bf7a8672011610  tests/web/v4-ui/ui.test.mjs
+4c7a0f2b7979f844ec7fc8f14e1a3464ddb95847b36d0f24af51fb122b5694fc  tests/web/v4-ui/workflow.test.mjs
 68edbf4ebc57538cef49028e288809216da06ab276451851cc030744a53981f7  tests/web/v4/determinism.test.mjs
 f14fd44921a48f11d377655abdbd1ecca727eb5374cd062607c989d6f47f2aec  tests/web/v4/export-adapter.test.mjs
 406b3de0a0031e26349ad3377e8e11c08ea6781078383fb627418bdc2aa02a9f  tests/web/v4/feature-flag.test.mjs

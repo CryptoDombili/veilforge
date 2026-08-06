@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { createV4ProofEnvelope } from '../../../packages/proof/v4/envelope.js';
 import { createWebProofEnvelope } from '../../../apps/web/v4/proof-adapter.js';
-import { createProofSummary, proofSectionTemplate, renderProofExplorerLink, renderProofSummary } from '../../../apps/web/v4/proof-ui.js';
+import { createProofSummary, deriveProofWalletUiState, proofSectionTemplate, renderExistingTransactionVerification, renderPreflightChecks, renderProofExplorerLink, renderProofSummary } from '../../../apps/web/v4/proof-ui.js';
 import { v4ErrorMessage, v4UiTemplate } from '../../../apps/web/v4/ui.js';
 import { currentReport, incompleteReport, verification } from './helpers.mjs';
 
@@ -72,9 +72,58 @@ test('proof UI has semantic live status and keyboard-labelled controls', () => {
   assert.match(html, /aria-labelledby="v4-proof-title"/u); assert.match(html, /role="status" aria-live="polite"/u); assert.match(html, /<label for="v4-proof-ack">/u);
 });
 
+test('wallet UI reflects disconnected connected wrong-network and account-change states', () => {
+  const chainId = 5_042_002;
+  assert.equal(deriveProofWalletUiState({ providerAvailable: true, connected: false }, chainId).label, 'Connect Wallet');
+  const connected = deriveProofWalletUiState({ providerAvailable: true, connected: true, account: '0x1111111111111111111111111111111111111111', chainId }, chainId);
+  assert.equal(connected.state, 'connected'); assert.match(connected.label, /^Connected · /u); assert.equal(connected.disabled, true);
+  const wrong = deriveProofWalletUiState({ providerAvailable: true, connected: true, account: '0x1111111111111111111111111111111111111111', chainId: 1 }, chainId);
+  assert.equal(wrong.state, 'wrong-network'); assert.match(wrong.label, /^Wrong network/u); assert.equal(wrong.disabled, true);
+  const changed = deriveProofWalletUiState({ providerAvailable: true, connected: true, account: '0x2222222222222222222222222222222222222222', chainId }, chainId);
+  assert.notEqual(changed.label, connected.label);
+});
+
+test('provider unavailable and connecting wallet states fail closed', () => {
+  const unavailable = deriveProofWalletUiState({}, 5_042_002);
+  assert.equal(unavailable.label, 'Wallet unavailable'); assert.equal(unavailable.disabled, true);
+  const connecting = deriveProofWalletUiState({ providerAvailable: true }, 5_042_002, { connecting: true });
+  assert.equal(connecting.label, 'Connecting…'); assert.equal(connecting.disabled, true);
+});
+
+test('existing-proof-only checks render as neutral not-required outcomes', () => {
+  const html = renderPreflightChecks({ checks: [
+    { id: 'duplicate-lookup', passed: true, applicable: true, message: 'Registry record exists.' },
+    { id: 'publish-preflight-passed', passed: false, applicable: false, message: 'Not applicable — existing proof verified.' },
+    { id: 'transaction-request-safe', passed: false, applicable: false, message: 'Not required — no transaction request required.' },
+  ] });
+  assert.match(html, /1\/1 required checks passed · 2 not required/u);
+  assert.equal((html.match(/class="not-required"/gu) ?? []).length, 2);
+  assert.doesNotMatch(html, /class="blocked"[^>]*>[\s\S]*publish-preflight-passed/u);
+});
+
 test('verified transaction explorer link is isolated from the opener', () => {
   const transactionHash = `0x${'ab'.repeat(32)}`;
   const html = renderProofExplorerLink({ transactionHash, explorerUrl: `https://testnet.arcscan.app/tx/${transactionHash}` });
   assert.match(html, /target="_blank"/u); assert.match(html, /rel="noopener noreferrer"/u);
   assert.equal(renderProofExplorerLink({ transactionHash, explorerUrl: 'javascript:alert(1)' }), '');
+});
+
+test('existing transaction verification renders loading, success, mismatch and retryable errors', () => {
+  const identity = { transactionHash: `0x${'ab'.repeat(32)}`, blockNumber: 55_469_453, publisher: '0x1111111111111111111111111111111111111111', registryAddress: '0x88B4055eaB061CEa9BdfeFF524f65ff461B5401d', transactionReportHash: `sha256:${'cd'.repeat(32)}`, currentReportHash: `sha256:${'ef'.repeat(32)}`, explorerUrl: `https://testnet.arcscan.app/tx/0x${'ab'.repeat(32)}` };
+  assert.match(renderExistingTransactionVerification({ status: 'verifying' }), /Verifying existing Arc Testnet transaction/u);
+  assert.match(renderExistingTransactionVerification({ status: 'verified', identity }), /No new transaction is required/u);
+  const mismatch = renderExistingTransactionVerification({ status: 'report-hash-mismatch', identity });
+  for (const text of ['REPORT HASH MISMATCH', 'Transaction report hash', 'Current report hash', 'View transaction']) assert.match(mismatch, new RegExp(text, 'u'));
+  assert.match(renderExistingTransactionVerification({ status: 'invalid-input', message: 'Enter a valid hash.' }), /Invalid transaction hash/u);
+  assert.match(renderExistingTransactionVerification({ status: 'error', message: 'Transaction not found.' }), /Verification failed/u);
+});
+
+test('existing transaction action is request-scoped and never routes through send', () => {
+  const source = fs.readFileSync(new URL('../../../apps/web/v4/ui.js', import.meta.url), 'utf8');
+  assert.match(source, /const requestId = \+\+state\.proof\.verificationRequestId/u);
+  assert.match(source, /requestId !== state\.proof\.verificationRequestId/u);
+  assert.match(source, /isValidProofTransactionHash\(transactionHash\)/u);
+  assert.match(source, /inspectExistingProofTransaction\(/u);
+  assert.match(source, /REPORT HASH MISMATCH|report-hash-mismatch/u);
+  assert.match(source, /v4-proof-reconcile'\)\.addEventListener\('click', \(\) => \{ void verifyExistingTransaction\(\); \}\)/u);
 });

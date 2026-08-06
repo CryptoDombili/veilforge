@@ -4,6 +4,15 @@ import { deepFreeze } from './canonical.js';
 const esc = (value) => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
 const short = (value) => value ? `${value.slice(0, 8)}…${value.slice(-6)}` : '—';
 
+export function deriveProofWalletUiState(wallet = {}, expectedChainId = null, { connecting = false, error = null } = {}) {
+  if (connecting) return deepFreeze({ state: 'connecting', label: 'Connecting…', description: 'Waiting for the explicit wallet connection request.', disabled: true });
+  if (error) return deepFreeze({ state: 'error', label: 'Retry wallet connection', description: String(error), disabled: wallet.providerAvailable !== true });
+  if (wallet.providerAvailable !== true) return deepFreeze({ state: 'disconnected', label: 'Wallet unavailable', description: 'No injected EVM wallet provider is available.', disabled: true });
+  if (wallet.connected !== true || !wallet.account) return deepFreeze({ state: 'disconnected', label: 'Connect Wallet', description: 'Connect a previously authorized wallet with an explicit click.', disabled: false });
+  if (wallet.chainId !== expectedChainId) return deepFreeze({ state: 'wrong-network', label: 'Wrong network · switch in wallet', description: `Connected account ${wallet.account}; switch manually to Arc Testnet chain ${expectedChainId}.`, disabled: true });
+  return deepFreeze({ state: 'connected', label: `Connected · ${short(wallet.account)}`, description: `Connected to Arc Testnet chain ${expectedChainId} as ${wallet.account}.`, disabled: true });
+}
+
 export function proofSectionTemplate() {
   return `<section id="v4-proof" class="v4-secondary v4-proof panel" aria-labelledby="v4-proof-title">
     <header><div><small>VERIFY &amp; PUBLISH</small><b id="v4-proof-title">Anchor verified evidence on Arc</b></div><span id="v4-proof-state" class="v4-proof-state">UNAVAILABLE</span></header>
@@ -17,7 +26,7 @@ export function proofSectionTemplate() {
       <details id="v4-proof-transaction" hidden><summary>Review transaction request</summary><div id="v4-proof-transaction-summary"></div></details>
       <div id="v4-proof-review-acknowledgement" class="v4-proof-disclosure" hidden><label for="v4-proof-review-ack"><input id="v4-proof-review-ack" type="checkbox"> I reviewed the network, account, registry, report hash, value and transaction summary.</label></div>
       <button id="v4-proof-send" type="button" disabled>Publish Proof</button>
-      <details class="v4-proof-reconcile"><summary>Verify an existing transaction</summary><label for="v4-proof-reconcile-hash">Transaction hash</label><input id="v4-proof-reconcile-hash" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="0x…" maxlength="66"><button id="v4-proof-reconcile" type="button" disabled>Verify existing transaction</button></details>
+      <details class="v4-proof-reconcile"><summary>Verify an existing transaction</summary><label for="v4-proof-reconcile-hash">Transaction hash</label><input id="v4-proof-reconcile-hash" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="0x…" maxlength="66" aria-describedby="v4-proof-reconcile-status"><button id="v4-proof-reconcile" type="button" disabled>Verify existing transaction</button><div id="v4-proof-reconcile-status" class="v4-proof-reconcile-status" role="status" aria-live="polite" hidden></div></details>
       <p class="v4-proof-boundary"><b>Publishing always requires a separate explicit click.</b> Wallet connection and transaction publication are isolated user actions. No signature, network switch, or transaction request is made automatically.</p>
     </div></details>
   </section>`;
@@ -52,8 +61,12 @@ export function renderProofSummary(envelope) {
 
 export function renderPreflightChecks(preflight) {
   const checks = preflight?.checks ?? [];
-  const passed = checks.filter((check) => check.passed).length;
-  return `<details class="v4-proof-checks"${passed === checks.length ? '' : ' open'}><summary>${passed}/${checks.length} preflight checks passed</summary><ul class="v4-proof-check-list">${checks.map((check) => `<li class="${check.passed ? 'passed' : 'blocked'}"><span aria-hidden="true">${check.passed ? '✓' : '!'}</span><b>${esc(check.id)}</b><small>${esc(check.message)}</small></li>`).join('')}</ul></details>`;
+  const required = checks.filter((check) => check.applicable !== false);
+  const passed = required.filter((check) => check.passed).length;
+  const skipped = checks.length - required.length;
+  const blocked = required.length - passed;
+  const skippedText = skipped ? ` · ${skipped} not required` : '';
+  return `<details class="v4-proof-checks"${blocked ? ' open' : ''}><summary>${passed}/${required.length} required checks passed${skippedText}</summary><ul class="v4-proof-check-list">${checks.map((check) => { const state = check.applicable === false ? 'not-required' : check.passed ? 'passed' : 'blocked'; const icon = check.applicable === false ? 'N/A' : check.passed ? '✓' : '!'; return `<li class="${state}"><span aria-hidden="true">${icon}</span><b>${esc(check.id)}</b><small>${esc(check.message)}</small></li>`; }).join('')}</ul></details>`;
 }
 
 export function renderTransactionSummary(summary) {
@@ -67,4 +80,14 @@ export function renderProofExplorerLink(identity) {
   const transactionHash = String(identity.transactionHash).toLowerCase();
   if (!/^0x[0-9a-f]{64}$/u.test(transactionHash) || identity.explorerUrl !== `https://testnet.arcscan.app/tx/${transactionHash}`) return '';
   return `<p class="v4-proof-explorer"><a href="${esc(identity.explorerUrl)}" target="_blank" rel="noopener noreferrer">View transaction ${esc(short(identity.transactionHash))}</a></p>`;
+}
+
+export function renderExistingTransactionVerification(result = {}) {
+  if (!result.status || result.status === 'idle') return '';
+  if (result.status === 'verifying') return '<p><b>Verifying existing Arc Testnet transaction…</b></p>';
+  if (result.status === 'invalid-input' || result.status === 'error') return `<div class="v4-proof-reconcile-error"><b>${result.status === 'invalid-input' ? 'Invalid transaction hash' : 'Verification failed'}</b><p>${esc(result.message)}</p></div>`;
+  const identity = result.identity;
+  if (result.status === 'report-hash-mismatch' && identity) return `<div class="v4-proof-reconcile-mismatch"><b>REPORT HASH MISMATCH</b><p>Existing Arc Testnet transaction verified, but its report hash does not match the currently open report.</p><dl class="v4-proof-grid"><div><dt>Transaction</dt><dd><code>${esc(short(identity.transactionHash))}</code></dd></div><div><dt>Block</dt><dd>${esc(identity.blockNumber)}</dd></div><div><dt>Publisher</dt><dd><code>${esc(short(identity.publisher))}</code></dd></div><div><dt>Registry</dt><dd><code>${esc(short(identity.registryAddress))}</code></dd></div><div><dt>Transaction report hash</dt><dd><code>${esc(short(identity.transactionReportHash))}</code></dd></div><div><dt>Current report hash</dt><dd><code>${esc(short(identity.currentReportHash))}</code></dd></div></dl>${renderProofExplorerLink(identity)}</div>`;
+  if (result.status === 'verified' && identity) return `<div class="v4-proof-reconcile-success"><b>Existing transaction verified</b><p>The receipt, Registry V2 event and current report identity match. No new transaction is required.</p>${renderProofExplorerLink(identity)}</div>`;
+  return '';
 }

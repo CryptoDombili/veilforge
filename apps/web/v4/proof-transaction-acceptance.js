@@ -2,15 +2,22 @@ import { cloneValue, deepFreeze, sha256Digest } from './canonical.js';
 import { webV4Error } from './errors.js';
 import { prepareWebRegistryPublish, safeTransactionRequest, verifyWebProofEnvelope } from './proof-adapter.js';
 import { preflightArcTestnetProvider } from './proof-network-preflight.js';
-import { normalizeWebRegistryReceipt, safeWebExplorerLink } from './proof-receipt.js';
+import { decodeWebReportPublishedLog, normalizeWebRegistryReceipt, safeWebExplorerLink, WEB_REPORT_PUBLISHED_TOPIC } from './proof-receipt.js';
+import { PUBLISH_REPORT_SELECTOR } from '../../../packages/proof/src/registry.js';
+import { checksumAddress, normalizeChainId, resolveProofNetwork } from '../../../packages/proof/v4/network.js';
 
 export const WEB_PROOF_USER_APPROVED_SEND_ENABLED = true;
 const TX_HASH = /^0x[0-9a-f]{64}$/u;
+const EXISTING_TRANSACTION_READ_METHODS = new Set(['eth_chainId', 'eth_getTransactionByHash', 'eth_getTransactionReceipt']);
 
 function fail(code, message) { throw webV4Error(code, message); }
 
 function trustedClick(event) {
   return event?.type === 'click' && event?.isTrusted === true;
+}
+
+export function isValidProofTransactionHash(value) {
+  return TX_HASH.test(String(value ?? '').toLowerCase());
 }
 
 async function boundedProviderRequest(provider, request, timeoutMs) {
@@ -23,6 +30,56 @@ async function boundedProviderRequest(provider, request, timeoutMs) {
       new Promise((_, reject) => { timer = setTimeout(() => reject(webV4Error('WEB_V4_TIMEOUT', 'The wallet request timed out.')), timeoutMs); }),
     ]);
   } finally { clearTimeout(timer); }
+}
+
+async function existingTransactionRequest(provider, request, timeoutMs) {
+  if (!EXISTING_TRANSACTION_READ_METHODS.has(request?.method)) fail('WEB_V4_PROOF_PREFLIGHT_FAILED', 'Only existing-transaction read methods are allowed.');
+  try { return await boundedProviderRequest(provider, request, timeoutMs); }
+  catch (error) {
+    if (error?.code?.startsWith?.('WEB_V4_')) throw error;
+    fail('WEB_V4_PROVIDER_UNAVAILABLE', 'The Arc Testnet provider request failed.');
+  }
+}
+
+export async function inspectExistingProofTransaction({ provider, transactionHash, envelope, verification, walletState, timeoutMs = 5_000 } = {}) {
+  const hash = String(transactionHash ?? '').toLowerCase();
+  if (!isValidProofTransactionHash(hash)) fail('WEB_V4_TX_INVALID', 'Enter a valid 0x-prefixed 32-byte transaction hash.');
+  await verifyWebProofEnvelope(envelope, verification ? { verification } : {});
+  const network = resolveProofNetwork(envelope.networkKey);
+  const chainId = normalizeChainId(await existingTransactionRequest(provider, { method: 'eth_chainId' }, timeoutMs));
+  if (chainId !== network.chainId || walletState?.chainId !== network.chainId) fail('WEB_V4_WRONG_NETWORK', 'The provider is not on Arc Testnet.');
+  const [transaction, receipt] = await Promise.all([
+    existingTransactionRequest(provider, { method: 'eth_getTransactionByHash', params: [hash] }, timeoutMs),
+    existingTransactionRequest(provider, { method: 'eth_getTransactionReceipt', params: [hash] }, timeoutMs),
+  ]);
+  if (!transaction) fail('WEB_V4_TX_NOT_FOUND', 'Transaction not found on Arc Testnet.');
+  if (!receipt) fail('WEB_V4_RECEIPT_PENDING', 'Transaction is not confirmed yet.');
+  if (String(transaction.hash ?? '').toLowerCase() !== hash || String(receipt.transactionHash ?? '').toLowerCase() !== hash) fail('WEB_V4_TX_INVALID', 'Transaction identity does not match the requested hash.');
+  if (!(receipt.status === true || receipt.status === 1 || receipt.status === '1' || receipt.status === '0x1')) fail('WEB_V4_RECEIPT_REVERTED', 'Transaction reverted.');
+  if (String(transaction.to ?? '').toLowerCase() !== network.registryAddress.toLowerCase() || String(receipt.to ?? transaction.to ?? '').toLowerCase() !== network.registryAddress.toLowerCase()) fail('WEB_V4_REGISTRY_MISMATCH', 'Transaction does not target the trusted Arc Testnet registry.');
+  const transactionInput = String(transaction.input ?? '').toLowerCase();
+  if (!transactionInput.startsWith(PUBLISH_REPORT_SELECTOR.toLowerCase()) || transactionInput.length < 2 + 8 + (64 * 3)) fail('WEB_V4_REGISTRY_ABI_MISMATCH', 'Transaction does not call the expected registry publish method.');
+  let publisher;
+  try { publisher = checksumAddress(transaction.from ?? receipt.from, 'publisher'); }
+  catch { fail('WEB_V4_RECEIPT_INVALID', 'Transaction publisher is invalid.'); }
+  if (walletState?.account?.toLowerCase() !== publisher.toLowerCase() || String(receipt.from ?? publisher).toLowerCase() !== publisher.toLowerCase()) fail('WEB_V4_EVENT_MISMATCH', 'Transaction publisher does not match the connected wallet.');
+  const blockNumber = normalizeChainId(receipt.blockNumber);
+  if (transaction.blockNumber != null && normalizeChainId(transaction.blockNumber) !== blockNumber) fail('WEB_V4_RECEIPT_INVALID', 'Transaction block number does not match the receipt.');
+  if (transaction.blockHash && receipt.blockHash && String(transaction.blockHash).toLowerCase() !== String(receipt.blockHash).toLowerCase()) fail('WEB_V4_RECEIPT_INVALID', 'Transaction block identity does not match the receipt.');
+  const log = (receipt.logs ?? []).find((candidate) => String(candidate?.address ?? '').toLowerCase() === network.registryAddress.toLowerCase()
+    && String(candidate?.topics?.[0] ?? '').toLowerCase() === WEB_REPORT_PUBLISHED_TOPIC.toLowerCase());
+  if (!log) fail('WEB_V4_EVENT_MISMATCH', 'The trusted registry publication event is missing.');
+  let event;
+  try { event = decodeWebReportPublishedLog(log); }
+  catch { fail('WEB_V4_EVENT_MISMATCH', 'The trusted registry publication event is malformed.'); }
+  if (event.publisher.toLowerCase() !== publisher.toLowerCase()) fail('WEB_V4_EVENT_MISMATCH', 'Registry event publisher does not match the transaction sender.');
+  const calldataReportHash = `0x${transactionInput.slice(2 + 8 + (64 * 2), 2 + 8 + (64 * 3))}`;
+  if (event.reportHash !== calldataReportHash) fail('WEB_V4_EVENT_MISMATCH', 'Registry event report hash does not match transaction calldata.');
+  const transactionReportHash = `sha256:${event.reportHash.slice(2)}`;
+  const identity = deepFreeze({ transactionHash: hash, blockNumber, publisher, registryAddress: network.registryAddress, transactionReportHash, currentReportHash: envelope.reportHash, explorerUrl: safeWebExplorerLink(hash, network.networkKey) });
+  if (transactionReportHash !== envelope.reportHash) return deepFreeze({ status: 'report-hash-mismatch', match: false, identity });
+  const normalizedReceipt = await normalizeWebRegistryReceipt(receipt, envelope, { verification, publisher, providerChainId: chainId, transactionHash: hash });
+  return deepFreeze({ status: 'verified', match: true, identity, receipt: normalizedReceipt });
 }
 
 export async function submitUserApprovedProofTransaction({ provider, event, envelope, preflight, networkPreflight, review, currentStateBindingDigest, timeoutMs = 30_000 } = {}) {
