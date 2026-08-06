@@ -36,6 +36,12 @@ test('preview-only stylesheet preserves the default V3 source and feature flag',
   assert.match(read('scripts/build-web-v4-preview.mjs'), /VEILFORGE_WEB_V4_ENABLED = 'true'/u);
 });
 
+test('Vercel production build explicitly activates V4 without changing the source default', () => {
+  const vercel = JSON.parse(read('vercel.json'));
+  assert.equal(vercel.buildCommand, 'VEILFORGE_WEB_V4_ENABLED=true npm run build:web');
+  assert.match(read('apps/web/config.js'), /WEB_V4_ENABLED = false/u);
+});
+
 test('responsive spacing targets and accessible layout are encoded', () => {
   const css = read('apps/web/v4-grant-landing.css');
   assert.match(css, /padding:88px 0 82px/u);

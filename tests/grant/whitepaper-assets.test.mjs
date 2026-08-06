@@ -34,6 +34,18 @@ test('HTML readers expose real navigation, PDF downloads and source identities',
     assert.match(html, /Skip to document/u);
     assert.match(html, /Launch V4 Scanner/u);
   }
+  const generator = read('scripts/generate-whitepaper-assets.py');
+  const build = read('scripts/build-web.mjs');
+  assert.match(generator, /src="\/whitepaper\/figures\//u);
+  assert.match(generator, /href="\/whitepaper\/\{pdf_name\}"/u);
+  assert.match(build, /replaceAll\('src="\.\/figures\/', 'src="\/whitepaper\/figures\/'\)/u);
+  assert.match(build, /replaceAll\('href="\.\/VeilForge_', 'href="\/whitepaper\/VeilForge_'\)/u);
+  assert.match(build, /replaceAll\('href="\.\/executive-brief\.html"', 'href="\/whitepaper\/executive-brief"'\)/u);
+});
+
+test('reader CSS contains the mobile overflow boundary', () => {
+  const css = read('apps/web/whitepaper/reader.css');
+  for (const rule of ['overflow-x:hidden', 'overflow-wrap:anywhere', 'word-break:break-word', 'max-width:100%', 'overflow-x:auto']) assert.match(css, new RegExp(rule.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&'), 'u'));
 });
 
 test('PDF assets are non-empty documents with accessible metadata', () => {

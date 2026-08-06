@@ -33,6 +33,16 @@ copyDirectory(path.join(root, 'packages', 'proof', 'src'), path.join(dist, 'proo
 copyDirectory(path.join(root, 'packages', 'proof', 'v4'), path.join(dist, 'proof-v4'));
 copyDirectory(path.join(root, 'examples'), path.join(dist, 'examples'));
 
+for (const name of ['index.html', 'executive-brief.html']) {
+  const readerPath = path.join(dist, 'whitepaper', name);
+  fs.writeFileSync(readerPath, fs.readFileSync(readerPath, 'utf8')
+    .replaceAll('href="./reader.css"', 'href="/whitepaper/reader.css"')
+    .replaceAll('src="./figures/', 'src="/whitepaper/figures/')
+    .replaceAll('href="./VeilForge_', 'href="/whitepaper/VeilForge_')
+    .replaceAll('href="./executive-brief.html"', 'href="/whitepaper/executive-brief"')
+    .replaceAll('href="./"', 'href="/whitepaper/"'));
+}
+
 const proofPath = path.join(dist, 'proof', 'registry.js');
 fs.writeFileSync(
   proofPath,
@@ -114,7 +124,7 @@ fs.writeFileSync(path.join(dist, 'build-manifest.json'), `${JSON.stringify(manif
 
 buildWebV4Runtime({ root, dist });
 
-for (const required of ['index.html', 'app.js', 'styles.css', 'engine/index.js', 'proof/registry.js', 'proof-v4/network.js', 'v4/proof-adapter.js', 'config.js']) {
+for (const required of ['index.html', 'app.js', 'styles.css', 'engine/index.js', 'proof/registry.js', 'proof-v4/network.js', 'v4/proof-adapter.js', 'config.js', 'whitepaper/VeilForge_V4_Whitepaper.pdf', 'whitepaper/VeilForge_V4_Executive_Brief.pdf', 'whitepaper/figures/veilforge-architecture.svg', 'whitepaper/figures/configure-to-export-workflow.svg', 'whitepaper/figures/arc-testnet-proof-lifecycle.svg', 'whitepaper/figures/open-core-sustainability-loop.svg', 'whitepaper/figures/mainnet-staged-rollout.svg']) {
   if (!fs.existsSync(path.join(dist, required))) throw new Error(`Build output is missing ${required}.`);
 }
 
