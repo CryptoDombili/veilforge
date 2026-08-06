@@ -1,291 +1,266 @@
 # VeilForge
 
-> **Grant Candidate status:** The current v3.2.2 analyzer is the legacy v3 regex- and name-assisted prototype. VeilForge v4.0.0-gc.1 is a specification and labeled-corpus target and is not yet implemented. The current product is not a formal verification tool, a security-audit replacement, or a native Arc privacy feature. See [`docs/grant-candidate/product-boundary.md`](docs/grant-candidate/product-boundary.md).
-
-## Live
-
-
-[Launch VeilForge](https://veilforge.dev/)
-
-
-
-
-## Arc Testnet Deployment
-
-**Publisher-Scoped Registry V2:**  
-[`0x88B4055eaB061CEa9BdfefF524f65ff461B5401d`](https://testnet.arcscan.app/address/0x88B4055eaB061CEa9BdfefF524f65ff461B5401d)
-
-Registry V2 scopes every latest report by `projectId + publisher`, preventing one wallet from overwriting another wallet's record.
-
-
-
-
-
-**VeilForge v3.2.2 Registry V2 On-chain Proof:**  
-[View successful v3.2.2 Registry V2 proof transaction on ArcScan](https://testnet.arcscan.app/tx/0x1570613b97c1dc190529b4b0b79a600afb30cfb76148b2c778771c074d3ebe47)
-
-
-
-
-
-**Live App Transaction:**  
-[View live app publication on ArcScan](https://testnet.arcscan.app/tx/0xa3585453549b60d71819df0e4c32d341687e7cf50836cce26e7add7830f5e1a1)
-
-
-
-
-
-## Demo Video
-
-[Watch the VeilForge demo](https://youtu.be/7RiI7QfxWzo)
-
-
-
-
-
-
-
-
-
-
-
-
-
-## VeilForge v3.2 — Privacy Operating System
-
-VeilForge is an open-source, local-first privacy engineering workbench for Solidity projects on Arc.
-
-
-
-
-
-
-
 <p align="center">
-  <img src="./assets/v3.2/veilforge-v32-hero.png" alt="VeilForge v3.2 Privacy Operating System" width="100%" />
+  <strong>Find privacy exposure. Verify the evidence. Prepare Solidity systems for Arc.</strong>
 </p>
 
 <p align="center">
-  <strong>Local, deterministic privacy engineering for Solidity projects targeting Arc.</strong>
+  VeilForge is a local-first, deterministic privacy-readiness platform for Solidity projects building on Arc. It maps sensitive data flows, identifies disclosure surfaces, produces verifiable reports, and can optionally anchor report evidence on Arc Testnet.
 </p>
 
-VeilForge v3.2 expands the original deterministic scanner into a source-bound privacy operating system:
+<p align="center">
+  <img alt="Version: V4 Grant Candidate" src="https://img.shields.io/badge/version-V4%20Grant%20Candidate-6f8cff">
+  <img alt="Status: Production" src="https://img.shields.io/badge/status-production-35d6aa">
+  <img alt="Network: Arc Testnet" src="https://img.shields.io/badge/network-Arc%20Testnet-6fd5ff">
+  <img alt="Compiler: Solidity 0.8.24" src="https://img.shields.io/badge/solidity-0.8.24-363636?logo=solidity">
+  <img alt="Tests: passing" src="https://img.shields.io/badge/tests-passing-35d6aa">
+  <img alt="Analysis: local and deterministic" src="https://img.shields.io/badge/analysis-local%20%2B%20deterministic-8b6cff">
+  <img alt="Mainnet: disabled" src="https://img.shields.io/badge/mainnet-disabled-8b949e">
+  <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue">
+</p>
 
-### Ascension update
+<p align="center">
+  <a href="https://veilforge.dev"><strong>Live App</strong></a> ·
+  <a href="https://veilforge.dev/app#scanner"><strong>Launch V4 Scanner</strong></a> ·
+  <a href="https://veilforge.dev/whitepaper/">Whitepaper</a> ·
+  <a href="https://veilforge.dev/whitepaper/executive-brief.html">Executive Brief</a> ·
+  <a href="docs/grant/final/technical-evidence-index.md">Technical Evidence</a> ·
+  <a href="https://github.com/CryptoDombili/veilforge/releases/tag/v4.0.0-gc.1">GitHub Release</a> ·
+  <a href="https://testnet.arcscan.app/tx/0x75c62f12af38de075cbca5a3582faf587cec5f3809591efd0eebbef724d49ead">Arc Testnet Transaction</a> ·
+  <a href="SECURITY.md">Security</a> ·
+  <a href="CONTRIBUTING.md">Contributing</a>
+</p>
 
-- **Privacy Deployment Twin** compares public Arc behavior with an explicitly labeled APS roadmap readiness model.
-- **Attack Replay Cinema** animates deterministic source-evidence paths without claiming bytecode execution.
-- **Deployment Lineage + Living Passport** bind source, intent, evidence, forge review, bytecode, and deployment evidence into one revisioned identity.
-- **Arc Deploy Rehearsal** blocks unsafe wallet flows and documents Arc Testnet, USDC gas, source, intent, and APS availability checks.
-- **Privacy CI Gate** adds a real `--gate` CLI exit code and an exportable GitHub Actions workflow.
-- **Domain Rule Packs** activate project-specific payroll, RWA, stablecoin, treasury, healthcare, and agent-payment controls.
-- **Source-guided Fuzz Plan** exports deterministic selector properties and vectors for compiler-backed Foundry execution.
+VeilForge runs source analysis locally in the browser. Solidity source is not uploaded to an AI API or remote analyzer. Reports are deterministic, findings are bound to source locations and source-to-sink evidence, and the canonical report hash can be independently verified. The live V4 Grant Candidate is a working, tested release candidate—not a specification-only demo.
 
-APS is not currently available on Arc. VeilForge treats APS behavior as a readiness simulation and never labels it as live confidential execution.
+<p align="center">
+  <img src="assets/v4/veilforge-v4-landing.png" alt="VeilForge V4 Grant Candidate landing page" width="100%">
+</p>
 
-- **Privacy Genome** maps sensitive assets, actors, source relationships and disclosure boundaries.
-- **Privacy Intent Compiler** generates a portable policy document and checks code-to-intent alignment.
-- **No-Code Privacy Intent Studio** lets builders declare disclosure defaults and required controls without editing YAML.
-- **Shadow Evidence Lab** reproduces deterministic attack paths from exact source evidence.
-- **Transaction MRI** explains how each disclosure moves from call surface to policy boundary.
-- **Forge Mode** prepares narrow candidate hardening edits and refuses unsafe generic mutations.
-- **Privacy Passport** binds the project’s privacy state to its canonical source hash.
-- **Arc Proof Center** can anchor the canonical report fingerprint on Arc Testnet.
+## Why VeilForge
 
-Source code is processed locally. VeilForge does not send Solidity source to an AI API or remote analyzer.
+Solidity systems can disclose sensitive financial or identity data through events, public storage, return values, revert data, calldata, metadata, and external calls. VeilForge helps teams find and review those paths before release while keeping the analysis boundary explicit.
 
-## Current release
+- **Local-first source analysis** — browser worker and CLI paths operate without remote source upload.
+- **Deterministic findings** — stable finding identity, grouping, severity, confidence, completeness, and evidence.
+- **Sensitive data-flow mapping** — source-to-sink traces across supported internal and external boundaries.
+- **Arc-specific domain packs** — Arc Payments, Arc Treasury, and Arc Private Credit.
+- **Policy-aware review** — declassification, accepted-risk, suppression, and incomplete states remain visible.
+- **Canonical report identity** — schema `4.1.0` with hash payload `veilforge.report.hash.v2`.
+- **Arc Testnet proof anchoring** — optional, explicit, zero-value publication through Registry V2.
+- **Multi-file and folder intake** — bounded browser input with exact `solc 0.8.24`.
+- **Verified exports** — canonical JSON, readable Markdown, and an export manifest with digests.
+- **CLI and CI integration** — V4 CLI, SDK, SARIF, GitHub Actions, and policy gates.
+- **Fail-closed incomplete analysis** — unsupported or unresolved boundaries are surfaced, not silently treated as safe.
+- **Explicit safety boundaries** — no automatic wallet popup, network switch, transaction, or mainnet publication.
 
-**Version:** `3.2.2`
+## Product workflow
 
-This is a production release of the deterministic source-analysis platform, not a claim of full compiler-grade or arbitrary EVM analysis. The current Shadow Lab performs deterministic source-evidence replay. Forge Mode produces candidate edits that still require compilation, tests and engineering review before deployment.
+| Step | What happens |
+|---|---|
+| **1. Configure** | Add Solidity files or a project folder, choose Arc domains, and select an optional policy. |
+| **2. Scan** | Run deterministic compiler-backed analysis locally. Source code stays inside the browser or local CLI process. |
+| **3. Review** | Inspect findings, severity, confidence, completeness, exact source locations, and source-to-sink traces. |
+| **4. Verify** | Validate schema, evidence integrity, canonical report identity, and the report hash. |
+| **5. Publish** | With a separate explicit wallet action, optionally publish a zero-value proof on Arc Testnet. Publisher-scoped duplicate protection prevents a second send for the same proof. |
+| **6. Export** | Produce verified JSON, Markdown, and manifest deliverables. SARIF and GitHub Actions support are available for CLI/CI workflows. |
 
-## Core flow
+<p align="center">
+  <img src="assets/v4/veilforge-v4-scanner.png" alt="VeilForge V4 scanner showing local analysis, verified findings, proof workflow, and verified exports" width="100%">
+</p>
 
-```text
-Solidity source
-      ↓
-Canonical parser + deterministic rules
-      ↓
-Privacy Genome + Disclosure Matrix
-      ↓
-Privacy Intent Compliance
-      ↓
-Shadow Evidence Campaigns
-      ↓
-Transaction MRI
-      ↓
-Forge Candidate Plan
-      ↓
-Source-bound Privacy Passport
-      ↓
-Optional Arc Testnet proof
-```
+## Verified Arc Testnet proof
 
-## What remains compatible from v1.8
+The following real publication was verified read-only against Arc Testnet transaction, receipt, Registry V2 event, publisher-scoped duplicate state, and report identity.
 
-- Multi-file and folder intake
-- Deterministic findings with exact source lines
-- Contract-level readiness and deployment status
-- Exposure chains
-- P0–P3 Treatment Plan
-- Scan comparison and local history
-- Arc Policy Manifest
-- JSON and Markdown reports
-- Hash-only Arc Testnet proof publication
-- EIP-6963 wallet discovery
-- CLI and custom rules
+| Field | Verified value |
+|---|---|
+| Transaction | [`0x75c62f12…d49ead`](https://testnet.arcscan.app/tx/0x75c62f12af38de075cbca5a3582faf587cec5f3809591efd0eebbef724d49ead) |
+| Block | [`55602504`](https://testnet.arcscan.app/block/55602504) |
+| Publisher | [`0x1769E693…27B167`](https://testnet.arcscan.app/address/0x1769E69333331eadE634e7cBB42a11f2e227B167) |
+| Registry V2 | [`0x88B4055e…B5401d`](https://testnet.arcscan.app/address/0x88B4055eaB061CEa9BdfefF524f65ff461B5401d) |
+| Transaction value | `0 USDC` |
+| Report hash | `sha256:6715575c6f0f605b29f5527c48bb74fc452c7236e812d984a683a4a81aa78ba1` |
 
-## Local web app
+The proof anchors report evidence; it is **not** a confidentiality certificate. Solidity source code is never published on-chain. Registry V2 records are publisher-scoped and duplicate-protected, and publication always requires an explicit wallet action.
 
-The project has no runtime package dependencies.
+<p align="center">
+  <img src="docs/whitepaper/figures/arc-testnet-proof-lifecycle.svg" alt="Arc Testnet proof lifecycle from verified report to receipt and event reconciliation" width="88%">
+</p>
 
-```bash
-npm run build:web
-python -m http.server 8080 -d dist
-```
+## Demonstration fixture result
 
-Then open `http://localhost:8080`.
+This is a **demonstration fixture result**, not a benchmark or a claim about general detection performance.
 
-## Validation
+| Input | Observed result |
+|---|---|
+| `ArcPaymentsDemo.sol` | Arc Payments domain enabled |
+| `ArcTreasuryDemo.sol` | Arc Treasury domain enabled |
+| `ArcPrivateCreditDemo.sol` | Arc Private Credit domain enabled |
+| Combined scan | 3 Solidity files; 41 canonical findings |
+| Review state | 35 active detections; 6 incomplete findings |
+| Integrity | Report hash verified |
+| Proof | Arc Testnet proof published; existing transaction reverified |
+| Completion | Publish and Export completed |
 
-```bash
-npm test
-npm run typecheck
-npm run smoke:browser
-npm run manifest:check
-```
+The maintained release benchmark is tracked separately in [`benchmarks/v4`](benchmarks/v4) and its methodology and evidence are documented in the [technical evidence index](docs/grant/final/technical-evidence-index.md).
 
-Or run the full release gate:
+## Built for Arc
 
-```bash
-npm run preflight
-```
+VeilForge models privacy-readiness concerns for three concrete Arc application domains:
 
-The preflight gate rebuilds the static application, runs the Node test suite, validates JavaScript and JSON, opens the product in real headless Chromium, checks the desktop and 390 px mobile layouts, exercises the main workspaces and verifies the release manifest.
+- **Arc Payments** — payer, payee, amount, payment references, public getters, event and calldata exposure.
+- **Arc Treasury** — treasury operations, approvals, execution metadata, return and external-call disclosure.
+- **Arc Private Credit** — borrower terms, collateral, credit metadata, and cross-contract boundaries.
 
-## CLI
+The current proof workflow uses Arc Testnet Registry V2, ArcScan verification, and a zero-value publication call in Arc's USDC-native execution context. No other Circle product is represented as integrated. Arc mainnet network identity, proof reads, and publication remain fail-closed and disabled pending the documented readiness gates.
 
-```bash
-node packages/analyzer/cli.mjs scan examples/vulnerable-payroll --format text
-node packages/analyzer/cli.mjs scan examples/vulnerable-payroll --format json
-node packages/analyzer/cli.mjs scan examples/vulnerable-payroll --format markdown
-node packages/analyzer/cli.mjs scan examples/vulnerable-payroll --format policy
-```
-
-## Privacy Genome output
-
-The canonical report now includes:
-
-```json
-{
-  "privacyGenome": {
-    "assets": [],
-    "actors": [],
-    "disclosureMatrix": [],
-    "graph": { "nodes": [], "edges": [] },
-    "metrics": {
-      "sensitiveAssets": 0,
-      "publicExposures": 0,
-      "blastRadius": 0
-    }
-  }
-}
-```
-
-## Privacy Intent
-
-VeilForge includes a visual policy studio and creates a deterministic YAML policy such as:
-
-```yaml
-version: "3.2"
-mode: local-deterministic
-defaults:
-  public_observer: denied
-  external_contract: restricted
-  record_owner: allowed
-controls:
-  require_least_privilege: true
-  require_revocation_path: true
-  prohibit_sensitive_revert_data: true
-  require_deployment_lineage: true
-```
-
-Changing a declared policy creates a new canonical report hash while preserving the source hash. Compliance is therefore bound to both the exact Solidity source and the selected privacy intent.
-
-## Shadow Evidence Lab
-
-Every deterministic finding can become a source-evidence campaign containing:
-
-- adversary profile
-- disclosure channel
-- exact contract, file and line
-- reachability steps
-- impact narrative
-- confidence
-- estimated privacy blast radius
-
-The current release does **not** claim full EVM emulation. That boundary is explicit in the UI and report.
-
-## Forge Mode
-
-Forge Mode automatically prepares candidate edits only when the transformation is narrow and inspectable. Examples include:
-
-- public sensitive state → private state candidate
-- `tx.origin` authorization findings → mandatory engineering review
-- sensitive revert text redaction candidate
-
-Potentially unsafe generic changes remain marked **Engineering review**. Candidate ZIPs contain a warning, the full Forge plan and the proposed source files. They are not labeled deploy-ready.
-
-## Privacy Passport
-
-The Passport includes:
-
-- canonical project and source IDs
-- technical safety score
-- intent compliance
-- attack defense score
-- identity-protection estimate
-- source-bound evidence counts
-- deployment gate state
-- explicit limitations
-
-A Passport is only bound to the source hash. It does not claim that an arbitrary deployment matches the source until deployment lineage is added in a future release.
-
-## Arc proof model
-
-VeilForge publishes no Solidity source onchain. The proof payload contains canonical hashes and report metadata. Wallet approval remains explicit.
-
-The reference registry is located at:
+## Architecture
 
 ```text
-contracts/VeilForgeReportRegistry.sol
+Solidity files
+  → canonical parser
+  → deterministic detectors
+  → data-flow graph
+  → domain policy evaluation
+  → canonical report
+  → report hash
+  → optional Arc Testnet proof
+  → verified export
 ```
 
-## Project structure
-
-```text
-apps/web/                     static Privacy OS interface
-packages/analyzer/src/        canonical deterministic analyzer
-packages/proof/src/           Arc Testnet proof and wallet integration
-contracts/                    reference proof registry
-examples/                     vulnerable, hardened and multi-contract fixtures
-schemas/                      report and policy JSON schemas
-scripts/                      build, validation and browser smoke tools
-tests/                        deterministic analyzer, proof, Forge and schema tests
-docs/                         architecture and product documentation
-```
+The browser runtime uses a bounded worker and exact `solc 0.8.24`. Node, browser, CLI, SDK, proof, and export layers share canonical report and integrity boundaries. See the [architecture documentation](docs/architecture.md) and [V4 whitepaper](docs/whitepaper/veilforge-v4-whitepaper.md) for the detailed model.
 
 ## Security boundaries
 
-VeilForge is an engineering aid, not a formal audit, compiler, symbolic prover or full EVM emulator.
+VeilForge is a privacy-readiness analysis and evidence tool. It is not:
 
-- Never deploy Forge candidates without compiling and testing them.
-- Review access-control and ABI changes manually.
-- Verify registry addresses before publishing proofs.
-- Keep private keys inside the wallet; VeilForge never requests them.
-- Use professional security review for production financial systems.
+- a formal security audit or replacement for independent review;
+- a full EVM emulator;
+- a symbolic prover;
+- a confidentiality guarantee;
+- a system that uploads source to an AI API or remote analyzer;
+- a system that automatically opens a wallet popup, switches networks, or sends transactions;
+- a mainnet proof publisher.
+
+An **incomplete analysis** result is a positive fail-closed behavior: when VeilForge reaches an unsupported expression, unresolved boundary, budget limit, or other uncertainty, it preserves the evidence and marks the report incomplete instead of presenting absence of a finding as proof of safety.
+
+Private keys and seed phrases remain inside the user's wallet and are never requested by VeilForge. Review the [security policy](SECURITY.md), [threat model](docs/grant-candidate/threat-model.md), and [product boundaries](docs/grant-candidate/product-boundary.md) before using results in a release decision.
+
+## Quick start
+
+1. Open the [V4 Scanner](https://veilforge.dev/app#scanner).
+2. Upload Solidity files or a project folder.
+3. Select one or more Arc domains and an optional policy.
+4. Run the verified V4 scan.
+5. Review findings, evidence, confidence, and incomplete states.
+6. Optionally publish the verified report proof on Arc Testnet with an explicit wallet action.
+7. Export the verified JSON, Markdown, and manifest deliverables.
+
+## Local development
+
+Requirements: Node.js 20 or newer. The repository pins `solc` exactly to `0.8.24`, so install from the lockfile before building.
+
+```bash
+npm ci
+npm run build:web-v4-preview
+npm run serve:web-v4-preview
+```
+
+Open `http://127.0.0.1:4174`. The preview command enables the V4 presentation locally; the source default remains fail-closed.
+
+Focused validation commands:
+
+```bash
+npm run test:web-v4-runtime
+npm run smoke:web-v4-real-scan
+npm run test:web-v4-proof-preflight
+npm run smoke:web-v4-ui
+npm run manifest:check
+```
+
+Run the verified V4 CLI against the checked-in three-domain fixture:
+
+```bash
+node packages/cli/bin/veilforge.js scan \
+  --project-id arc-three-domain-demo \
+  --source examples/cli/three-domain-scan \
+  --domain payments \
+  --domain treasury \
+  --domain private-credit \
+  --no-export \
+  --no-progress
+```
+
+Use `--output <directory>` instead of `--no-export` to write the verified export set. Run `node packages/cli/bin/veilforge.js --help` for report verification, export verification, SARIF, and gate options.
+
+## Repository structure
+
+| Path | Purpose |
+|---|---|
+| [`apps/web`](apps/web) | Static V3/V4 web application, browser worker adapter, scanner UI, proof UI, and verified exports. |
+| [`packages/analyzer`](packages/analyzer) | Legacy-compatible analyzer entry points and shared source-analysis code. |
+| [`packages/proof`](packages/proof) | Canonical V4 proof envelopes, network model, verification, persistence, and compatibility. |
+| [`contracts`](contracts) | Reference publisher-scoped report registry contract and ABI material. |
+| [`examples`](examples) | CLI, SDK, vulnerable, remediated, and multi-contract fixtures. |
+| [`schemas`](schemas) | Report and policy schemas, including V4 report schema `4.1.0`. |
+| [`benchmarks/v4`](benchmarks/v4) | Maintained V4 corpus, oracle, gate configuration, and benchmark identity. |
+| [`docs`](docs) | Architecture, release, proof, grant, business, whitepaper, and operational documentation. |
+| [`tests`](tests) | Deterministic unit, integration, browser, proof, security, benchmark, and regression tests. |
+| [`scripts`](scripts) | Build, smoke, benchmark, release-manifest, proof-reconciliation, and readiness tools. |
+
+## Documentation
+
+| Document | Description |
+|---|---|
+| [V4 Whitepaper](docs/whitepaper/veilforge-v4-whitepaper.md) | Architecture, analysis model, evidence, proof, limitations, and roadmap. |
+| [Executive Brief](docs/whitepaper/veilforge-v4-whitepaper-executive-brief.md) | Concise product, Arc relevance, evidence, and grant overview. |
+| [Technical Evidence](docs/grant/final/technical-evidence-index.md) | Reproduction paths for scanner, benchmark, proof, web, and release claims. |
+| [Grant Evidence](docs/grant/final/executive-summary.md) | Final grant evidence package entry point. |
+| [Security](SECURITY.md) | Supported security reporting and operational boundaries. |
+| [Contributing](CONTRIBUTING.md) | Repository contribution workflow. |
+| [Release Notes](docs/releases/v4.0.0-rc1.md) | V4 RC1 release integration notes and gates. |
+| [Product Boundaries](docs/grant-candidate/product-boundary.md) | Claims the product makes—and deliberately does not make. |
+| [Mainnet Readiness](docs/releases/v4-arc-mainnet-readiness.md) | Disabled-by-default mainnet controls, rehearsal, and blockers. |
+
+## Roadmap
+
+**Current**
+
+- V4 Grant Candidate and live production presentation
+- local browser scanner and deterministic CLI/SDK
+- Arc Testnet proof workflow with receipt/event reconciliation
+- verified JSON, Markdown, manifest, and SARIF exports
+- CI gates and GitHub Actions integration
+
+**Next**
+
+- broader developer validation and feedback
+- stronger compiler-backed analysis coverage
+- expanded Arc domain rules and fixtures
+- production documentation and onboarding
+- controlled mainnet-readiness work with independent review
+
+Mainnet is not active. `enabled=false`, `proofReadEnabled=false`, and `publishEnabled=false` remain the canonical mainnet state.
+
+## Why this grant matters
+
+Grant support would help VeilForge advance measurable engineering work in:
+
+- analyzer accuracy and precision;
+- compiler-backed coverage;
+- developer onboarding and reproducible examples;
+- Arc-specific rules and fixtures;
+- CI integrations;
+- documentation and production hardening;
+- external security review.
+
+No grant amount, customer, partnership, revenue, or future integration is assumed here. Commercial plans remain documented roadmap hypotheses.
+
+## Previous release
+
+VeilForge V3.2.2 remains available as a legacy-compatible local privacy engineering workbench. The repository's primary product and grant narrative is now the implemented V4 Grant Candidate.
 
 ## License
 
-MIT
+VeilForge is open source under the [MIT License](LICENSE).
