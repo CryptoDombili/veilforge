@@ -1,9 +1,9 @@
 import { cloneValue, deepFreeze, sha256Digest } from './canonical.js';
 import { webV4Error } from './errors.js';
-import { prepareWebRegistryPublish, safeTransactionRequest, verifyWebProofEnvelope } from './proof-adapter.js';
+import { createWebRegistryPayload, prepareWebRegistryPublish, safeTransactionRequest, verifyWebProofEnvelope } from './proof-adapter.js';
 import { preflightArcTestnetProvider } from './proof-network-preflight.js';
 import { decodeWebReportPublishedLog, normalizeWebRegistryReceipt, safeWebExplorerLink, WEB_REPORT_PUBLISHED_TOPIC } from './proof-receipt.js';
-import { PUBLISH_REPORT_SELECTOR } from '../../../packages/proof/src/registry.js';
+import { encodePublishReport, PUBLISH_REPORT_SELECTOR } from '../../../packages/proof/src/registry.js';
 import { checksumAddress, normalizeChainId, resolveProofNetwork } from '../../../packages/proof/v4/network.js';
 
 export const WEB_PROOF_USER_APPROVED_SEND_ENABLED = true;
@@ -82,15 +82,61 @@ export async function inspectExistingProofTransaction({ provider, transactionHas
   return deepFreeze({ status: 'verified', match: true, identity, receipt: normalizedReceipt });
 }
 
-export async function submitUserApprovedProofTransaction({ provider, event, envelope, preflight, networkPreflight, review, currentStateBindingDigest, timeoutMs = 30_000 } = {}) {
+export async function submitUserApprovedProofTransaction({
+  provider, event, envelope, verification, preflight, networkPreflight, review, currentStateBindingDigest,
+  timeoutMs = 30_000, revalidationTimeoutMs = 5_000,
+} = {}) {
   if (!trustedClick(event)) fail('WEB_V4_USER_GESTURE_REQUIRED', 'Publishing requires a trusted click on the Publish Proof button.');
-  await verifyWebProofEnvelope(envelope);
+  await verifyWebProofEnvelope(envelope, verification ? { verification } : {});
   if (review?.reviewReady !== true || preflight?.status !== 'ready-to-publish' || networkPreflight?.passed !== true) fail('WEB_V4_SEND_DISABLED', 'The transaction review is not ready.');
   if (networkPreflight.duplicate === true) fail('WEB_V4_PROOF_DUPLICATE', 'This publisher-scoped proof already exists.');
   if (!networkPreflight.stateBindingDigest || currentStateBindingDigest !== networkPreflight.stateBindingDigest) fail('WEB_V4_SEND_DISABLED', 'The wallet or registry preflight state changed.');
+
   const request = safeTransactionRequest(preflight.transactionRequest, envelope.networkKey);
+  const expectedPayload = await createWebRegistryPayload(envelope, preflight.payload?.reportURI ?? '');
+  if (await sha256Digest(expectedPayload) !== await sha256Digest(preflight.payload)
+    || request.data !== encodePublishReport(expectedPayload)) fail('WEB_V4_TX_INVALID', 'The transaction request is not bound to the current verified report.');
   const transactionDigest = await sha256Digest(request);
   if (review.transactionDigest !== transactionDigest) fail('WEB_V4_TX_INVALID', 'The reviewed transaction request changed.');
+
+  const network = resolveProofNetwork(envelope.networkKey);
+  let accounts;
+  let providerChainId;
+  try {
+    [accounts, providerChainId] = await Promise.all([
+      boundedProviderRequest(provider, { method: 'eth_accounts' }, revalidationTimeoutMs),
+      boundedProviderRequest(provider, { method: 'eth_chainId' }, revalidationTimeoutMs).then(normalizeChainId),
+    ]);
+  } catch (error) {
+    if (error?.code?.startsWith?.('WEB_V4_')) throw error;
+    fail('WEB_V4_PROVIDER_UNAVAILABLE', 'The wallet state could not be revalidated safely.');
+  }
+  if (!Array.isArray(accounts) || accounts.length === 0) fail('WEB_V4_ACCOUNT_UNAVAILABLE', 'The active wallet account is unavailable.');
+  let activeAccount;
+  let requestedAccount;
+  try {
+    activeAccount = checksumAddress(accounts[0], 'account');
+    requestedAccount = checksumAddress(request.from, 'account');
+  } catch {
+    fail('WEB_V4_ACCOUNT_UNAVAILABLE', 'The active wallet account is invalid.');
+  }
+  if (activeAccount.toLowerCase() !== requestedAccount.toLowerCase()) fail('WEB_V4_SEND_DISABLED', 'The active wallet account changed after preflight.');
+  if (providerChainId !== network.chainId) fail('WEB_V4_WRONG_NETWORK', 'The wallet network changed after preflight.');
+
+  const freshNetworkPreflight = await preflightArcTestnetProvider({
+    provider,
+    envelope,
+    transactionRequest: request,
+    payload: expectedPayload,
+    timeoutMs: revalidationTimeoutMs,
+  });
+  if (freshNetworkPreflight.passed !== true) {
+    if (freshNetworkPreflight.status === 'wrong-network') fail('WEB_V4_WRONG_NETWORK', 'The wallet network changed after preflight.');
+    fail('WEB_V4_PROOF_PREFLIGHT_FAILED', 'The final registry preflight did not pass.');
+  }
+  if (freshNetworkPreflight.duplicate === true) fail('WEB_V4_PROOF_DUPLICATE', 'This publisher-scoped proof was published after preflight.');
+  if (freshNetworkPreflight.stateBindingDigest !== networkPreflight.stateBindingDigest) fail('WEB_V4_SEND_DISABLED', 'The wallet or registry state changed after review.');
+
   let response;
   try {
     response = await boundedProviderRequest(provider, { method: 'eth_sendTransaction', params: [request] }, timeoutMs);

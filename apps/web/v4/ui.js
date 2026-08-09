@@ -537,7 +537,7 @@ export async function initV4Ui(options = {}) {
   };
   const publishProof = async (event) => {
     try {
-      const pending = await submitUserApprovedProofTransaction({ provider: state.proof.provider, event, envelope: state.proof.envelope, preflight: state.proof.preflight, networkPreflight: state.proof.networkPreflight, review: state.proof.review, currentStateBindingDigest: state.proof.networkPreflight?.stateBindingDigest, timeoutMs: options.proofSendTimeoutMs ?? 30_000 });
+      const pending = await submitUserApprovedProofTransaction({ provider: state.proof.provider, event, envelope: state.proof.envelope, verification: state.verification, preflight: state.proof.preflight, networkPreflight: state.proof.networkPreflight, review: state.proof.review, currentStateBindingDigest: state.proof.networkPreflight?.stateBindingDigest, timeoutMs: options.proofSendTimeoutMs ?? 30_000, revalidationTimeoutMs: options.proofRpcTimeoutMs ?? 5_000 });
       state.proof.status = 'pending'; state.proof.receipt = pending; state.proof.identityVerified = false; state.proof.completionState = null;
       await saveWebProofState(storage, { envelope: state.proof.envelope, preflight: state.proof.preflight, status: 'pending', transactionHash: pending.transactionHash, transactionSource: 'wallet-submission' });
       renderProof();
