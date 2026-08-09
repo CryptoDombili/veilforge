@@ -24,7 +24,7 @@ export async function scanCommand(options, io = {}) {
   const sources = project.sources;
   const input = {
     projectId: options['project-id'], projectName: options['project-name'], sources, domains,
-    compiler: { version: options['compiler-version'] ?? '0.8.24' }, settings: project.settings,
+    compiler: { version: options['compiler-version'] ?? '0.8.24' }, settings: project.settings, resolverSources: project.resolverSources,
     policy: await jsonFile(options.policy, 'CLI_CONFIG_INVALID'), taxonomy: await textFile(options.taxonomy, 'CLI_CONFIG_INVALID'),
   };
   const progress = createProgressWriter({ enabled: !options.json && !options.quiet && !options['no-progress'], write: io.writeProgress });

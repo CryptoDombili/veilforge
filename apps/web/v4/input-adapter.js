@@ -90,6 +90,7 @@ export async function browserFilesToScanInput(files, options = {}) {
     projectId,
     projectName: String(options.projectName ?? projectId).slice(0, 128),
     sources: resolution.sources,
+    resolverSources: resolution.resolverSources,
     settings: resolution.settings,
     resolution: { provenance: resolution.provenance },
     domains,

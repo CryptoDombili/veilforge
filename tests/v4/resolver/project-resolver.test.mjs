@@ -13,7 +13,7 @@ test('Hardhat package imports and transitive package relatives resolve from cano
   } });
   assert.deepEqual(Object.keys(resolved.sources), ['@openzeppelin/contracts/access/Ownable.sol', '@openzeppelin/contracts/utils/Context.sol', 'contracts/Vault.sol']);
   assert.equal(resolved.provenance.find((item) => item.path.startsWith('@openzeppelin/')).origin, 'node_modules');
-  assert.equal(compileProject({ sources: resolved.sources, settings: resolved.settings }).result.status, 'compiled');
+  assert.equal(compileProject({ sources: resolved.sources, settings: resolved.settings, resolverSources: resolved.resolverSources }).result.status, 'compiled');
 });
 
 test('Foundry lib remappings use longest deterministic prefix and compile', () => {
@@ -90,14 +90,25 @@ test('unsupported context-qualified remappings fail before any fallback candidat
 
 test('package imports use only the canonical root-local node_modules path', () => {
   const entry = { 'src/A.sol': content('import "pkg/B.sol"; contract A is B {}') };
+  const shadow = content('contract B { function source() external pure returns(uint){ return 111; } }');
+  const packageSource = content('contract B { function source() external pure returns(uint){ return 222; } }');
   assert.throws(() => resolveVirtualProject({ sources: entry }), { code: 'MISSING_IMPORT' });
+  assert.throws(() => resolveVirtualProject({ sources: { ...entry, 'pkg/B.sol': shadow } }), { code: 'MISSING_IMPORT' });
 
   const root = resolveVirtualProject({ sources: {
     ...entry,
-    'node_modules/pkg/B.sol': content('contract B { function source() external pure returns(uint){ return 1; } }'),
+    'node_modules/pkg/B.sol': packageSource,
   } });
-  assert.equal(root.sources['pkg/B.sol'].content.includes('return 1'), true);
-  assert.equal(compileProject({ sources: root.sources }).result.status, 'compiled');
+  assert.equal(root.sources['pkg/B.sol'].content.includes('return 222'), true);
+  assert.equal(compileProject({ sources: root.sources, resolverSources: root.resolverSources }).result.status, 'compiled');
+
+  const packageBeatsRootShadow = resolveVirtualProject({ sources: {
+    ...entry,
+    'pkg/B.sol': shadow,
+    'node_modules/pkg/B.sol': packageSource,
+  } });
+  assert.equal(packageBeatsRootShadow.sources['pkg/B.sol'].content.includes('return 222'), true);
+  assert.equal(packageBeatsRootShadow.sources['pkg/B.sol'].content.includes('return 111'), false);
 
   assert.throws(() => resolveVirtualProject({ sources: {
     ...entry,
@@ -111,11 +122,21 @@ test('package imports use only the canonical root-local node_modules path', () =
 
   const rootWins = resolveVirtualProject({ sources: {
     ...entry,
-    'node_modules/pkg/B.sol': content('contract B { function source() external pure returns(uint){ return 1; } }'),
-    'vendor/node_modules/pkg/B.sol': content('contract B { function source() external pure returns(uint){ return 2; } }'),
+    'node_modules/pkg/B.sol': packageSource,
+    'vendor/node_modules/pkg/B.sol': shadow,
   } });
-  assert.equal(rootWins.sources['pkg/B.sol'].content.includes('return 1'), true);
-  assert.equal(rootWins.sources['pkg/B.sol'].content.includes('return 2'), false);
+  assert.equal(rootWins.sources['pkg/B.sol'].content.includes('return 222'), true);
+  assert.equal(rootWins.sources['pkg/B.sol'].content.includes('return 111'), false);
+
+  const relative = resolveVirtualProject({
+    sources: {
+      'src/A.sol': content('import "../pkg/B.sol"; contract A is B {}'),
+      'pkg/B.sol': shadow,
+    },
+    entrypoints: ['src/A.sol'],
+  });
+  assert.equal(relative.sources['pkg/B.sol'].content.includes('return 111'), true);
+  assert.equal(compileProject({ sources: relative.sources }).result.status, 'compiled');
 });
 
 test('canonical collisions fail closed', () => {

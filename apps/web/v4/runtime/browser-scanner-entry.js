@@ -43,6 +43,7 @@ function normalizedCoreInput(input, limits) {
     sources,
     compilerVersion: input.compiler?.version ?? input.compilerVersion ?? COMPILER_VERSION,
     settings: cloneValue(input.settings ?? {}),
+    resolverSources: input.resolverSources === undefined ? undefined : cloneValue(input.resolverSources),
     taxonomy: cloneValue(input.taxonomy ?? TAXONOMY),
     policy: input.policy === undefined ? undefined : cloneValue(input.policy),
     policies: input.policies === undefined ? undefined : cloneValue(input.policies),

@@ -1,5 +1,5 @@
 import { FrontendError } from './errors.js';
-import { compareCodePoints, normalizeSourceBundle } from './standard-json.js';
+import { compareCodePoints, normalizeSourceBundle, normalizeSourceContent } from './standard-json.js';
 import { extractImports } from './import-graph.js';
 
 const SCHEME = /^[a-z][a-z0-9+.-]*:/iu;
@@ -131,7 +131,11 @@ function importTarget(importer, specifier, remappings, limits) {
   const normalized = safeSegments(slashed).join('/');
   if (normalized.startsWith('lib/')) return { canonicalPath: normalized, locatorPath: normalized, origin: 'foundry-lib' };
   if (normalized.startsWith('node_modules/')) return { canonicalPath: normalized, locatorPath: normalized, origin: 'node_modules' };
-  return { canonicalPath: normalized, locatorPath: `node_modules/${normalized}`, origin: 'node_modules' };
+  return { canonicalPath: normalized, locatorPath: `node_modules/${normalized}`, origin: 'node_modules', barePackage: true };
+}
+
+function isBarePackageTarget(target) {
+  return target.barePackage === true;
 }
 
 export function resolveVirtualProject({ sources, settings = {}, entrypoints, loadSource = null, limits = {} } = {}) {
@@ -144,6 +148,14 @@ export function resolveVirtualProject({ sources, settings = {}, entrypoints, loa
   const folded = new Map();
   const virtualOwners = new Map();
   const remappings = normalizeProjectRemappings(settings.remappings ?? [], applied);
+  const barePackageShadows = new Set();
+  for (const source of normalized) {
+    const importer = { canonicalPath: source.path, locatorPath: source.path, origin: 'project' };
+    for (const specifier of extractImports(source.content)) {
+      const target = importTarget(importer, specifier, remappings, applied);
+      if (isBarePackageTarget(target) && catalog.has(target.canonicalPath)) barePackageShadows.add(target.canonicalPath);
+    }
+  }
   let totalBytes = 0;
 
   function add(record) {
@@ -160,14 +172,18 @@ export function resolveVirtualProject({ sources, settings = {}, entrypoints, loa
     if (records.size + 1 > applied.maxFileCount) fail('LIMIT_EXCEEDED', { limit: 'file-count' });
     totalBytes += fileBytes;
     if (totalBytes > applied.maxProjectBytes) fail('LIMIT_EXCEEDED', { limit: 'project-bytes' });
-    const stored = { ...record, content: String(record.content) };
+    const stored = { ...record, content: normalizeSourceContent(record.content) };
     records.set(record.canonicalPath, stored); folded.set(foldedPath, record.canonicalPath); virtualOwners.set(virtualPath, record.canonicalPath);
     return stored;
   }
 
   function load(target, importer, specifier) {
-    if (records.has(target.canonicalPath)) return records.get(target.canonicalPath);
-    if (catalog.has(target.canonicalPath)) return add({ ...target, locatorPath: target.canonicalPath, content: catalog.get(target.canonicalPath), virtualPath: target.canonicalPath, origin: target.origin === 'node_modules' ? 'project' : target.origin });
+    const existing = records.get(target.canonicalPath);
+    if (existing) {
+      if (!isBarePackageTarget(target) || existing.virtualPath === target.locatorPath) return existing;
+      fail('AMBIGUOUS_IMPORT', { source: target.canonicalPath });
+    }
+    if (!isBarePackageTarget(target) && catalog.has(target.canonicalPath)) return add({ ...target, locatorPath: target.canonicalPath, content: catalog.get(target.canonicalPath), virtualPath: target.canonicalPath, origin: target.origin === 'node_modules' ? 'project' : target.origin });
     if (catalog.has(target.locatorPath)) return add({ ...target, content: catalog.get(target.locatorPath), virtualPath: target.locatorPath });
     if (typeof loadSource === 'function') {
       const loaded = loadSource({ ...target, importer: importer.canonicalPath, specifier, remainingProjectBytes: applied.maxProjectBytes - totalBytes });
@@ -176,7 +192,10 @@ export function resolveVirtualProject({ sources, settings = {}, entrypoints, loa
     fail('MISSING_IMPORT', { importer: importer.canonicalPath, specifier });
   }
 
-  const seeds = (entrypoints?.length ? entrypoints : normalized.filter((source) => !dependencyPath(source.path)).map((source) => source.path)).map((value) => safeSegments(value).join('/')).sort(compareCodePoints);
+  const seeds = (entrypoints?.length ? entrypoints : normalized.filter((source) => !dependencyPath(source.path)).map((source) => source.path))
+    .map((value) => safeSegments(value).join('/'))
+    .filter((value) => !barePackageShadows.has(value))
+    .sort(compareCodePoints);
   if (!seeds.length) fail('MISSING_IMPORT', { reason: 'no-project-entrypoint' });
   for (const seed of seeds) {
     if (!catalog.has(seed)) fail('MISSING_IMPORT', { source: seed });
@@ -195,6 +214,7 @@ export function resolveVirtualProject({ sources, settings = {}, entrypoints, loa
   const ordered = [...records.values()].sort((a, b) => compareCodePoints(a.canonicalPath, b.canonicalPath));
   return Object.freeze({
     sources: Object.fromEntries(ordered.map((record) => [record.canonicalPath, { content: record.content }])),
+    resolverSources: Object.fromEntries([...records.values()].sort((a, b) => compareCodePoints(a.virtualPath, b.virtualPath)).map((record) => [record.virtualPath, { content: record.content }])),
     settings: { ...settings, remappings: remappings.map((item) => item.text) },
     provenance: ordered.map(({ canonicalPath, origin }) => Object.freeze({ path: canonicalPath, origin })),
     limits: applied,
