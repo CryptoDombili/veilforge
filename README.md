@@ -55,6 +55,8 @@ The repository-safe source default intentionally keeps `WEB_V4_ENABLED=false` as
 
 VeilForge intentionally preserves exact `solc@0.8.24`. Because that compiler declares legacy `tmp@0.0.33`, npm overrides `tmp` to `0.2.7` as a security remediation; compatibility with the `fileSync` and `removeCallback` APIs used by solc was validated. The Solidity compiler identity remains exactly `0.8.24`.
 
+V4 also uses one bounded, local-only Solidity import resolver across CLI and browser virtual projects. It supports the documented project-local relative, `node_modules`, Foundry `lib/`, and `remappings.txt` patterns; it never installs or fetches missing dependencies. Unsafe, missing, ambiguous, escaping, or over-limit imports fail closed. See the [import-resolution security boundary](docs/security/solidity-import-resolution.md).
+
 <p align="center">
   <img src="assets/v4/veilforge-v4-landing.png" alt="VeilForge V4 Grant Candidate landing page" width="100%">
 </p>
@@ -70,7 +72,7 @@ Solidity systems can disclose sensitive financial or identity data through event
 - **Policy-aware review** — declassification, accepted-risk, suppression, and incomplete states remain visible.
 - **Canonical report identity** — schema `4.1.0` with hash payload `veilforge.report.hash.v2`.
 - **Arc Testnet proof anchoring** — optional, explicit, zero-value publication through Registry V2.
-- **Multi-file and folder intake** — bounded browser input with exact `solc 0.8.24`.
+- **Multi-file and folder intake** — bounded browser input and documented project-local dependency/remapping patterns with exact `solc 0.8.24`.
 - **Verified exports** — canonical JSON, readable Markdown, and an export manifest with digests.
 - **CLI and CI integration** — V4 CLI, SDK, SARIF, GitHub Actions, and policy gates.
 - **Fail-closed incomplete analysis** — unsupported or unresolved boundaries are surfaced, not silently treated as safe.

@@ -1,6 +1,6 @@
 export { runCli } from './cli.js';
 export { parseArgs } from './args.js';
-export { discoverSources } from './source-discovery.js';
+export { discoverProject, discoverSources } from './source-discovery.js';
 export { createWorkerScan, runWorkerScan } from './worker-client.js';
 export { WORKER_PROTOCOL_VERSION, workerMessage, validateWorkerMessage } from './worker-protocol.js';
 export { writeAtomicFile, writeExportPackage, readExportDirectory } from './file-writer.js';

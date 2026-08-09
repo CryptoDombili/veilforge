@@ -1,6 +1,7 @@
 import { canonicalJson, deepFreeze } from './canonical.js';
 import { webV4Error } from './errors.js';
 import { normalizeWebV4Limits } from './runtime/limits.js';
+import { parseRemappingsText, resolveVirtualProject } from '../../../packages/analyzer/src/v4/frontend/project-resolver.js';
 
 const encoder = new TextEncoder();
 
@@ -37,28 +38,60 @@ export async function browserFilesToScanInput(files, options = {}) {
   if (!Array.isArray(files) || !files.length) throw webV4Error('WEB_V4_INPUT_INVALID', 'At least one browser file is required.');
   const limits = normalizeWebV4Limits(options.limits);
   if (files.length > limits.maxFileCount) throw webV4Error('WEB_V4_INPUT_LIMIT', 'Browser file count exceeds the safe limit.', { limit: limits.maxFileCount });
+  const folderInputs = files.map((file) => String(file?.webkitRelativePath ?? '').trim()).filter(Boolean);
+  if (folderInputs.length && folderInputs.length !== files.length) throw webV4Error('WEB_V4_INPUT_INVALID', 'Folder input cannot be mixed with files from another source root.');
+  let selectedRoot = null;
+  if (folderInputs.length) {
+    const roots = new Set(folderInputs.map((value) => canonicalSourcePath(value).split('/')[0]));
+    if (roots.size !== 1 || folderInputs.some((value) => canonicalSourcePath(value).split('/').length < 2)) throw webV4Error('WEB_V4_INPUT_INVALID', 'Folder input must have one consistent selected root.');
+    selectedRoot = [...roots][0];
+  }
   const entries = [];
+  const remappingFiles = [];
   const folded = new Map();
   let projectBytes = 0;
   for (const file of files) {
-    const path = canonicalSourcePath(file.webkitRelativePath || file.relativePath || file.path || file.name);
+    const suppliedPath = canonicalSourcePath(file.webkitRelativePath || file.relativePath || file.path || file.name);
+    const path = selectedRoot ? canonicalSourcePath(suppliedPath.slice(selectedRoot.length + 1)) : suppliedPath;
     const key = path.toLowerCase();
     if (folded.has(key)) throw webV4Error('WEB_V4_INPUT_INVALID', folded.get(key) === path ? 'Duplicate source path.' : 'Case-folding source path collision.');
+    if (typeof file?.size === 'number' && Number.isFinite(file.size) && file.size >= 0 && file.size > limits.maxPerFileBytes) {
+      throw webV4Error('WEB_V4_INPUT_LIMIT', 'A source file exceeds the safe byte limit.', { path, limit: limits.maxPerFileBytes });
+    }
     const bytes = await fileBytes(file);
     if (bytes.byteLength > limits.maxPerFileBytes) throw webV4Error('WEB_V4_INPUT_LIMIT', 'A source file exceeds the safe byte limit.', { path, limit: limits.maxPerFileBytes });
     projectBytes += bytes.byteLength;
     if (projectBytes > limits.maxProjectBytes) throw webV4Error('WEB_V4_INPUT_LIMIT', 'Project sources exceed the safe byte limit.', { limit: limits.maxProjectBytes });
     folded.set(key, path);
-    entries.push([path, { content: decodeSource(bytes) }]);
+    const content = decodeSource(bytes);
+    if (path.toLowerCase().endsWith('/remappings.txt') || path.toLowerCase() === 'remappings.txt') remappingFiles.push({ path, content });
+    else if (path.toLowerCase().endsWith('.sol')) entries.push([path, { content }]);
+    else throw webV4Error('WEB_V4_INPUT_INVALID', 'Only Solidity sources and one remappings.txt file are accepted.');
   }
+  if (!entries.length) throw webV4Error('WEB_V4_INPUT_INVALID', 'At least one Solidity source is required.');
+  if (remappingFiles.length > 1) throw webV4Error('WEB_V4_INPUT_INVALID', 'Only one project remappings.txt file is accepted.');
   entries.sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0);
   const projectId = String(options.projectId ?? '').trim();
   if (!projectId || projectId.length > 128) throw webV4Error('WEB_V4_INPUT_INVALID', 'A stable projectId is required.');
   const domains = [...new Set(options.domains ?? ['arc-payments'])].sort();
+  let resolution;
+  try {
+    const fileRemappings = remappingFiles.length ? parseRemappingsText(remappingFiles[0].content) : [];
+    resolution = resolveVirtualProject({
+      sources: Object.fromEntries(entries),
+      settings: { ...(plainClone(options.settings ?? {})), remappings: [...(options.settings?.remappings ?? []), ...fileRemappings] },
+      limits: { maxFileCount: limits.maxFileCount, maxPerFileBytes: limits.maxPerFileBytes, maxProjectBytes: limits.maxProjectBytes },
+    });
+  } catch (error) {
+    const reason = error?.code ?? 'MISSING_IMPORT';
+    throw webV4Error(reason === 'LIMIT_EXCEEDED' ? 'WEB_V4_INPUT_LIMIT' : 'WEB_V4_IMPORT_RESOLUTION_FAILED', 'Project imports could not be resolved within the local safety boundary.', { reason });
+  }
   const result = {
     projectId,
     projectName: String(options.projectName ?? projectId).slice(0, 128),
-    sources: Object.fromEntries(entries),
+    sources: resolution.sources,
+    settings: resolution.settings,
+    resolution: { provenance: resolution.provenance },
     domains,
     compiler: { version: options.compilerVersion ?? '0.8.24' },
     budgets: plainClone(options.analysisLimits ?? {}),

@@ -5,5 +5,6 @@ export * from './compiler-provider.js';
 export * from './diagnostics.js';
 export * from './errors.js';
 export * from './import-graph.js';
+export * from './project-resolver.js';
 export * from './source-locations.js';
 export * from './standard-json.js';
