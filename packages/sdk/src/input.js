@@ -44,6 +44,7 @@ export function normalizeSdkInput(input, defaults = {}, optionDomains) {
     sources,
     compilerVersion,
     settings: structuredClone(input.settings ?? {}),
+    resolverSources: input.resolverSources ? structuredClone(input.resolverSources) : undefined,
     taxonomy: structuredClone(input.taxonomy ?? taxonomyDefault()),
     policy: input.policy ? structuredClone(input.policy) : undefined,
     policies: input.policies ? structuredClone(input.policies) : undefined,

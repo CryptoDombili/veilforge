@@ -37,6 +37,29 @@ test('built browser runtime preserves canonical package selection and structured
       compiler: { version: '0.8.24' }, domains: ['arc-payments'],
     }), (error) => error.code === 'SCAN_STAGE_FAILED' && error.causeCode === 'MISSING_IMPORT' && error.stage === 'compilation');
 
+    await assert.rejects(module.VeilForgeV4BrowserRuntime.scanProject({
+      projectId: 'root-shadow-only',
+      sources: {
+        'src/A.sol': { content: `${pragma}import "pkg/B.sol"; contract A is B {}` },
+        'pkg/B.sol': { content: `${pragma}contract B {}` },
+      },
+      compiler: { version: '0.8.24' }, domains: ['arc-payments'],
+    }), (error) => error.code === 'SCAN_STAGE_FAILED' && error.causeCode === 'MISSING_IMPORT' && error.stage === 'compilation');
+
+    const packageBeatsRootShadow = await module.VeilForgeV4BrowserRuntime.scanProject({
+      projectId: 'package-beats-root-shadow',
+      sources: {
+        'src/A.sol': { content: `${pragma}import "pkg/B.sol"; contract A is B {}` },
+        'pkg/B.sol': { content: 'not valid Solidity' },
+        'node_modules/pkg/B.sol': { content: `${pragma}contract B {}` },
+      },
+      compiler: { version: '0.8.24' }, domains: ['arc-payments'],
+    });
+    assert.equal(packageBeatsRootShadow.status, 'completed');
+    assert.equal(packageBeatsRootShadow.verification.verified, true);
+    assert.equal(packageBeatsRootShadow.report.analysis.complete, true);
+    assert.deepEqual(packageBeatsRootShadow.report.analysis.incompleteReasons, []);
+
     const rootWins = await module.VeilForgeV4BrowserRuntime.scanProject({
       projectId: 'root-wins',
       sources: {

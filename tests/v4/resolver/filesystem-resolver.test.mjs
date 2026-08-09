@@ -31,7 +31,7 @@ for (const name of ['hardhat', 'foundry', 'relative']) test(`real ${name} fixtur
   const fixture = await temporaryFixture(name);
   try {
     const project = await discoverProject({ source: ['.'], cwd: fixture.root });
-    assert.equal(compileProject({ sources: project.sources, settings: project.settings }).result.status, 'compiled');
+    assert.equal(compileProject({ sources: project.sources, settings: project.settings, resolverSources: project.resolverSources }).result.status, 'compiled');
     const result = await scan(fixture.root, `resolver-${name}`);
     assert.equal(result.exitCode, 0, JSON.stringify(result.stdout));
     assert.equal(result.stdout.status, 'completed');
@@ -80,6 +80,64 @@ test('filesystem resolver never searches parent or global node_modules', async (
   } finally { await rm(parent, { recursive: true, force: true }); }
 });
 
+test('CLI and browser collectors reject project-root package shadows and prefer only root-local node_modules', async () => {
+  const entry = 'pragma solidity 0.8.24; import "pkg/B.sol"; contract A is B {}';
+  const shadow = 'pragma solidity 0.8.24; contract B { function source() external pure returns(uint){ return 111; } }';
+  const rootPackage = 'pragma solidity 0.8.24; contract B { function source() external pure returns(uint){ return 222; } }';
+  const nestedPackage = 'pragma solidity 0.8.24; contract B { function source() external pure returns(uint){ return 333; } }';
+  const cases = [
+    { name: 'shadow-only', files: { 'pkg/B.sol': shadow }, missing: true },
+    { name: 'root-package-only', files: { 'node_modules/pkg/B.sol': rootPackage }, expected: 'return 222' },
+    { name: 'shadow-and-root-package', files: { 'pkg/B.sol': shadow, 'node_modules/pkg/B.sol': rootPackage }, expected: 'return 222', absent: 'return 111' },
+    { name: 'nested-only', files: { 'vendor/node_modules/pkg/B.sol': nestedPackage }, missing: true },
+    { name: 'root-and-nested', files: { 'node_modules/pkg/B.sol': rootPackage, 'vendor/node_modules/pkg/B.sol': nestedPackage }, expected: 'return 222', absent: 'return 333' },
+  ];
+
+  for (const scenario of cases) {
+    const root = await mkdtemp(path.join(tmpdir(), `veilforge-resolver-shadow-${scenario.name}-`));
+    try {
+      await mkdir(path.join(root, 'src'), { recursive: true });
+      await writeFile(path.join(root, 'src/A.sol'), entry);
+      for (const [relativePath, source] of Object.entries(scenario.files)) {
+        await mkdir(path.dirname(path.join(root, relativePath)), { recursive: true });
+        await writeFile(path.join(root, relativePath), source);
+      }
+      if (scenario.missing) {
+        await assert.rejects(discoverProject({ source: ['.'], cwd: root }), (error) => error.code === 'CLI_SOURCE_INVALID' && error.causeCode === 'MISSING_IMPORT');
+        const browserFiles = [browserFile('demo/src/A.sol', entry), ...Object.entries(scenario.files).map(([relativePath, source]) => browserFile(`demo/${relativePath}`, source))];
+        await assert.rejects(browserFilesToScanInput(browserFiles, { projectId: scenario.name, compilerVersion: '0.8.24' }),
+          (error) => error.code === 'WEB_V4_IMPORT_RESOLUTION_FAILED' && error.safeDetails.reason === 'MISSING_IMPORT');
+      } else {
+        const cli = await discoverProject({ source: ['.'], cwd: root });
+        assert.equal(cli.sources['pkg/B.sol'].content.includes(scenario.expected), true);
+        if (scenario.absent) assert.equal(cli.sources['pkg/B.sol'].content.includes(scenario.absent), false);
+        const cliCompilation = compileProject({ sources: cli.sources, settings: cli.settings, resolverSources: cli.resolverSources }).result;
+        for (const selectedRoot of ['demo', 'project', 'foo-bar']) {
+          const browserFiles = [browserFile(`${selectedRoot}/src/A.sol`, entry), ...Object.entries(scenario.files).map(([relativePath, source]) => browserFile(`${selectedRoot}/${relativePath}`, source))];
+          const browser = await browserFilesToScanInput(browserFiles, { projectId: scenario.name, compilerVersion: '0.8.24' });
+          const browserCompilation = compileProject({ sources: browser.sources, settings: browser.settings, resolverSources: browser.resolverSources }).result;
+          assert.deepEqual(browser.sources, cli.sources);
+          assert.equal(browserCompilation.canonicalSourceHash, cliCompilation.canonicalSourceHash);
+          assert.equal(browserCompilation.compilerInputHash, cliCompilation.compilerInputHash);
+        }
+      }
+    } finally { await rm(root, { recursive: true, force: true }); }
+  }
+
+  const relativeRoot = await mkdtemp(path.join(tmpdir(), 'veilforge-resolver-explicit-relative-'));
+  try {
+    const relativeEntry = 'pragma solidity 0.8.24; import "../pkg/B.sol"; contract A is B {}';
+    await mkdir(path.join(relativeRoot, 'src')); await mkdir(path.join(relativeRoot, 'pkg'));
+    await writeFile(path.join(relativeRoot, 'src/A.sol'), relativeEntry); await writeFile(path.join(relativeRoot, 'pkg/B.sol'), shadow);
+    const cli = await discoverProject({ file: ['src/A.sol'], cwd: relativeRoot });
+    const browser = await browserFilesToScanInput([
+      browserFile('demo/src/A.sol', relativeEntry), browserFile('demo/pkg/B.sol', shadow),
+    ], { projectId: 'explicit-relative', compilerVersion: '0.8.24' });
+    assert.deepEqual(browser.sources, cli.sources);
+    assert.equal(cli.sources['pkg/B.sol'].content.includes('return 111'), true);
+  } finally { await rm(relativeRoot, { recursive: true, force: true }); }
+});
+
 test('CLI and browser collectors produce identical canonical dependency closure for every selected root name', async () => {
   const fixture = await temporaryFixture('hardhat');
   try {
@@ -95,8 +153,8 @@ test('CLI and browser collectors produce identical canonical dependency closure 
       ], { projectId: 'collector-parity', compilerVersion: '0.8.24' });
       assert.deepEqual(browser.sources, cli.sources);
       assert.deepEqual(browser.settings, cli.settings);
-      const cliCompilation = compileProject({ sources: cli.sources, settings: cli.settings }).result;
-      const browserCompilation = compileProject({ sources: browser.sources, settings: browser.settings }).result;
+      const cliCompilation = compileProject({ sources: cli.sources, settings: cli.settings, resolverSources: cli.resolverSources }).result;
+      const browserCompilation = compileProject({ sources: browser.sources, settings: browser.settings, resolverSources: browser.resolverSources }).result;
       assert.equal(browserCompilation.canonicalSourceHash, cliCompilation.canonicalSourceHash);
       assert.equal(browserCompilation.compilerInputHash, cliCompilation.compilerInputHash);
     }

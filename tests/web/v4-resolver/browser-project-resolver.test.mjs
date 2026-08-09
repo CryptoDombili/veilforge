@@ -16,7 +16,7 @@ test('browser folder resolves provided project-local package files without netwo
   ], options);
   assert.deepEqual(Object.keys(input.sources), ['@openzeppelin/contracts/access/Ownable.sol', 'contracts/Vault.sol']);
   assert.equal(input.resolution.provenance[0].origin, 'node_modules');
-  assert.equal(compileProject({ sources: input.sources, settings: input.settings }).result.status, 'compiled');
+  assert.equal(compileProject({ sources: input.sources, settings: input.settings, resolverSources: input.resolverSources }).result.status, 'compiled');
 });
 
 test('browser folder consumes an explicitly provided remappings.txt and Foundry lib', async () => {
@@ -37,20 +37,34 @@ test('browser folder fails closed when a package dependency was not provided', a
 
 test('browser package imports never fall back to nested node_modules suffixes', async () => {
   const entry = file('demo/src/A.sol', `${pragma}import "pkg/B.sol"; contract A is B {}`);
-  const root = file('demo/node_modules/pkg/B.sol', `${pragma}contract B { function source() external pure returns(uint){ return 1; } }`);
-  const nested = file('demo/vendor/node_modules/pkg/B.sol', `${pragma}contract B { function source() external pure returns(uint){ return 2; } }`);
+  const shadow = file('demo/pkg/B.sol', `${pragma}contract B { function source() external pure returns(uint){ return 111; } }`);
+  const root = file('demo/node_modules/pkg/B.sol', `${pragma}contract B { function source() external pure returns(uint){ return 222; } }`);
+  const nested = file('demo/vendor/node_modules/pkg/B.sol', `${pragma}contract B { function source() external pure returns(uint){ return 333; } }`);
   const nestedTwo = file('demo/other/node_modules/pkg/B.sol', `${pragma}contract B {}`);
   const missing = (files) => assert.rejects(browserFilesToScanInput(files, options),
     (error) => error.code === 'WEB_V4_IMPORT_RESOLUTION_FAILED' && error.safeDetails.reason === 'MISSING_IMPORT');
 
   await missing([entry]);
+  await missing([entry, shadow]);
   const rootOnly = await browserFilesToScanInput([entry, root], options);
-  assert.equal(rootOnly.sources['pkg/B.sol'].content.includes('return 1'), true);
+  assert.equal(rootOnly.sources['pkg/B.sol'].content.includes('return 222'), true);
+  const packageBeatsRootShadow = await browserFilesToScanInput([entry, shadow, root], options);
+  assert.equal(packageBeatsRootShadow.sources['pkg/B.sol'].content.includes('return 222'), true);
+  assert.equal(packageBeatsRootShadow.sources['pkg/B.sol'].content.includes('return 111'), false);
   await missing([entry, nested]);
   await missing([entry, nested, nestedTwo]);
   const rootWins = await browserFilesToScanInput([entry, root, nested], options);
-  assert.equal(rootWins.sources['pkg/B.sol'].content.includes('return 1'), true);
-  assert.equal(rootWins.sources['pkg/B.sol'].content.includes('return 2'), false);
+  assert.equal(rootWins.sources['pkg/B.sol'].content.includes('return 222'), true);
+  assert.equal(rootWins.sources['pkg/B.sol'].content.includes('return 333'), false);
+});
+
+test('browser explicit relative imports continue to resolve project-root sources', async () => {
+  const input = await browserFilesToScanInput([
+    file('demo/src/A.sol', `${pragma}import "../pkg/B.sol"; contract A is B {}`),
+    file('demo/pkg/B.sol', `${pragma}contract B { function source() external pure returns(uint){ return 111; } }`),
+  ], options);
+  assert.equal(input.sources['pkg/B.sol'].content.includes('return 111'), true);
+  assert.equal(compileProject({ sources: input.sources, settings: input.settings, resolverSources: input.resolverSources }).result.status, 'compiled');
 });
 
 test('browser rejects unsupported contextual remapping before considering any fallback source', async () => {

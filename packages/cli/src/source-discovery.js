@@ -139,7 +139,7 @@ export async function discoverProject({ source = [], file = [], cwd = process.cw
         return { content: decode(bytes), virtualPath: locatorPath };
       },
     });
-    return { sources: resolution.sources, settings: resolution.settings, resolution: { provenance: resolution.provenance, limits: resolution.limits } };
+    return { sources: resolution.sources, resolverSources: resolution.resolverSources, settings: resolution.settings, resolution: { provenance: resolution.provenance, limits: resolution.limits } };
   } catch (error) {
     const causeCode = error?.code ?? 'MISSING_IMPORT';
     throw cliError(causeCode === 'LIMIT_EXCEEDED' ? 'CLI_SOURCE_LIMIT_EXCEEDED' : 'CLI_SOURCE_INVALID', { causeCode, safeDetails: { reason: causeCode } });

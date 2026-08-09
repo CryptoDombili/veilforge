@@ -6,9 +6,16 @@ import { buildImportGraph } from './import-graph.js';
 import { ProjectResolutionError, resolveVirtualProject } from './project-resolver.js';
 import { buildStandardJsonInput, canonicalSourceHash, compilerInputHash } from './standard-json.js';
 
-export function compileProject({ sources, compilerVersion = '0.8.24', settings = {}, compiler = null }) {
+export function compileProject({ sources, resolverSources = null, compilerVersion = '0.8.24', settings = {}, compiler = null }) {
   let resolved;
-  try { resolved = resolveVirtualProject({ sources, settings }); }
+  try {
+    resolved = resolveVirtualProject({ sources: resolverSources ?? sources, settings });
+    if (resolverSources !== null) {
+      const expected = buildStandardJsonInput({ sources, settings: resolved.settings }).sources;
+      const actual = buildStandardJsonInput({ sources: resolved.sources, settings: resolved.settings }).sources;
+      if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new ProjectResolutionError('AMBIGUOUS_IMPORT', { reason: 'resolver-source-mismatch' });
+    }
+  }
   catch (error) {
     if (!(error instanceof ProjectResolutionError)) throw error;
     const fallbackSettings = error.code === 'INVALID_REMAPPING' ? { ...settings, remappings: [] } : settings;
