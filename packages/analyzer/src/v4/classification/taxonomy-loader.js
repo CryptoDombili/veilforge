@@ -3,10 +3,16 @@ import { normalizeName } from './common.js';
 
 function inlineList(text) { return text.slice(1, -1).split(',').map((item) => normalizeName(item.trim())).filter(Boolean); }
 
-export function loadFinancialTaxonomy(input) {
+export function canonicalFinancialTaxonomyInput(input) {
   if (input && typeof input === 'object') return normalizeTaxonomy(input);
   if (typeof input !== 'string') throw new ClassificationInputError('Taxonomy must be YAML text or an object.');
-  const text = input.replace(/^\uFEFF/u, '').replace(/\r\n?/gu, '\n');
+  return input.replace(/^\uFEFF/u, '').replace(/\r\n?/gu, '\n');
+}
+
+export function loadFinancialTaxonomy(input) {
+  const canonical = canonicalFinancialTaxonomyInput(input);
+  if (canonical && typeof canonical === 'object') return canonical;
+  const text = canonical;
   const result = { schemaVersion: null, candidateVersion: null, domains: {}, sinks: [], inferencePolicy: {} };
   let section = null; let domain = null;
   for (const raw of text.split('\n')) {

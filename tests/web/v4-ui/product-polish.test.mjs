@@ -17,8 +17,9 @@ test('V4 surface presents the product journey and progressive disclosure', () =>
   const source = fs.readFileSync(new URL('../../../apps/web/v4/ui.js', import.meta.url), 'utf8');
   assert.match(source, /data-v4-history-export/u);
   assert.match(source, /Verified on Arc Testnet/u);
-  assert.match(source, /Already published — second transaction blocked/u);
-  assert.match(source, /v4-proof-workflow'\)\.hidden = published/u);
+  assert.match(source, /An identical publisher-scoped proof already exists; no new transaction was prepared\./u);
+  assert.match(source, /proof\.networkPreflight\?\.duplicate !== true/u);
+  assert.match(source, /v4-proof-transaction'\)\.hidden = !summary \|\| existingProofVerified/u);
 });
 
 test('proof and transaction detail remain collapsed until requested', async () => {
@@ -28,7 +29,9 @@ test('proof and transaction detail remain collapsed until requested', async () =
   assert.match(proof, /<details class="v4-proof-technical">/u);
   assert.match(proofSectionTemplate(), /id="v4-proof-workflow"[^>]*hidden/u);
   const checks = renderPreflightChecks({ checks: [{ id: 'trusted-chain', passed: true, message: 'ok' }] });
-  assert.match(checks, /1\/1 preflight checks passed/u);
+  assert.match(checks, /1\/1 required checks passed/u);
+  assert.match(checks, /class="passed"/u);
+  assert.match(checks, /trusted-chain/u);
   assert.doesNotMatch(checks, /<details[^>]* open/u);
   const transaction = renderTransactionSummary({ networkName: 'Arc Testnet', from: '0x1111111111111111111111111111111111111111', to: '0x2222222222222222222222222222222222222222', reportHash: envelope.reportHash, value: '0', gasEstimateStatus: 'passed', duplicate: false, registryMethod: 'publishReport', chainId: '0x1', calldataBytes: 4 });
   assert.match(transaction, /Advanced transaction details/u);
@@ -48,19 +51,23 @@ test('responsive polish covers required widths without changing the V3 source de
 test('V4 preview build rewrites only copied landing content', () => {
   const build = fs.readFileSync(new URL('../../../scripts/build-web.mjs', import.meta.url), 'utf8');
   assert.match(build, /if \(webV4Enabled\)/u);
-  assert.match(build, /VeilForge V4 Grant Candidate/u);
+  assert.match(build, /V4_PRODUCT_NAME/u);
   assert.match(build, /Launch V4 Scanner/u);
-  assert.match(build, /VeilForge V4 Release Candidate 1|v4-preview-pending/u);
+  assert.match(build, /V4_PRODUCT_VERSION|v4-preview-pending/u);
 });
 
-test('V4 GC and V4 RC1 remain distinct, accessible candidate labels', () => {
+test('V4 GC exposes release and schema while RC1 remains historical technical context', () => {
   const build = fs.readFileSync(new URL('../../../scripts/build-web.mjs', import.meta.url), 'utf8');
   const ui = fs.readFileSync(new URL('../../../apps/web/v4/ui.js', import.meta.url), 'utf8');
   const css = fs.readFileSync(new URL('../../../apps/web/landing.css', import.meta.url), 'utf8');
-  assert.match(build, /aria-label="VeilForge V4 Grant Candidate"/u);
+  const release = fs.readFileSync(new URL('../../../docs/releases/v4.0.0-rc1.md', import.meta.url), 'utf8');
+  assert.match(build, /V4_PRODUCT_NAME/u);
+  assert.match(build, /V4_PRODUCT_VERSION/u);
   assert.match(build, />V4 GC<\/abbr>/u);
-  assert.match(ui, /VeilForge V4 Release Candidate 1/u);
-  assert.match(ui, /replaceChildren\('V4 RC1'\)/u);
+  assert.match(ui, /replaceChildren\('V4 GC'\)/u);
+  assert.match(ui, /report schema \$\{V4_REPORT_VERSION\}/u);
+  assert.match(release, /Historical integration snapshot/u);
+  assert.match(release, /VeilForge V4 Release Candidate 1/u);
   assert.match(css, /margin-block-end:clamp\(72px,6\.2vw,108px\)/u);
 });
 

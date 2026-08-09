@@ -158,5 +158,8 @@
   },
   "dependencies": {
     "solc": "0.8.24"
+  },
+  "overrides": {
+    "tmp": "0.2.7"
   }
 }

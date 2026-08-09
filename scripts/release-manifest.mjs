@@ -29,8 +29,12 @@ async function collectFiles(directory = '.') {
 
   for (const entry of entries) {
     const relative = path.posix.join(directory === '.' ? '' : directory, entry.name);
+    // A normal clone materializes .git as a directory, while a linked worktree
+    // materializes it as a file. Exclude either representation before checking
+    // the entry type so release manifests are independent of checkout shape.
+    if (ignoredDirectories.has(entry.name)) continue;
     if (entry.isDirectory()) {
-      if (!ignoredDirectories.has(entry.name)) files.push(...await collectFiles(relative));
+      files.push(...await collectFiles(relative));
       continue;
     }
     if (!entry.isFile() || ignoredFiles.has(entry.name) || entry.name.endsWith('.zip')) continue;

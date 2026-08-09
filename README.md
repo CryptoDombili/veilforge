@@ -9,7 +9,8 @@
 </p>
 
 <p align="center">
-  <img alt="Version: V4 Grant Candidate" src="https://img.shields.io/badge/version-V4%20Grant%20Candidate-6f8cff">
+  <img alt="Release: v4.0.0-gc.1" src="https://img.shields.io/badge/release-v4.0.0--gc.1-6f8cff">
+  <img alt="Report schema: v4.1.0" src="https://img.shields.io/badge/report%20schema-v4.1.0-8b6cff">
   <img alt="Status: Production" src="https://img.shields.io/badge/status-production-35d6aa">
   <img alt="Network: Arc Testnet" src="https://img.shields.io/badge/network-Arc%20Testnet-6fd5ff">
   <img alt="Compiler: Solidity 0.8.24" src="https://img.shields.io/badge/solidity-0.8.24-363636?logo=solidity">
@@ -32,6 +33,24 @@
 </p>
 
 VeilForge runs source analysis locally in the browser. Solidity source is not uploaded to an AI API or remote analyzer. Reports are deterministic, findings are bound to source locations and source-to-sink evidence, and the canonical report hash can be independently verified. The live V4 Grant Candidate is a working, tested release candidate—not a specification-only demo.
+
+## Release identity
+
+The current reviewer-facing product identity is intentionally explicit:
+
+- **Product:** VeilForge V4 Grant Candidate
+- **Release:** `v4.0.0-gc.1`
+- **Report schema:** `v4.1.0`
+
+The root npm package remains at `3.2.2` to preserve the legacy V3 command, report, and source-default compatibility boundary. It is not the current V4 product version. V4 CLI, SDK, SARIF, gate, benchmark, proof, and browser release artifacts use `4.0.0-gc.1`; canonical V4 reports use schema `4.1.0` and hash payload `veilforge.report.hash.v2`.
+
+### Deployment model
+
+The repository-safe source default intentionally keeps `WEB_V4_ENABLED=false` as a fail-closed legacy-compatibility boundary. The production Vercel configuration explicitly sets `VEILFORGE_WEB_V4_ENABLED=true` for its build, so [veilforge.dev](https://veilforge.dev) serves the V4 Grant Candidate without changing that source default. This web deployment flag does not enable Arc mainnet: mainnet `enabled=false`, `proofReadEnabled=false`, and `publishEnabled=false` remain fail-closed.
+
+### Dependency security
+
+VeilForge intentionally preserves exact `solc@0.8.24`. Because that compiler declares legacy `tmp@0.0.33`, npm overrides `tmp` to `0.2.7` as a security remediation; compatibility with the `fileSync` and `removeCallback` APIs used by solc was validated. The Solidity compiler identity remains exactly `0.8.24`.
 
 <p align="center">
   <img src="assets/v4/veilforge-v4-landing.png" alt="VeilForge V4 Grant Candidate landing page" width="100%">
@@ -81,6 +100,10 @@ The following real publication was verified read-only against Arc Testnet transa
 | Registry V2 | [`0x88B4055e…B5401d`](https://testnet.arcscan.app/address/0x88B4055eaB061CEa9BdfefF524f65ff461B5401d) |
 | Transaction value | `0 USDC` |
 | Report hash | `sha256:6715575c6f0f605b29f5527c48bb74fc452c7236e812d984a683a4a81aa78ba1` |
+
+### Why two proof transactions are documented
+
+The submitted grant and whitepaper evidence intentionally retains the earlier canonical proof: transaction [`0xdb674c98…4192c`](https://testnet.arcscan.app/tx/0xdb674c986195ed9b3950f34d058637fbb2b887f58ca724400225ba177884192c), block `55469453`, publisher `0x60B6333a0722bBEA39d4026b284Ae1E142bEb914`, and report hash `sha256:fce5ffa529c79d185a6013a362e25658020d1691550557d59173c9acc6a417ea`. The newer proof above is a separate successful Registry V2 publication from the later V4 multi-file/current workflow. Both are independently verified Arc Testnet `publishReport` transactions targeting Registry V2 at `0x88B4055eaB061CEa9BdfefF524f65ff461B5401d`; their different publishers and report hashes represent distinct report identities. The newer proof demonstrates continued workflow operation and does not replace or invalidate the historical grant-evidence proof. Neither transaction is an Arc mainnet proof.
 
 The proof anchors report evidence; it is **not** a confidentiality certificate. Solidity source code is never published on-chain. Registry V2 records are publisher-scoped and duplicate-protected, and publication always requires an explicit wallet action.
 

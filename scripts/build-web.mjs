@@ -4,6 +4,7 @@ import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 import { buildWebV4Runtime } from './build-web-v4-runtime.mjs';
 import { buildV4GrantLanding } from './lib/v4-grant-landing.mjs';
+import { V4_PRODUCT_NAME, V4_PRODUCT_VERSION, V4_REPORT_VERSION } from '../apps/web/v4/version.js';
 
 const root = process.cwd();
 const outputDirectory = process.env.VEILFORGE_WEB_OUTPUT_DIR || 'dist';
@@ -57,17 +58,17 @@ if (!validAddress(configuredAddress)) throw new Error('Registry address is inval
 if (webV4Enabled === null) throw new Error('VEILFORGE_WEB_V4_ENABLED must be true or false.');
 fs.writeFileSync(
   path.join(dist, 'config.js'),
-  `export const REGISTRY_ADDRESS = '${configuredAddress}';\nexport const BUILD_VERSION = '3.2.2';\nexport const WEB_V4_ENABLED = ${webV4Enabled};\n`,
+  `export const REGISTRY_ADDRESS = '${configuredAddress}';\nexport const BUILD_VERSION = '${webV4Enabled ? V4_PRODUCT_VERSION : '3.2.2'}';\nexport const WEB_V4_ENABLED = ${webV4Enabled};\n`,
 );
 
 if (webV4Enabled) {
   const landingPath = path.join(dist, 'index.html');
   const landing = buildV4GrantLanding(fs.readFileSync(landingPath, 'utf8')
-    .replace(/<meta name="description" content="[^"]+" \/>/u, '<meta name="description" content="VeilForge V4 Grant Candidate — local, deterministic Solidity privacy analysis with verified findings and Arc Testnet proof workflows." />')
-    .replace(/<title>[^<]+<\/title>/u, '<title>VeilForge V4 Grant Candidate — Verified Findings</title>')
+    .replace(/<meta name="description" content="[^"]+" \/>/u, `<meta name="description" content="${V4_PRODUCT_NAME}, release ${V4_PRODUCT_VERSION}, report schema ${V4_REPORT_VERSION} - local, deterministic Solidity privacy analysis with verified findings and Arc Testnet proof workflows." />`)
+    .replace(/<title>[^<]+<\/title>/u, `<title>${V4_PRODUCT_NAME} - ${V4_PRODUCT_VERSION}</title>`)
     .replace('<a href="./app/index.html#scanner">Privacy OS</a><a href="#workflow">Architecture</a><a href="https://docs.arc.network/arc/concepts/opt-in-privacy" target="_blank" rel="noreferrer">Arc APS docs</a>', '<a href="./app/index.html#scanner">V4 Scanner</a><a href="#workflow">Workflow</a><a href="https://github.com/CryptoDombili/veilforge/tree/main/docs" target="_blank" rel="noreferrer">Documentation</a>')
-    .replace(/<span class="landing-version">[^<]+<\/span>/u, '<abbr class="landing-version" title="VeilForge V4 Grant Candidate" aria-label="VeilForge V4 Grant Candidate" tabindex="0">V4 GC</abbr>')
-    .replace(/<a class="release-badge"[^>]*>[\s\S]*?<\/a>/u, '<a class="release-badge" href="#product" aria-label="VeilForge V4 Grant Candidate"><i></i> VeilForge V4 — Grant Candidate <span>→</span></a>')
+    .replace(/<span class="landing-version">[^<]+<\/span>/u, `<abbr class="landing-version" title="Release ${V4_PRODUCT_VERSION} \u00b7 Report schema ${V4_REPORT_VERSION}" aria-label="${V4_PRODUCT_NAME}, release ${V4_PRODUCT_VERSION}, report schema ${V4_REPORT_VERSION}" tabindex="0">V4 GC</abbr>`)
+    .replace(/<a class="release-badge"[^>]*>[\s\S]*?<\/a>/u, `<a class="release-badge" href="#product" aria-label="${V4_PRODUCT_NAME}, release ${V4_PRODUCT_VERSION}"><i></i> ${V4_PRODUCT_NAME} \u00b7 ${V4_PRODUCT_VERSION} <span>&rarr;</span></a>`)
     .replace(/<h1>[\s\S]*?<\/h1>/u, '<h1>Find privacy exposure.<br />Verify the evidence.<br /><em>Ship with confidence.</em></h1>')
     .replace(/<p class="flow-intro-copy">[\s\S]*?<\/p>/u, '<p class="flow-intro-copy">Run deterministic Solidity analysis locally, review source-backed findings, and prepare a verified Arc Testnet proof without uploading source code.</p>')
     .replace('Launch the Privacy OS', 'Launch V4 Scanner')
@@ -80,6 +81,10 @@ if (webV4Enabled) {
 
   const appPath = path.join(dist, 'app', 'index.html');
   const app = fs.readFileSync(appPath, 'utf8')
+    .replace(/<meta name="description" content="[^"]+" \/>/u, `<meta name="description" content="${V4_PRODUCT_NAME}, release ${V4_PRODUCT_VERSION}, report schema ${V4_REPORT_VERSION}." />`)
+    .replace(/<title>[^<]+<\/title>/u, `<title>${V4_PRODUCT_NAME} - ${V4_PRODUCT_VERSION}</title>`)
+    .replace(/<span class="versionPill">[^<]+<\/span>/u, `<span class="versionPill" title="Release ${V4_PRODUCT_VERSION} \u00b7 Report schema ${V4_REPORT_VERSION}">V4 GC</span>`)
+    .replace(/<p class="chip">[\s\S]*?<\/p>/u, `<p class="chip"><i></i> ${V4_PRODUCT_NAME} \u00b7 ${V4_PRODUCT_VERSION}</p>`)
     .replace('<body class="app-page" data-ready="false">', '<body class="app-page v4-preview-pending" data-ready="false">');
   fs.writeFileSync(appPath, app);
 }
@@ -100,8 +105,13 @@ for (const file of fs.readdirSync(path.join(dist, 'v4')).filter((name) => name.s
 }
 
 const manifest = {
-  name: 'VeilForge Privacy Operating System',
-  version: '3.2.2',
+  name: webV4Enabled ? V4_PRODUCT_NAME : 'VeilForge Privacy Operating System',
+  version: webV4Enabled ? V4_PRODUCT_VERSION : '3.2.2',
+  ...(webV4Enabled ? {
+    productVersion: V4_PRODUCT_VERSION,
+    reportSchemaVersion: V4_REPORT_VERSION,
+    legacyBuildVersion: '3.2.2',
+  } : {}),
   output: 'static-es-modules',
   registryAddress: configuredAddress,
   generatedFiles: [],

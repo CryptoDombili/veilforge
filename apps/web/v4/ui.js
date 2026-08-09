@@ -4,6 +4,7 @@ import { clearV4Reports, listV4Reports, readV3Storage, removeV4Report, saveV4Rep
 import { verifyV4Report } from './report-adapter.js';
 import { createWorkerClient } from './runtime/worker-client.js';
 import { WEB_V4_LIMITS } from './runtime/limits.js';
+import { V4_PRODUCT_NAME, V4_PRODUCT_VERSION, V4_REPORT_VERSION } from './version.js';
 import { createV4ViewModel } from './view-models.js';
 import { createWebProofEnvelope, prepareWebRegistryPublish } from './proof-adapter.js';
 import { loadVerifiedWebProofPublication, saveWebProofState } from './proof-persistence.js';
@@ -245,19 +246,19 @@ export async function initV4Ui(options = {}) {
   document.body.classList.add('v4-ui-mode');
   const versionPill = document.querySelector('.versionPill');
   if (versionPill) {
-    versionPill.replaceChildren('V4 RC1');
-    versionPill.setAttribute('aria-label', 'VeilForge V4 Release Candidate 1');
-    versionPill.setAttribute('title', 'VeilForge V4 Release Candidate 1');
+    versionPill.replaceChildren('V4 GC');
+    versionPill.setAttribute('aria-label', `${V4_PRODUCT_NAME}, release ${V4_PRODUCT_VERSION}, report schema ${V4_REPORT_VERSION}`);
+    versionPill.setAttribute('title', `Release ${V4_PRODUCT_VERSION} \u00b7 Report schema ${V4_REPORT_VERSION}`);
     versionPill.setAttribute('tabindex', '0');
   }
-  document.title = 'VeilForge V4 Grant Candidate — Verified Findings';
-  const chip = document.querySelector('.chip'); if (chip) chip.innerHTML = '<i></i> VeilForge V4 — Grant Candidate';
+  document.title = `${V4_PRODUCT_NAME} - ${V4_PRODUCT_VERSION}`;
+  const chip = document.querySelector('.chip'); if (chip) chip.innerHTML = `<i></i> ${V4_PRODUCT_NAME} \u00b7 ${V4_PRODUCT_VERSION}`;
   const hero = document.querySelector('.hero > div:first-child');
   if (hero) hero.querySelector('h1').innerHTML = 'Find privacy exposure and verify the evidence <em>before deployment.</em>';
   const nav = document.querySelector('.topbar .navlinks');
   if (nav) nav.innerHTML = '<a href="#scanner">V4 Scanner</a><a href="#v4-proof">Proof</a><a href="https://github.com/CryptoDombili/veilforge/tree/main/docs" target="_blank" rel="noreferrer">Documentation</a>';
   const navActions = document.querySelector('.topbar .navActions');
-  if (navActions) navActions.insertAdjacentHTML('afterbegin', '<span class="v4-context-pill">LOCAL / PRIVATE</span><span class="v4-context-pill">ARC TESTNET</span>');
+  if (navActions) navActions.insertAdjacentHTML('afterbegin', `<span class="v4-context-pill">LOCAL / PRIVATE</span><span class="v4-context-pill">ARC TESTNET</span><span class="v4-context-pill">REPORT ${V4_REPORT_VERSION}</span>`);
   root.innerHTML = v4UiTemplate();
   document.body.classList.remove('v4-preview-pending');
   if (window.location.hash === '#scanner') {

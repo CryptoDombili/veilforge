@@ -77,8 +77,8 @@ test('responsive spacing and accessible version labels are encoded in preview so
   assert.match(css, /margin-bottom:46px/u);
   assert.match(css, /margin-bottom:34px/u);
   assert.match(css, /prefers-reduced-motion/u);
-  assert.match(build, /aria-label="VeilForge V4 Grant Candidate"/u);
-  assert.match(ui, /aria-label', 'VeilForge V4 Release Candidate 1'/u);
+  assert.match(build, /V4_PRODUCT_NAME/u);
+  assert.match(ui, /release \$\{V4_PRODUCT_VERSION\}, report schema \$\{V4_REPORT_VERSION\}/u);
 });
 
 test('all five whitepaper figures replace placeholders and resolve', () => {

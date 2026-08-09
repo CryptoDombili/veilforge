@@ -1,3 +1,5 @@
+export const V4_PRODUCT_NAME = 'VeilForge V4 Grant Candidate';
+export const V4_PRODUCT_VERSION = '4.0.0-gc.1';
 export const WEB_V4_FOUNDATION_VERSION = '5.1.0';
 export const WEB_V4_PROTOCOL_VERSION = 'veilforge.web-worker.v1';
 export const V4_REPORT_SCHEMA = 'veilforge.report.v4';
