@@ -14,12 +14,12 @@ if (!['chromium', 'firefox', 'webkit', 'edge'].includes(requestedBrowser)) throw
 if (!summaryPath) throw new Error('Use --summary=<safe-json-path>.');
 
 const root = process.cwd();
-const preview = path.join(root, 'dist-preview-v4');
+const artifact = path.join(root, 'dist-grant-release');
 const fixtureRoot = path.join(root, 'tests', 'corpus', 'arc-payments', 'positive', 'PAY-POS-001');
 const source = fs.readFileSync(path.join(fixtureRoot, 'project', 'src', 'Case.sol'), 'utf8');
 const policy = JSON.parse(fs.readFileSync(path.join(fixtureRoot, 'policy.json'), 'utf8'));
 const stageLimits = Object.freeze({ launch: 15_000, context: 5_000, page: 5_000, navigation: 15_000, app: 15_000, scan: 30_000, cleanup: 3_000, shutdown: 5_000 });
-const result = { browser: requestedBrowser, passed: false, version: null, stages: [], repeatedScans: 0, orphanWorkers: null, pendingRequests: null, responsive390: false, cleanShutdown: false, errorCode: null };
+const result = { browser: requestedBrowser, artifact: 'dist-grant-release', passed: false, version: null, routes: [], pageErrors: 0, module404s: 0, asset404s: 0, stages: [], repeatedScans: 0, orphanWorkers: null, pendingRequests: null, responsive390: false, cleanShutdown: false, errorCode: null };
 let currentStage = 'BROWSER_LAUNCH';
 let browser;
 let context;
@@ -58,20 +58,27 @@ async function waitForScan() {
 }
 
 async function loadProject(projectId, content = source) {
-  await page.locator('#v4-file-input').setInputFiles({ name: 'Case.sol', mimeType: 'text/plain', buffer: Buffer.from(content) });
-  await page.evaluate(({ id, fixturePolicy }) => {
+  await page.evaluate(({ id, fixturePolicy, sourceContent }) => {
+    const input = document.querySelector('#v4-file-input');
+    const transfer = new DataTransfer();
+    const file = new File([sourceContent], 'Case.sol', { type: 'text/plain' });
+    Object.defineProperty(file, 'webkitRelativePath', { value: 'src/Case.sol' });
+    transfer.items.add(file);
+    input.files = transfer.files;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
     document.querySelector('#v4-project-name').value = id;
     document.querySelectorAll('[name="v4-domain"]').forEach((node) => { node.checked = node.value === 'arc-payments'; });
     const mode = document.querySelector('#v4-policy-mode');
     mode.value = 'custom';
     mode.dispatchEvent(new Event('change', { bubbles: true }));
     document.querySelector('#v4-policy').value = JSON.stringify(fixturePolicy);
-  }, { id: projectId, fixturePolicy: policy });
+  }, { id: projectId, fixturePolicy: policy, sourceContent: content });
 }
 
 async function scan(projectId, content = source) {
   await loadProject(projectId, content);
   await page.locator('#v4-scan').click();
+  await page.waitForFunction(() => document.querySelector('#v4-scan')?.disabled === true, null, { timeout: stageLimits.app });
   return waitForScan();
 }
 
@@ -87,9 +94,30 @@ function writeSummary() {
   fs.writeFileSync(summaryPath, `${JSON.stringify(result, null, 2)}\n`);
 }
 
+async function verifyProductionRoute(route) {
+  const pageErrorsBefore = result.pageErrors;
+  const module404sBefore = result.module404s;
+  const asset404sBefore = result.asset404s;
+  await bounded(`ROUTE_${route === '/app' ? 'APP' : 'SCANNER'}`, stageLimits.navigation, async () => {
+    await page.goto('about:blank');
+    await page.goto(`http://127.0.0.1:${server.port}${route}`, { waitUntil: 'domcontentloaded', timeout: stageLimits.navigation });
+    await page.waitForFunction(() => window.__VEILFORGE_READY__ === true && document.body.dataset.webRuntime === 'v4', null, { timeout: stageLimits.app });
+  });
+  const snapshot = await page.evaluate(() => ({
+    ready: window.__VEILFORGE_READY__ === true,
+    runtime: document.body.dataset.webRuntime ?? null,
+    scannerControlVisible: Boolean(document.querySelector('#v4-scan')?.offsetParent),
+  }));
+  if (!snapshot.ready || snapshot.runtime !== 'v4' || !snapshot.scannerControlVisible) throw Object.assign(new Error('production route did not mount'), { code: 'PRODUCTION_ROUTE_MOUNT_FAILED' });
+  if (result.pageErrors !== pageErrorsBefore) throw Object.assign(new Error('uncaught page error'), { code: 'PRODUCTION_ROUTE_PAGE_ERROR' });
+  if (result.module404s !== module404sBefore) throw Object.assign(new Error('module request returned 404'), { code: 'PRODUCTION_ROUTE_MODULE_404' });
+  if (result.asset404s !== asset404sBefore) throw Object.assign(new Error('asset request returned 404'), { code: 'PRODUCTION_ROUTE_ASSET_404' });
+  result.routes.push({ route, ready: true, runtime: 'v4', scannerControlVisible: true, pageErrors: 0, module404s: 0, asset404s: 0 });
+}
+
 try {
-  if (!fs.existsSync(path.join(preview, 'app', 'index.html'))) throw Object.assign(new Error('preview missing'), { code: 'PREVIEW_MISSING' });
-  server = await startStaticServer({ '/v4/': preview });
+  if (!fs.existsSync(path.join(artifact, 'app', 'index.html'))) throw Object.assign(new Error('grant release artifact missing'), { code: 'GRANT_RELEASE_ARTIFACT_MISSING' });
+  server = await startStaticServer({ '/': artifact });
   const browserType = requestedBrowser === 'firefox' ? firefox : requestedBrowser === 'webkit' ? webkit : chromium;
   const launchOptions = { headless: true, timeout: stageLimits.launch };
   if (requestedBrowser === 'edge') launchOptions.channel = 'msedge';
@@ -97,17 +125,50 @@ try {
   result.version = browser.version();
   context = await bounded('CONTEXT_CREATED', stageLimits.context, () => browser.newContext({ viewport: { width: 1280, height: 900 }, acceptDownloads: true }));
   page = await bounded('PAGE_TARGET_CREATED', stageLimits.page, () => context.newPage());
+  page.on('pageerror', () => { result.pageErrors += 1; });
+  page.on('response', (response) => {
+    if (response.status() !== 404) return;
+    const pathname = new URL(response.url()).pathname;
+    if (/\.(?:c?js|mjs)$/u.test(pathname)) result.module404s += 1;
+    else result.asset404s += 1;
+  });
   page.on('worker', (worker) => {
     if (!worker.url().includes('veilforge-v4-scanner.worker')) return;
     activeWorkers.add(worker);
     worker.on('close', () => activeWorkers.delete(worker));
   });
-  await bounded('PAGE_NAVIGATED', stageLimits.navigation, () => page.goto(`http://127.0.0.1:${server.port}/v4/app/`, { waitUntil: 'domcontentloaded', timeout: stageLimits.navigation }));
-  await bounded('APP_READY', stageLimits.app, () => page.waitForFunction(() => window.__VEILFORGE_READY__ === true && document.body.dataset.webRuntime === 'v4', null, { timeout: stageLimits.app }));
+  await verifyProductionRoute('/app');
+  const appRouteScan = await bounded('ROUTE_APP_REAL_SCAN', stageLimits.scan, () => scan(`${requestedBrowser}-app-route`));
+  if (!/Verified result ready/u.test(appRouteScan.status) || appRouteScan.findings < 1) throw Object.assign(new Error('app route scan failed'), { code: 'APP_ROUTE_SCAN_FAILED' });
+  await waitForWorkerCleanup();
+  Object.assign(result.routes.at(-1), { scanCompleted: true, findings: appRouteScan.findings });
+  await verifyProductionRoute('/app#scanner');
 
   const first = await bounded('REAL_SCAN_COMPLETED', stageLimits.scan, () => scan(`${requestedBrowser}-first`));
+  result.firstScan = { status: first.status, statusText: first.statusText, findings: first.findings };
+  if (!/Verified result ready/u.test(first.status)) {
+    result.firstScan.diagnostic = await page.evaluate(async ({ fixturePolicy }) => {
+      const [{ browserFilesToScanInput }, { createWorkerClient }] = await Promise.all([import('/v4/input-adapter.js'), import('/v4/runtime/worker-client.js')]);
+      const file = document.querySelector('#v4-file-input').files[0];
+      const client = createWorkerClient();
+      let input;
+      try {
+        input = await browserFilesToScanInput([...document.querySelector('#v4-file-input').files], { projectId: 'cross-browser-diagnostic', projectName: 'Cross-browser diagnostic', domains: ['arc-payments'], compilerVersion: '0.8.24', policy: fixturePolicy });
+      } catch (error) {
+        return { stage: 'input', code: error?.code ?? 'UNKNOWN', reason: error?.safeDetails?.reason ?? null, path: file?.webkitRelativePath ?? null };
+      }
+      try {
+        await client.scan(input);
+        return null;
+      } catch (error) {
+        return { stage: 'worker', code: error?.code ?? 'UNKNOWN', reason: error?.safeDetails?.reason ?? null, path: file?.webkitRelativePath ?? null, sources: Object.keys(input.sources) };
+      }
+      finally { client.dispose(); }
+    }, { fixturePolicy: policy });
+  }
   if (!/Verified result ready/u.test(first.status) || first.findings < 1) throw Object.assign(new Error('verified result missing'), { code: 'VERIFIED_REPORT_MISSING' });
   await waitForWorkerCleanup();
+  Object.assign(result.routes.at(-1), { scanCompleted: true, findings: first.findings });
 
   const history = await bounded('HISTORY_SAVE_LOAD', stageLimits.app, async () => {
     await page.locator('#v4-refresh-history').click();
@@ -170,6 +231,6 @@ try {
   const shutdownStarted = performance.now();
   try { await page?.close(); await context?.close(); await browser?.close(); await server?.close(); result.cleanShutdown = true; record('CLEAN_SHUTDOWN', shutdownStarted); } catch { result.passed = false; result.errorCode ??= 'CLEAN_SHUTDOWN_FAILED'; process.exitCode = 1; }
   writeSummary();
-  console.log(JSON.stringify({ browser: result.browser, version: result.version, passed: result.passed, repeatedScans: result.repeatedScans, orphanWorkers: result.orphanWorkers, pendingRequests: result.pendingRequests, cleanShutdown: result.cleanShutdown, errorCode: result.errorCode }));
+  console.log(JSON.stringify({ browser: result.browser, version: result.version, artifact: result.artifact, routes: result.routes, pageErrors: result.pageErrors, module404s: result.module404s, asset404s: result.asset404s, passed: result.passed, repeatedScans: result.repeatedScans, orphanWorkers: result.orphanWorkers, pendingRequests: result.pendingRequests, cleanShutdown: result.cleanShutdown, errorCode: result.errorCode }));
   setTimeout(() => process.exit(process.exitCode ?? 0), 0);
 }

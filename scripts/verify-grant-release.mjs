@@ -6,6 +6,7 @@ runNpmCommands([
   ['audit', '--audit-level=low'],
   ['run', 'test:spec'],
   ['run', 'test:v4-action'],
+  ['run', 'test:v4-project-resolver'],
   ['run', 'build:web-v4-runtime'],
   ['run', 'verify:web-v4-runtime'],
   ['run', 'test:web-v4-runtime'],

@@ -53,7 +53,8 @@ export function normalizeSourcePath(input) {
 export function normalizeSourceContent(input) {
   let text;
   try {
-    text = Buffer.isBuffer(input) || input instanceof Uint8Array ? utf8Decoder.decode(input) : String(input ?? '');
+    const bytes = input instanceof Uint8Array ? input : input instanceof ArrayBuffer ? new Uint8Array(input) : null;
+    text = bytes ? utf8Decoder.decode(bytes) : String(input ?? '');
   } catch (error) {
     throw new SourceNormalizationError('invalid-utf8', 'Source content is not valid UTF-8.', { cause: error.message });
   }
