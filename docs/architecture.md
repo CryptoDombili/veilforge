@@ -24,6 +24,8 @@ VeilForge v3.2 adds:
 
 The browser and CLI import the same modules. No alternate browser-only rule set exists.
 
+V4 project intake also converges on one pure virtual Solidity resolver before compilation. The CLI supplies a realpath-contained project-local filesystem loader; the browser supplies only files explicitly selected by the user. Both environments share import/remapping normalization, deterministic ordering, graph limits, collision handling, and fail-closed diagnostics. The detailed allowlist and limits are documented in [`security/solidity-import-resolution.md`](security/solidity-import-resolution.md).
+
 ## Data flow
 
 ```text

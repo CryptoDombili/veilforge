@@ -57,7 +57,7 @@ export function createWorkerScan(input, options = {}) {
         if (message.messageType === 'result') { resolveOnce(message.payload); return; }
         if (message.messageType === 'error') {
           const code = message.payload?.code === 'SDK_SCAN_TIMEOUT' ? 'CLI_SCAN_TIMEOUT' : message.payload?.code === 'SDK_SCAN_ABORTED' ? 'CLI_SCAN_ABORTED' : 'CLI_SCAN_FAILED';
-          rejectOnce(cliError(code, { stage: message.payload?.stage, causeCode: message.payload?.code, incompleteReasons: message.payload?.incompleteReasons }));
+          rejectOnce(cliError(code, { stage: message.payload?.stage, causeCode: message.payload?.causeCode ?? message.payload?.code, incompleteReasons: message.payload?.incompleteReasons }));
           return;
         }
         throw cliError('CLI_WORKER_PROTOCOL_ERROR');

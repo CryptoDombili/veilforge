@@ -37,7 +37,8 @@ test('ADR-0003 rejects name-only and plain keccak declassification', () => {
 
 test('README distinguishes legacy v3 from the implemented Grant Candidate and unimplemented boundaries', () => {
   assert.match(readme, /legacy v3/i);
-  assert.match(readme, /v4\.0\.0-gc\.1/);
+  assert.match(readme, /Latest published release:\*\* `v4\.0\.0-gc\.2`/);
+  assert.match(readme, /Compatibility-bound V4 engine identity:\*\* `4\.0\.0-gc\.1`/);
   assert.match(readme, /working, tested release candidate/i);
   assert.match(readme, /No other Circle product is represented as integrated/i);
   assert.match(readme, /Mainnet is not active/i);

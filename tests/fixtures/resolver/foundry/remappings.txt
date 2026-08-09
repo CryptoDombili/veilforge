@@ -1,0 +1,2 @@
+@openzeppelin/=lib/openzeppelin-contracts/
+foo/=lib/foo/src/

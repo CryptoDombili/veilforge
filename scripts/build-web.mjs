@@ -8,7 +8,7 @@ import { V4_PRODUCT_NAME, V4_PRODUCT_VERSION, V4_REPORT_VERSION } from '../apps/
 
 const root = process.cwd();
 const outputDirectory = process.env.VEILFORGE_WEB_OUTPUT_DIR || 'dist';
-if (!/^(?:dist|dist-preview-v4)$/u.test(outputDirectory)) throw new Error('VEILFORGE_WEB_OUTPUT_DIR must be dist or dist-preview-v4.');
+if (!/^(?:dist|dist-grant-release|dist-preview-v4)$/u.test(outputDirectory)) throw new Error('VEILFORGE_WEB_OUTPUT_DIR must be dist, dist-grant-release, or dist-preview-v4.');
 const dist = path.join(root, outputDirectory);
 const web = path.join(root, 'apps', 'web');
 
@@ -117,6 +117,30 @@ const manifest = {
   generatedFiles: [],
 };
 
+const artifactStatus = webV4Enabled
+  ? `# Generated V4 web artifact\n\nThis directory was generated with \`WEB_V4_ENABLED=true\`. The canonical reviewer build is created with \`npm run build:grant-release\` in \`dist-grant-release/\`.\n`
+  : `# Checked-in compatibility artifact\n\nThis \`dist/\` tree is the repository-safe, source-default V3.2.2 compatibility build. It is not the canonical V4 Grant Candidate reviewer artifact.\n\nBuild and test the canonical reviewer artifact with:\n\n\`\`\`text\nnpm run build:grant-release\n\`\`\`\n\nThe command starts from a clean generated target and writes the V4 artifact to \`dist-grant-release/\`.\n`;
+fs.writeFileSync(path.join(dist, 'README.md'), artifactStatus);
+
+if (outputDirectory === 'dist-grant-release') {
+  const { createHash } = await import('node:crypto');
+  const releaseManifest = fs.readFileSync(path.join(root, 'RELEASE_MANIFEST.sha256'), 'utf8').replace(/\r\n?/gu, '\n');
+  const metadata = {
+    artifact: 'veilforge-v4-grant-candidate-web',
+    product: V4_PRODUCT_NAME,
+    engineCompatibilityIdentity: V4_PRODUCT_VERSION,
+    reportSchemaVersion: V4_REPORT_VERSION,
+    hashPayloadVersion: 'veilforge.report.hash.v2',
+    compilerVersion: '0.8.24',
+    releaseManifestDigest: `sha256:${createHash('sha256').update(releaseManifest).digest('hex')}`,
+    releaseManifestMeaning: 'Digest identity of RELEASE_MANIFEST.sha256; not proof that trusted CI verified it.',
+    verificationCommand: 'npm run verify:grant-release',
+    webV4Enabled: true,
+    arcMainnet: { enabled: false, proofReadEnabled: false, publishEnabled: false },
+  };
+  fs.writeFileSync(path.join(dist, 'grant-release-metadata.json'), `${JSON.stringify(metadata, null, 2)}\n`);
+}
+
 function listFiles(directory) {
   const files = [];
   const walk = (current) => {
@@ -138,4 +162,4 @@ for (const required of ['index.html', 'app.js', 'styles.css', 'engine/index.js',
   if (!fs.existsSync(path.join(dist, required))) throw new Error(`Build output is missing ${required}.`);
 }
 
-console.log(`VeilForge web build created ${manifest.generatedFiles.length + 1} files in dist/.`);
+console.log(`VeilForge web build created ${manifest.generatedFiles.length + 1} files in ${outputDirectory}/.`);

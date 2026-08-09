@@ -1,6 +1,6 @@
 # Compatibility Policy
 
-Status: normative for v4.0.0-gc.1.
+Status: **SUPERSEDED phase-1 policy.** The current canonical report schema is `4.1.0`; legacy `4.0.0`/hash-v1 verification remains isolated. See [`../RELEASE_STATUS.md`](../RELEASE_STATUS.md). The text below is retained as the original compatibility decision record.
 
 ## Version boundary
 

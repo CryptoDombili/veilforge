@@ -177,7 +177,7 @@ export function v4UiTemplate() {
           <label id="v4-policy-label" for="v4-policy" hidden>Policy JSON</label><textarea id="v4-policy" rows="7" spellcheck="false" hidden>{}</textarea>
           <div class="v4-compiler"><span>Exact compiler</span><code>solc 0.8.24</code></div>
           <div id="v4-drop-zone" class="drop-zone" tabindex="0" role="button" aria-label="Choose Solidity source files">
-            <strong>Drop Solidity files or a project folder</strong><div class="drop-actions"><label class="file-button">Files<input id="v4-file-input" type="file" accept=".sol" multiple hidden></label><label class="file-button">Folder<input id="v4-folder-input" type="file" accept=".sol" webkitdirectory directory multiple hidden></label></div>
+            <strong>Drop Solidity files or a project folder</strong><div class="drop-actions"><label class="file-button">Files<input id="v4-file-input" type="file" accept=".sol,.txt" multiple hidden></label><label class="file-button">Folder<input id="v4-folder-input" type="file" accept=".sol,.txt" webkitdirectory directory multiple hidden></label></div>
           </div>
           <div class="file-heading"><span>LOCAL SOURCES</span><button id="v4-clear" class="text-button" type="button">Clear</button></div>
           <div id="v4-files" class="v4-files" aria-live="polite"><p>No Solidity files selected.</p></div>
@@ -578,7 +578,7 @@ export async function initV4Ui(options = {}) {
   };
   const acceptFiles = (files) => {
     state.restoredReport = false; state.sessionReset = false;
-    state.files = [...files].filter((file) => file.name.toLowerCase().endsWith('.sol'));
+    state.files = [...files].filter((file) => file.name.toLowerCase().endsWith('.sol') || file.name.toLowerCase() === 'remappings.txt');
     state.bytes = state.files.reduce((total, file) => total + file.size, 0);
     const paths = state.files.map((file) => file.webkitRelativePath || file.name);
     const folded = new Set(); const collision = paths.some((path) => { const key = path.toLowerCase(); if (folded.has(key)) return true; folded.add(key); return false; });

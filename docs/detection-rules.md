@@ -1,6 +1,6 @@
 # Detection Rules and Custom Rules
 
-> **Legacy v3 rules:** The rules below describe the current v3.2.2 prototype and are not evidence of v4.0.0-gc.1 AST/dataflow support. Grant Candidate acceptance criteria are defined in [`grant-candidate/acceptance-criteria.md`](grant-candidate/acceptance-criteria.md).
+> **HISTORICAL — legacy V3 rules.** The rules below describe the v3.2.2 prototype and are not the implemented V4 AST/dataflow detector contract. Use [`RELEASE_STATUS.md`](RELEASE_STATUS.md) and the V4 evidence index for current behavior.
 
 ## Built-in rule contract
 

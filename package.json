@@ -46,6 +46,7 @@
     "test:v4-frontend": "node --test tests/v4/frontend/compiler-provider.test.mjs tests/v4/frontend/standard-json.test.mjs tests/v4/frontend/compile-project.test.mjs tests/v4/frontend/import-graph.test.mjs tests/v4/frontend/ast-index.test.mjs tests/v4/frontend/source-locations.test.mjs",
     "test:v4-corpus-compile": "node --test tests/v4/corpus-compile.test.mjs",
     "test:v4-frontend-determinism": "node --test tests/v4/frontend/determinism.test.mjs",
+    "test:v4-project-resolver": "node --test --test-concurrency=1 tests/v4/resolver/*.test.mjs tests/web/v4-resolver/*.test.mjs",
     "test:v4-ir": "node --test tests/v4/ir/model.test.mjs tests/v4/ir/ids.test.mjs tests/v4/ir/symbols.test.mjs tests/v4/ir/scopes.test.mjs tests/v4/ir/inheritance.test.mjs tests/v4/ir/lower-ast.test.mjs tests/v4/ir/storage-access.test.mjs",
     "test:v4-ir-determinism": "node --test tests/v4/ir/determinism.test.mjs",
     "test:v4-graphs": "node --test tests/v4/graphs/cfg-basic.test.mjs tests/v4/graphs/cfg-branches.test.mjs tests/v4/graphs/cfg-loops.test.mjs tests/v4/graphs/cfg-termination.test.mjs tests/v4/graphs/cfg-modifiers.test.mjs tests/v4/graphs/call-graph-internal.test.mjs tests/v4/graphs/call-graph-inheritance.test.mjs tests/v4/graphs/call-graph-library.test.mjs tests/v4/graphs/call-graph-external.test.mjs tests/v4/graphs/recursion.test.mjs",
@@ -154,7 +155,12 @@
     "scan:demo": "node packages/analyzer/cli.mjs scan examples/vulnerable-payroll --format text",
     "scan:json": "node packages/analyzer/cli.mjs scan examples/vulnerable-payroll --format json",
     "manifest:write": "node scripts/release-manifest.mjs --write",
-    "manifest:check": "node scripts/release-manifest.mjs --check"
+    "manifest:check": "node scripts/release-manifest.mjs --check",
+    "build:grant-release": "node scripts/build-grant-release.mjs",
+    "verify:grant-release-artifact": "node scripts/verify-grant-release-artifact.mjs",
+    "verify:grant-release": "node scripts/verify-grant-release.mjs",
+    "test:release-hardening": "node --test tests/release-hardening.test.mjs",
+    "test:mainnet-readiness": "npm run test:v4-mainnet-readiness"
   },
   "dependencies": {
     "solc": "0.8.24"

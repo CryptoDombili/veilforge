@@ -8,7 +8,9 @@ veilforge verify-report .veilforge/veilforge-report-v4.json
 veilforge verify-export .veilforge
 ```
 
-`scan` discovers project-relative Solidity files without following symlinks, starts a separate child process, and communicates through versioned IPC. The parent enforces the hard global timeout and terminates an unresponsive worker after a short grace period. The first Ctrl+C requests graceful abort; a second forces termination.
+`scan` discovers project-relative Solidity entrypoints, resolves their bounded local dependency closure, starts a separate child process, and communicates through versioned IPC. Relative imports, project-local `node_modules` packages, Foundry `lib` sources, and project-root `remappings.txt` are supported. Missing imports, path/root escapes, ambiguous paths, unsafe remappings, symlink escapes, and resource-limit violations fail closed before a successful scan. Parent/global package lookup and network fetching are never used. See [`docs/security/solidity-import-resolution.md`](../../docs/security/solidity-import-resolution.md).
+
+The parent enforces the hard global timeout and terminates an unresponsive worker after a short grace period. The first Ctrl+C requests graceful abort; a second forces termination.
 
 Exports are verified, written to a staging directory with synced files, and atomically renamed. Existing output is protected unless `--overwrite` is explicit. Overwrite accepts only an existing standard three-file export set, so unrelated directory contents are not removed.
 

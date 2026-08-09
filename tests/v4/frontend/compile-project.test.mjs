@@ -45,7 +45,8 @@ test('Unicode identifier rejection preserves compiler UTF-8 byte location', () =
 test('missing imports are compiler errors and cycles do not hang compilation', () => {
   const missing = compileProject({ sources: { 'src/A.sol': `${header}import "./Missing.sol"; contract A {}` } });
   assert.equal(missing.result.status, 'analysis-incomplete');
-  assert.equal(missing.importGraph.diagnostics[0].errorCode, 'import-not-found');
+  assert.equal(missing.result.reason, 'import-resolution-error');
+  assert.equal(missing.result.diagnostics[0].errorCode, 'MISSING_IMPORT');
 
   const cycle = compileProject({ sources: {
     'src/A.sol': `${header}import "./B.sol"; contract A {}`,

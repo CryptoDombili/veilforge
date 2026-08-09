@@ -1,6 +1,6 @@
 name: VeilForge V4 GC release gate
 
-# Canonical GC.2 pull-request and main-branch release gate.
+# Canonical V4 Grant Candidate pull-request and main-branch release gate.
 on:
   pull_request:
     branches:
