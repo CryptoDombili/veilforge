@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { normalizeSourceContent } from '../../packages/analyzer/src/v4/frontend/standard-json.js';
 
 const manifest = JSON.parse(fs.readFileSync('tests/corpus/manifest.json', 'utf8'));
 const domains = ['arc-payments', 'arc-treasury', 'arc-private-credit'];
@@ -91,13 +93,26 @@ test('every case has a single case directory and complete contract files', () =>
   }
 });
 
-test('duplicate occurrences, CRLF, and UTF-8 BOM are represented physically', () => {
+test('duplicate occurrences and physical CRLF/BOM inputs are represented portably', () => {
   const duplicate = JSON.parse(fs.readFileSync('tests/corpus/arc-payments/adversarial/PAY-ADV-005/expected.json', 'utf8'));
   assert.equal(duplicate.expectedFindings[0].occurrenceCount, 2);
 
-  const crlf = fs.readFileSync('tests/corpus/arc-payments/adversarial/PAY-ADV-006/project/src/Case.sol');
-  assert.ok(crlf.includes(Buffer.from('\r\n')), 'CRLF fixture contains no CRLF bytes');
+  const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'veilforge-spec-physical-'));
+  try {
+    const canonicalCrlfSource = fs.readFileSync('tests/corpus/arc-payments/adversarial/PAY-ADV-006/project/src/Case.sol', 'utf8').replace(/\r\n?/gu, '\n');
+    const crlfPath = path.join(fixture, 'crlf.sol');
+    fs.writeFileSync(crlfPath, Buffer.from(canonicalCrlfSource.replace(/\n/gu, '\r\n'), 'utf8'));
+    const crlf = fs.readFileSync(crlfPath);
+    assert.ok(crlf.includes(Buffer.from('\r\n')), 'CRLF fixture contains no CRLF bytes');
+    assert.equal(normalizeSourceContent(crlf), canonicalCrlfSource);
 
-  const bom = fs.readFileSync('tests/corpus/arc-treasury/adversarial/TRE-ADV-001/project/src/Case.sol');
-  assert.deepEqual([...bom.subarray(0, 3)], [0xef, 0xbb, 0xbf]);
+    const canonicalBomSource = fs.readFileSync('tests/corpus/arc-treasury/adversarial/TRE-ADV-001/project/src/Case.sol', 'utf8').replace(/^\uFEFF/u, '').replace(/\r\n?/gu, '\n');
+    const bomPath = path.join(fixture, 'bom.sol');
+    fs.writeFileSync(bomPath, Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(canonicalBomSource, 'utf8')]));
+    const bom = fs.readFileSync(bomPath);
+    assert.deepEqual([...bom.subarray(0, 3)], [0xef, 0xbb, 0xbf]);
+    assert.equal(normalizeSourceContent(bom), canonicalBomSource);
+  } finally {
+    fs.rmSync(fixture, { recursive: true, force: true });
+  }
 });
