@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 
-test('release lockfile permits only exact solc 0.8.24', () => {
+test('release lockfile permits only exact solc 0.8.24 and the pinned smoke client', () => {
   const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
   const lock = JSON.parse(fs.readFileSync(path.join(root, 'package-lock.json'), 'utf8'));
   assert.equal(packageJson.version, lock.packages[''].version);
@@ -14,7 +14,10 @@ test('release lockfile permits only exact solc 0.8.24', () => {
   assert.deepEqual(packageJson.dependencies, { solc: '0.8.24' });
   assert.deepEqual(lock.packages[''].dependencies, { solc: '0.8.24' });
   assert.equal(lock.packages['node_modules/solc'].version, '0.8.24');
-  assert.equal(packageJson.devDependencies, undefined);
+  assert.deepEqual(packageJson.devDependencies, { ws: '8.21.3' });
+  assert.deepEqual(lock.packages[''].devDependencies, { ws: '8.21.3' });
+  assert.equal(lock.packages['node_modules/ws'].version, '8.21.3');
+  assert.equal(lock.packages['node_modules/ws'].dev, true);
 });
 
 test('web build contains canonical engine and proof modules', () => {

@@ -161,5 +161,8 @@
   },
   "overrides": {
     "tmp": "0.2.7"
+  },
+  "devDependencies": {
+    "ws": "8.21.3"
   }
 }
