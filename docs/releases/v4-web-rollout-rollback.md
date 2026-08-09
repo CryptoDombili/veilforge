@@ -1,6 +1,6 @@
 # VeilForge V4 Web Rollout and Rollback Runbook
 
-Status: production flag remains disabled. This runbook does not authorize deployment.
+Status: **HISTORICAL rollout record.** It preserves Phase 5B evidence and blockers as they were recorded. Current source-default and live deployment facts are in [`../RELEASE_STATUS.md`](../RELEASE_STATUS.md); this runbook does not authorize deployment.
 
 ## Invariants
 

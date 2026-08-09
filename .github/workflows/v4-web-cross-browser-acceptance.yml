@@ -1,6 +1,9 @@
 name: V4 web cross-browser acceptance
 
 on:
+  push:
+    tags:
+      - 'v4.*'
   workflow_dispatch:
 
 permissions:
@@ -24,6 +27,7 @@ jobs:
           node-version: '20'
           cache: npm
       - run: npm ci
+      - run: npm run build:grant-release
       - run: npm run test:web-v4-acceptance
       - run: npm run test:web-v4-security
       - run: npm run test:web-v4-rollback

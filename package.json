@@ -154,7 +154,12 @@
     "scan:demo": "node packages/analyzer/cli.mjs scan examples/vulnerable-payroll --format text",
     "scan:json": "node packages/analyzer/cli.mjs scan examples/vulnerable-payroll --format json",
     "manifest:write": "node scripts/release-manifest.mjs --write",
-    "manifest:check": "node scripts/release-manifest.mjs --check"
+    "manifest:check": "node scripts/release-manifest.mjs --check",
+    "build:grant-release": "node scripts/build-grant-release.mjs",
+    "verify:grant-release-artifact": "node scripts/verify-grant-release-artifact.mjs",
+    "verify:grant-release": "node scripts/verify-grant-release.mjs",
+    "test:release-hardening": "node --test tests/release-hardening.test.mjs",
+    "test:mainnet-readiness": "npm run test:v4-mainnet-readiness"
   },
   "dependencies": {
     "solc": "0.8.24"

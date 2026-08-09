@@ -1,6 +1,6 @@
 # Privacy Operating System modules
 
-> **Legacy v3 views:** These modules are deterministic views derived from the current v3.2.2 prototype; they are not formal verification, an audit replacement, or native Arc privacy. The v4.0.0-gc.1 product boundary is not yet implemented.
+> **HISTORICAL — legacy V3 views.** These modules describe the v3.2.2 prototype and are not the current V4 reviewer experience. They are not formal verification, an audit replacement, or native Arc privacy. Use [`RELEASE_STATUS.md`](RELEASE_STATUS.md) for current scope.
 
 ## Genome
 

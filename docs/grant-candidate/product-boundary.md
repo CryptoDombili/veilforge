@@ -1,6 +1,6 @@
 # VeilForge v4.0.0-gc.1 Product Boundary
 
-Status: normative for Grant Candidate phase 1.
+Status: **HISTORICAL phase-1 boundary.** The acceptance work described here was subsequently implemented and validated. See [`../RELEASE_STATUS.md`](../RELEASE_STATUS.md) for current release status; retain this document as the original bounded requirements record.
 
 VeilForge Grant Candidate analyzes application-level financial-data disclosure in Solidity projects intended for Arc Payments, Arc Treasury, and Arc Private Credit use cases.
 

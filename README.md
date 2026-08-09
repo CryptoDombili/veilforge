@@ -9,9 +9,9 @@
 </p>
 
 <p align="center">
-  <img alt="Release: v4.0.0-gc.1" src="https://img.shields.io/badge/release-v4.0.0--gc.1-6f8cff">
+  <img alt="Latest published release: v4.0.0-gc.2" src="https://img.shields.io/badge/latest%20release-v4.0.0--gc.2-6f8cff">
   <img alt="Report schema: v4.1.0" src="https://img.shields.io/badge/report%20schema-v4.1.0-8b6cff">
-  <img alt="Status: Production" src="https://img.shields.io/badge/status-production-35d6aa">
+  <img alt="Live web: V4 Grant Candidate" src="https://img.shields.io/badge/live%20web-V4%20Grant%20Candidate-35d6aa">
   <img alt="Network: Arc Testnet" src="https://img.shields.io/badge/network-Arc%20Testnet-6fd5ff">
   <img alt="Compiler: Solidity 0.8.24" src="https://img.shields.io/badge/solidity-0.8.24-363636?logo=solidity">
   <img alt="Tests: passing" src="https://img.shields.io/badge/tests-passing-35d6aa">
@@ -26,7 +26,7 @@
   <a href="https://veilforge.dev/whitepaper/">Whitepaper</a> ·
   <a href="https://veilforge.dev/whitepaper/executive-brief.html">Executive Brief</a> ·
   <a href="docs/grant/final/technical-evidence-index.md">Technical Evidence</a> ·
-  <a href="https://github.com/CryptoDombili/veilforge/releases/tag/v4.0.0-gc.1">GitHub Release</a> ·
+  <a href="https://github.com/CryptoDombili/veilforge/releases/tag/v4.0.0-gc.2">GitHub Release</a> ·
   <a href="https://testnet.arcscan.app/tx/0x75c62f12af38de075cbca5a3582faf587cec5f3809591efd0eebbef724d49ead">Arc Testnet Transaction</a> ·
   <a href="SECURITY.md">Security</a> ·
   <a href="CONTRIBUTING.md">Contributing</a>
@@ -39,10 +39,13 @@ VeilForge runs source analysis locally in the browser. Solidity source is not up
 The current reviewer-facing product identity is intentionally explicit:
 
 - **Product:** VeilForge V4 Grant Candidate
-- **Release:** `v4.0.0-gc.1`
+- **Latest published release:** `v4.0.0-gc.2`
+- **Compatibility-bound V4 engine identity:** `4.0.0-gc.1`
 - **Report schema:** `v4.1.0`
 
-The root npm package remains at `3.2.2` to preserve the legacy V3 command, report, and source-default compatibility boundary. It is not the current V4 product version. V4 CLI, SDK, SARIF, gate, benchmark, proof, and browser release artifacts use `4.0.0-gc.1`; canonical V4 reports use schema `4.1.0` and hash payload `veilforge.report.hash.v2`.
+The latest published release packages maintenance, security and reproducibility hardening while retaining the `4.0.0-gc.1` engine identity required by existing V4 reports and proofs. Current `main` may contain additional unreleased hardening beyond that tag. The root npm package remains at `3.2.2` to preserve the legacy V3 command, report, and source-default compatibility boundary; it is not the current V4 product or release version. Canonical V4 reports use schema `4.1.0` and hash payload `veilforge.report.hash.v2`.
+
+The complete reviewer matrix is maintained in [`docs/RELEASE_STATUS.md`](docs/RELEASE_STATUS.md). Build the canonical V4 reviewer artifact with `npm run build:grant-release`; do not use the checked-in `dist/`, which is explicitly retained as the source-default V3.2.2 compatibility artifact.
 
 ### Deployment model
 

@@ -1,5 +1,10 @@
 node_modules/
-dist/
+dist/*
+!dist/README.md
+dist-grant-release/
+dist-preview-v4/
+output/
+tmp/
 .DS_Store
 *.log
 .env
