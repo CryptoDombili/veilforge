@@ -23,6 +23,7 @@ runNpmCommands([
   ['run', 'test:mainnet-readiness'],
   ['run', 'build:grant-release'],
   ['run', 'verify:grant-release-artifact'],
+  ['run', 'smoke:grant-release-app'],
 ]);
 
 console.log('\nVeilForge V4 grant release verification completed successfully.');

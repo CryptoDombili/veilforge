@@ -43,5 +43,7 @@ jobs:
         run: npm run test:v4-proof && npm run test:web-v4-proof-security && npm run test:web-v4-proof-arc-preflight && npm run test:web-v4-proof-transaction-acceptance
       - name: Grant evidence
         run: npm run test:grant-evidence && npm run test:whitepaper-consistency
+      - name: Production V4 application mount
+        run: npm run build:grant-release && npm run smoke:grant-release-app
       - name: Full preflight
         run: npm run preflight

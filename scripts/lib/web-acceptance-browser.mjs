@@ -3,6 +3,7 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
+import WebSocket from 'ws';
 
 const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
