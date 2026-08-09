@@ -3,16 +3,18 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
+import WebSocket from 'ws';
 
 const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 export function installedChromiumBrowsers() {
   const candidates = [
+    ['Configured Chromium', process.env.CHROMIUM_BIN],
     ['Chrome', process.env.PROGRAMFILES && path.join(process.env.PROGRAMFILES, 'Google', 'Chrome', 'Application', 'chrome.exe')],
     ['Chrome', process.env.LOCALAPPDATA && path.join(process.env.LOCALAPPDATA, 'Google', 'Chrome', 'Application', 'chrome.exe')],
     ['Edge', process.env.PROGRAMFILES && path.join(process.env.PROGRAMFILES, 'Microsoft', 'Edge', 'Application', 'msedge.exe')],
     ['Edge', process.env['PROGRAMFILES(X86)'] && path.join(process.env['PROGRAMFILES(X86)'], 'Microsoft', 'Edge', 'Application', 'msedge.exe')],
-    ['Chromium', '/usr/bin/chromium'], ['Chrome', '/usr/bin/google-chrome'],
+    ['Chrome', '/usr/bin/google-chrome'], ['Chrome', '/usr/bin/google-chrome-stable'], ['Chromium', '/usr/bin/chromium'],
   ].filter(([, executable]) => executable && fs.existsSync(executable));
   return [...new Map(candidates.map((item) => [item[0], item])).values()].map(([name, executable]) => ({ name, executable }));
 }
@@ -48,30 +50,43 @@ function connectCdp(url) {
 
 export async function launchBrowser(browser) {
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'veilforge-v4-acceptance-'));
-  const child = spawn(browser.executable, ['--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage', '--no-first-run', '--no-default-browser-check', '--remote-debugging-port=0', `--user-data-dir=${profile}`, 'about:blank'], { stdio: 'ignore' });
+  const probe = http.createServer();
+  await new Promise((resolve, reject) => { probe.once('error', reject); probe.listen(0, '127.0.0.1', resolve); });
+  const debugPort = probe.address().port;
+  await new Promise((resolve, reject) => probe.close((error) => error ? reject(error) : resolve()));
+  const child = spawn(browser.executable, ['--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage', '--no-first-run', '--no-default-browser-check', '--remote-debugging-address=127.0.0.1', `--remote-debugging-port=${debugPort}`, `--user-data-dir=${profile}`, 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
+  let spawnError = null; let stderr = '';
+  child.once('error', (error) => { spawnError = error; });
+  child.stderr?.on('data', (chunk) => { stderr = `${stderr}${chunk}`.slice(-8192); });
+  const failure = (stage) => {
+    const diagnostic = stderr.trim().replaceAll(profile, '<profile>') || '(empty)';
+    return new Error(`${browser.name} ${stage}. Executable: ${browser.executable}. Exit code: ${child.exitCode ?? 'running'}. Signal: ${child.signalCode ?? 'none'}. Spawn error: ${spawnError?.message ?? 'none'}. Stderr: ${diagnostic}`);
+  };
   const cleanup = async () => {
     if (child.exitCode === null) child.kill('SIGKILL');
     await sleep(100);
     try { fs.rmSync(profile, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 }); } catch {}
   };
-  const portFile = path.join(profile, 'DevToolsActivePort');
-  for (let attempt = 0; attempt < 100 && !fs.existsSync(portFile) && child.exitCode === null; attempt += 1) await sleep(100);
-  if (!fs.existsSync(portFile)) { await cleanup(); throw new Error(`${browser.name} DevTools port was not created.`); }
-  const debugPort = Number(fs.readFileSync(portFile, 'utf8').split('\n')[0]);
   let pageTarget;
-  for (let attempt = 0; attempt < 50 && !pageTarget; attempt += 1) {
+  for (let attempt = 0; attempt < 300 && !pageTarget && child.exitCode === null && !spawnError; attempt += 1) {
     try {
       const response = await fetch(`http://127.0.0.1:${debugPort}/json/list`);
       if (response.ok) pageTarget = (await response.json()).find((target) => target.type === 'page');
     } catch {}
     if (!pageTarget) await sleep(100);
   }
-  if (!pageTarget) { await cleanup(); throw new Error(`${browser.name} DevTools page target was not ready.`); }
+  if (!pageTarget) { const error = failure('DevTools page target was not ready'); await cleanup(); throw error; }
   const cdp = await connectCdp(pageTarget.webSocketDebuggerUrl);
   await cdp.send('Runtime.enable'); await cdp.send('Page.enable');
   const evaluate = async (expression) => { const result = await cdp.send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true }); if (result.exceptionDetails) throw new Error(result.exceptionDetails.exception?.description ?? result.exceptionDetails.text); return result.result.value; };
   const navigate = async (url, readyExpression = 'window.__VEILFORGE_READY__===true') => { await cdp.send('Page.navigate', { url }); for (let attempt = 0; attempt < 200; attempt += 1) { if (await evaluate(readyExpression)) return; await sleep(100); } throw new Error(`${browser.name} page did not become ready: ${url}`); };
-  const close = async () => { cdp.close(); await cleanup(); };
+  const close = async () => {
+    try { await Promise.race([cdp.send('Browser.close'), sleep(1000)]); } catch {}
+    cdp.close();
+    for (let attempt = 0; attempt < 50 && child.exitCode === null; attempt += 1) await sleep(100);
+    if (child.exitCode === null) { const error = failure('did not exit after Browser.close'); await cleanup(); throw error; }
+    await cleanup();
+  };
   return { browser, cdp, evaluate, navigate, close };
 }
 

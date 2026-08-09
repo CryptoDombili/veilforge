@@ -158,6 +158,7 @@
     "manifest:check": "node scripts/release-manifest.mjs --check",
     "build:grant-release": "node scripts/build-grant-release.mjs",
     "verify:grant-release-artifact": "node scripts/verify-grant-release-artifact.mjs",
+    "smoke:grant-release-app": "node scripts/smoke-grant-release-app.mjs",
     "verify:grant-release": "node scripts/verify-grant-release.mjs",
     "test:release-hardening": "node --test tests/release-hardening.test.mjs",
     "test:mainnet-readiness": "npm run test:v4-mainnet-readiness"

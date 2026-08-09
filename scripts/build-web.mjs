@@ -104,6 +104,13 @@ for (const file of fs.readdirSync(path.join(dist, 'v4')).filter((name) => name.s
     .replaceAll('../../../packages/analyzer/src/keccak.js', '../engine/keccak.js'));
 }
 
+const inputAdapterPath = path.join(dist, 'v4', 'input-adapter.js');
+const sourceResolverImport = '../../../packages/analyzer/src/v4/frontend/project-resolver.js';
+const browserResolverImport = './runtime/browser-runtime-assets/engine/v4/frontend/project-resolver.js';
+const inputAdapter = fs.readFileSync(inputAdapterPath, 'utf8');
+if (!inputAdapter.includes(sourceResolverImport)) throw new Error('V4 browser resolver import transform target is missing.');
+fs.writeFileSync(inputAdapterPath, inputAdapter.replace(sourceResolverImport, browserResolverImport));
+
 const manifest = {
   name: webV4Enabled ? V4_PRODUCT_NAME : 'VeilForge Privacy Operating System',
   version: webV4Enabled ? V4_PRODUCT_VERSION : '3.2.2',
