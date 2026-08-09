@@ -202,6 +202,8 @@ npm run smoke:web-v4-ui
 npm run manifest:check
 ```
 
+The canonical PR and `main` release gate is [`.github/workflows/v4-gc-release-gate.yml`](.github/workflows/v4-gc-release-gate.yml); the cross-browser workflow remains an explicit manual acceptance suite.
+
 Run the verified V4 CLI against the checked-in three-domain fixture:
 
 ```bash

@@ -8,15 +8,18 @@ const outputFile = 'RELEASE_MANIFEST.sha256';
 const ignoredDirectories = new Set(['.git', 'dist', 'dist-preview-v4', 'node_modules', 'coverage', 'output', 'tmp']);
 const ignoredFiles = new Set([outputFile, '.DS_Store']);
 const normalizedTextExtensions = new Set([
-  '.css', '.html', '.js', '.json', '.md', '.mjs', '.sha256', '.sol', '.svg', '.txt', '.yaml', '.yml',
+  '.css', '.html', '.js', '.json', '.md', '.mjs', '.py', '.sha256', '.sol', '.svg', '.txt', '.yaml', '.yml',
 ]);
+const normalizedTextNames = new Set(['.gitignore', 'LICENSE']);
+
+const isNormalizedText = (file) => normalizedTextNames.has(path.posix.basename(file)) || normalizedTextExtensions.has(path.extname(file).toLowerCase());
 
 function compareCodePoints(left, right) {
   return left < right ? -1 : left > right ? 1 : 0;
 }
 
 function manifestBytes(file, data) {
-  if (!normalizedTextExtensions.has(path.extname(file).toLowerCase())) return data;
+  if (!isNormalizedText(file)) return data;
   // Git may materialize text as CRLF on Windows and LF on Linux. Hash the
   // repository text model, while retaining byte-exact hashes for binary assets.
   return Buffer.from(data.toString('utf8').replace(/\r\n?/g, '\n'), 'utf8');

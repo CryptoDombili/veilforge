@@ -2,9 +2,6 @@ name: V4 web cross-browser acceptance
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - codex/grant-candidate-phase-5b3-web-acceptance-readiness
 
 permissions:
   contents: read

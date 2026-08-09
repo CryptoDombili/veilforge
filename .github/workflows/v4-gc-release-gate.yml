@@ -1,0 +1,47 @@
+name: VeilForge V4 GC release gate
+
+# Canonical GC.2 pull-request and main-branch release gate.
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v4-gc-release-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Install exact locked dependencies
+        run: npm ci --ignore-scripts
+      - name: Dependency audit
+        run: npm audit --audit-level=low
+      - name: Release integrity and specification
+        run: npm run manifest:check && npm run test:spec
+      - name: Clean external Action consumer
+        run: npm run test:v4-action
+      - name: Deterministic browser runtime
+        run: npm run build:web-v4-runtime && npm run test:web-v4-runtime && npm run test:web-v4-runtime-determinism
+      - name: V4 benchmark and release gate
+        run: npm run test:v4-benchmark && npm run benchmark:v4 && npm run smoke:v4-release-gate
+      - name: Proof and wallet security boundaries
+        run: npm run test:v4-proof && npm run test:web-v4-proof-security && npm run test:web-v4-proof-arc-preflight && npm run test:web-v4-proof-transaction-acceptance
+      - name: Grant evidence
+        run: npm run test:grant-evidence && npm run test:whitepaper-consistency
+      - name: Full preflight
+        run: npm run preflight

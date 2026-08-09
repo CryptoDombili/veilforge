@@ -84,7 +84,7 @@
     "test:v4-sarif-determinism": "node --test tests/v4/sarif/determinism.test.mjs",
     "test:v4-gate": "node --test tests/v4/gate/gate.test.mjs tests/v4/gate/baseline.test.mjs",
     "test:v4-gate-determinism": "node --test tests/v4/gate/determinism.test.mjs",
-    "test:v4-action": "node --test --test-concurrency=1 tests/v4/action/action.test.mjs tests/v4/action/cli-integration.test.mjs",
+    "test:v4-action": "node --test --test-concurrency=1 tests/v4/action/action.test.mjs tests/v4/action/cli-integration.test.mjs tests/v4/action/external-consumer.test.mjs",
     "test:v4-action-examples": "node --test tests/v4/action/examples.test.mjs",
     "smoke:v4-ci": "node scripts/smoke-v4-ci.mjs",
     "test:v4-locations": "node --test tests/v4/locations/*.test.mjs",

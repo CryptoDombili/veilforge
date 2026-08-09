@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createUserGatedProofReview, WEB_PROOF_SEND_ENABLED } from '../../../apps/web/v4/proof-send-boundary.js';
 import { inspectExistingProofTransaction, isValidProofTransactionHash, reconcileVerifiedProofPublication, submitUserApprovedProofTransaction, waitForVerifiedProofReceipt, WEB_PROOF_USER_APPROVED_SEND_ENABLED } from '../../../apps/web/v4/proof-transaction-acceptance.js';
 import { PUBLISH_REPORT_SELECTOR } from '../../../packages/proof/src/registry.js';
-import { REGISTRY_GET_LATEST_REPORT_SELECTOR, REGISTRY_HAS_REPORT_SELECTOR } from '../../../apps/web/v4/proof-network-preflight.js';
+import { preflightArcTestnetProvider, REGISTRY_GET_LATEST_REPORT_SELECTOR, REGISTRY_HAS_REPORT_SELECTOR } from '../../../apps/web/v4/proof-network-preflight.js';
 import { renderTransactionSummary } from '../../../apps/web/v4/proof-ui.js';
 import { ACCOUNT, TX_HASH, publicationLog, readyProof, receipt } from './helpers.mjs';
 
@@ -40,6 +40,61 @@ function reconciliationProvider(input, { duplicate = true, receiptHash = TX_HASH
     }
     throw new Error(`unsupported ${method}`);
   });
+}
+function liveSendProvider(input, overrides = {}) {
+  const state = {
+    accounts: [ACCOUNT],
+    chainId: '0x4cef52',
+    duplicate: false,
+    latestRecordRaw: '0x',
+    code: `0x6000${PUBLISH_REPORT_SELECTOR.slice(2)}6000`,
+    sendResult: TX_HASH,
+    ...overrides,
+  };
+  const mock = provider(({ method, params = [] }) => {
+    if (method === 'eth_accounts') return state.accounts;
+    if (method === 'eth_chainId') return state.chainId;
+    if (method === 'eth_getCode') return state.code;
+    if (method === 'eth_blockNumber') return '0x100';
+    if (method === 'eth_estimateGas') return '0x1d4c0';
+    if (method === 'eth_call') {
+      const data = String(params[0]?.data ?? '').toLowerCase();
+      if (data.startsWith(REGISTRY_HAS_REPORT_SELECTOR.toLowerCase())) return word(state.duplicate ? 1 : 0);
+      if (data.startsWith(REGISTRY_GET_LATEST_REPORT_SELECTOR.toLowerCase())) return state.latestRecordRaw;
+      return '0x';
+    }
+    if (method === 'eth_sendTransaction') {
+      if (typeof state.sendResult === 'function') return state.sendResult();
+      return state.sendResult;
+    }
+    throw new Error(`unsupported ${method}`);
+  });
+  return { mock, state };
+}
+
+async function liveContext(overrides = {}) {
+  const proof = await readyProof();
+  const { mock, state } = liveSendProvider(proof, overrides);
+  const networkPreflight = await preflightArcTestnetProvider({
+    provider: mock,
+    envelope: proof.envelope,
+    transactionRequest: proof.preflight.transactionRequest,
+    payload: proof.preflight.payload,
+    timeoutMs: 250,
+  });
+  assert.equal(networkPreflight.passed, true);
+  assert.equal(networkPreflight.duplicate, false);
+  const review = await createUserGatedProofReview({
+    envelope: proof.envelope,
+    preflight: proof.preflight,
+    networkPreflight,
+    disclosureAcknowledged: true,
+    userGesture: true,
+    reviewAcknowledged: true,
+    currentStateBindingDigest: networkPreflight.stateBindingDigest,
+  });
+  mock.calls.length = 0;
+  return { ...proof, provider: mock, state, networkPreflight, review, currentStateBindingDigest: networkPreflight.stateBindingDigest, revalidationTimeoutMs: 250 };
 }
 
 test('existing transaction hash validation happens before provider access', async () => {
@@ -131,38 +186,67 @@ test('tampered review digest blocks send', async () => {
   assert.equal(mock.calls.length, 0);
 });
 
-test('trusted publish click sends exactly one deterministic transaction', async () => {
-  const input = await context(); const mock = provider(() => TX_HASH);
-  const pending = await submitUserApprovedProofTransaction({ ...input, provider: mock, event: click });
+test('trusted publish click revalidates live state and sends exactly one deterministic transaction', async () => {
+  const input = await liveContext();
+  const pending = await submitUserApprovedProofTransaction({ ...input, event: click });
   assert.equal(pending.status, 'pending'); assert.equal(pending.transactionHash, TX_HASH);
-  assert.deepEqual(mock.calls, [{ method: 'eth_sendTransaction', params: [input.preflight.transactionRequest] }]);
+  assert.ok(input.provider.calls.some((call) => call.method === 'eth_accounts'));
+  assert.ok(input.provider.calls.some((call) => call.method === 'eth_chainId'));
+  assert.ok(input.provider.calls.some((call) => call.method === 'eth_call' && String(call.params?.[0]?.data ?? '').startsWith(REGISTRY_HAS_REPORT_SELECTOR)));
+  const sends = input.provider.calls.filter((call) => call.method === 'eth_sendTransaction');
+  assert.deepEqual(sends, [{ method: 'eth_sendTransaction', params: [input.preflight.transactionRequest] }]);
+  assert.equal(input.provider.calls.at(-1).method, 'eth_sendTransaction');
 });
 
 test('wallet transaction hash is normalized and explorer-bound', async () => {
-  const input = await context(); const mock = provider(() => TX_HASH.toUpperCase().replace('0X', '0x'));
-  const pending = await submitUserApprovedProofTransaction({ ...input, provider: mock, event: click });
+  const input = await liveContext(); input.state.sendResult = TX_HASH.toUpperCase().replace('0X', '0x');
+  const pending = await submitUserApprovedProofTransaction({ ...input, event: click });
   assert.equal(pending.transactionHash, TX_HASH); assert.match(pending.explorerUrl, new RegExp(`${TX_HASH}$`, 'u'));
 });
 
 test('invalid transaction hash fails closed', async () => {
-  const input = await context();
-  await assert.rejects(() => submitUserApprovedProofTransaction({ ...input, provider: provider(() => '0x1234'), event: click }), (error) => error.code === 'WEB_V4_TX_INVALID');
+  const input = await liveContext(); input.state.sendResult = '0x1234';
+  await assert.rejects(() => submitUserApprovedProofTransaction({ ...input, event: click }), (error) => error.code === 'WEB_V4_TX_INVALID');
 });
 
 test('wallet rejection is classified without raw provider details', async () => {
-  const input = await context();
-  await assert.rejects(() => submitUserApprovedProofTransaction({ ...input, provider: provider(() => { throw Object.assign(new Error('secret raw message'), { code: 4001 }); }), event: click }), (error) => error.code === 'WEB_V4_USER_REJECTED' && !error.message.includes('secret'));
+  const input = await liveContext(); input.state.sendResult = () => { throw Object.assign(new Error('secret raw message'), { code: 4001 }); };
+  await assert.rejects(() => submitUserApprovedProofTransaction({ ...input, event: click }), (error) => error.code === 'WEB_V4_USER_REJECTED' && !error.message.includes('secret'));
 });
 
 test('wallet failure is classified without raw provider details', async () => {
-  const input = await context();
-  await assert.rejects(() => submitUserApprovedProofTransaction({ ...input, provider: provider(() => { throw new Error('secret raw message'); }), event: click }), (error) => error.code === 'WEB_V4_TX_INVALID' && !error.message.includes('secret'));
+  const input = await liveContext(); input.state.sendResult = () => { throw new Error('secret raw message'); };
+  await assert.rejects(() => submitUserApprovedProofTransaction({ ...input, event: click }), (error) => error.code === 'WEB_V4_TX_INVALID' && !error.message.includes('secret'));
 });
 
 test('unresolved wallet request times out within the configured bound', async () => {
-  const input = await context(); const started = Date.now();
-  await assert.rejects(() => submitUserApprovedProofTransaction({ ...input, provider: provider(() => new Promise(() => {})), event: click, timeoutMs: 50 }), (error) => error.code === 'WEB_V4_TIMEOUT');
+  const input = await liveContext(); input.state.sendResult = () => new Promise(() => {}); const started = Date.now();
+  await assert.rejects(() => submitUserApprovedProofTransaction({ ...input, event: click, timeoutMs: 50 }), (error) => error.code === 'WEB_V4_TIMEOUT');
   assert.ok(Date.now() - started < 500);
+});
+
+test('account change after review blocks before send', async () => {
+  const input = await liveContext(); input.state.accounts = ['0x2222222222222222222222222222222222222222'];
+  await assert.rejects(() => submitUserApprovedProofTransaction({ ...input, event: click }), (error) => error.code === 'WEB_V4_SEND_DISABLED');
+  assert.equal(input.provider.calls.some((call) => call.method === 'eth_sendTransaction'), false);
+});
+
+test('network change after review blocks before send', async () => {
+  const input = await liveContext(); input.state.chainId = '0x1';
+  await assert.rejects(() => submitUserApprovedProofTransaction({ ...input, event: click }), (error) => error.code === 'WEB_V4_WRONG_NETWORK');
+  assert.equal(input.provider.calls.some((call) => call.method === 'eth_sendTransaction'), false);
+});
+
+test('publisher-scoped duplicate appearing after review blocks before send', async () => {
+  const input = await liveContext(); input.state.duplicate = true;
+  await assert.rejects(() => submitUserApprovedProofTransaction({ ...input, event: click }), (error) => error.code === 'WEB_V4_PROOF_DUPLICATE');
+  assert.equal(input.provider.calls.some((call) => call.method === 'eth_sendTransaction'), false);
+});
+
+test('registry state change after review invalidates the approved binding', async () => {
+  const input = await liveContext(); input.state.latestRecordRaw = '0x1234';
+  await assert.rejects(() => submitUserApprovedProofTransaction({ ...input, event: click }), (error) => error.code === 'WEB_V4_SEND_DISABLED');
+  assert.equal(input.provider.calls.some((call) => call.method === 'eth_sendTransaction'), false);
 });
 
 test('receipt polling validates a trusted success event', async () => {
@@ -219,9 +303,9 @@ test('mismatched publication event is not confirmed', async () => {
 });
 
 test('post-success duplicate check prevents a second transaction', async () => {
-  const input = await context(); const mock = provider(() => TX_HASH);
-  await submitUserApprovedProofTransaction({ ...input, provider: mock, event: click });
+  const input = await liveContext();
+  await submitUserApprovedProofTransaction({ ...input, event: click });
   const duplicate = { ...input, networkPreflight: { ...input.networkPreflight, duplicate: true } };
-  await assert.rejects(() => submitUserApprovedProofTransaction({ ...duplicate, provider: mock, event: click }), (error) => error.code === 'WEB_V4_PROOF_DUPLICATE');
-  assert.equal(mock.calls.length, 1);
+  await assert.rejects(() => submitUserApprovedProofTransaction({ ...duplicate, event: click }), (error) => error.code === 'WEB_V4_PROOF_DUPLICATE');
+  assert.equal(input.provider.calls.filter((call) => call.method === 'eth_sendTransaction').length, 1);
 });

@@ -35,10 +35,13 @@ test('ADR-0003 rejects name-only and plain keccak declassification', () => {
   for (const word of ['hash', 'encrypt', 'private', 'commitment']) assert.ok(adr3.includes(`\`${word}\``));
 });
 
-test('README distinguishes legacy v3 from the unimplemented Grant Candidate', () => {
+test('README distinguishes legacy v3 from the implemented Grant Candidate and unimplemented boundaries', () => {
   assert.match(readme, /legacy v3/i);
   assert.match(readme, /v4\.0\.0-gc\.1/);
-  assert.match(readme, /not yet implemented/i);
+  assert.match(readme, /working, tested release candidate/i);
+  assert.match(readme, /No other Circle product is represented as integrated/i);
+  assert.match(readme, /Mainnet is not active/i);
+  assert.doesNotMatch(readme, /V4 Grant Candidate.{0,80}not yet implemented/is);
 });
 
 test('all V4 schemas declare their frozen version', () => {

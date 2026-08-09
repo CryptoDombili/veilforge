@@ -50,22 +50,53 @@ inputs:
 outputs:
   status:
     description: CLI scan status
+    value: ${{ steps.veilforge.outputs.status }}
   passed:
     description: Whether the gate passed
+    value: ${{ steps.veilforge.outputs.passed }}
   findings-count:
     description: Total projected findings
+    value: ${{ steps.veilforge.outputs['findings-count'] }}
   active-findings-count:
     description: Findings matched by the gate
+    value: ${{ steps.veilforge.outputs['active-findings-count'] }}
   incomplete-count:
     description: Analysis incomplete reason count
+    value: ${{ steps.veilforge.outputs['incomplete-count'] }}
   sarif-path:
     description: Verified SARIF path
+    value: ${{ steps.veilforge.outputs['sarif-path'] }}
   export-path:
     description: Verified export directory
+    value: ${{ steps.veilforge.outputs['export-path'] }}
   report-hash:
     description: Canonical report integrity hash
+    value: ${{ steps.veilforge.outputs['report-hash'] }}
   gate-decision:
     description: allow or deny
+    value: ${{ steps.veilforge.outputs['gate-decision'] }}
 runs:
-  using: node20
-  main: entrypoint.mjs
+  using: composite
+  steps:
+    - name: Install pinned VeilForge runtime
+      shell: bash
+      working-directory: ${{ github.action_path }}/..
+      run: npm ci --omit=dev --ignore-scripts
+    - name: Run VeilForge V4 scan
+      id: veilforge
+      shell: bash
+      env:
+        INPUT_PROJECT_ID: ${{ inputs.project-id }}
+        INPUT_SOURCE: ${{ inputs.source }}
+        INPUT_DOMAINS: ${{ inputs.domains }}
+        INPUT_COMPILER_VERSION: ${{ inputs.compiler-version }}
+        INPUT_POLICY: ${{ inputs.policy }}
+        INPUT_TAXONOMY: ${{ inputs.taxonomy }}
+        INPUT_OUTPUT: ${{ inputs.output }}
+        INPUT_GATE_CONFIG: ${{ inputs.gate-config }}
+        INPUT_BASELINE_REPORT: ${{ inputs.baseline-report }}
+        INPUT_FAIL_ON_GATE: ${{ inputs.fail-on-gate }}
+        INPUT_UPLOAD_SARIF: ${{ inputs.upload-sarif }}
+        INPUT_STAGE_TIMEOUT: ${{ inputs.stage-timeout }}
+        INPUT_GLOBAL_TIMEOUT: ${{ inputs.global-timeout }}
+      run: node "$GITHUB_ACTION_PATH/entrypoint.mjs"
