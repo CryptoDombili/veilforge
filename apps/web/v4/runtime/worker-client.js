@@ -59,7 +59,7 @@ export function createWorkerClient(options = {}) {
     if (!active || message.requestId !== active.requestId) return;
     if (message.messageType === 'progress') { active.onProgress?.(message.payload); emit('scan-progress'); return; }
     if (message.messageType === 'result') { const current = active; active = null; clearScheduled(current.timeout); clearScheduled(current.hardTimeout); emit('scan-completed'); current.resolve(message.payload.result); }
-    if (message.messageType === 'error') { const current = active; active = null; clearScheduled(current.timeout); clearScheduled(current.hardTimeout); emit('scan-error', { errorCode: message.payload.code }); current.reject(webV4Error(message.payload.code, message.payload.message)); }
+    if (message.messageType === 'error') { const current = active; active = null; clearScheduled(current.timeout); clearScheduled(current.hardTimeout); emit('scan-error', { errorCode: message.payload.code }); current.reject(webV4Error(message.payload.code, message.payload.message, message.payload.diagnostic)); }
   };
   worker.onerror = () => terminate(webV4Error('WEB_V4_WORKER_CRASH', 'V4 worker crashed.'));
 

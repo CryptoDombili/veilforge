@@ -29,6 +29,14 @@ test('UI exposes V4 scan configuration, verified findings, details, history and 
 test('controlled errors do not expose worker internals or source content', () => {
   assert.match(v4ErrorMessage({ code: 'WEB_V4_RUNTIME_UNAVAILABLE', message: 'secret source' }), /unavailable/u);
   assert.doesNotMatch(v4ErrorMessage({ code: 'WEB_V4_WORKER_CRASH', message: 'PRIVATE_SENTINEL' }), /PRIVATE_SENTINEL/u);
+  assert.match(v4ErrorMessage({ code: 'WEB_V4_COMPILE_FAILED', message: 'PRIVATE_SENTINEL' }), /exact solc 0\.8\.24/u);
+  assert.doesNotMatch(v4ErrorMessage({ code: 'WEB_V4_COMPILE_FAILED', message: 'PRIVATE_SENTINEL' }), /PRIVATE_SENTINEL/u);
+});
+
+test('a new scan clears previously rendered verified evidence before worker execution', () => {
+  const source = fs.readFileSync(new URL('../../../apps/web/v4/ui.js', import.meta.url), 'utf8');
+  const start = source.slice(source.indexOf('const runScan = async'), source.indexOf('const client = createWorkerClient()'));
+  assert.match(start, /state\.verification = null; state\.viewModel = null; state\.exportBundle = null;\s*clearRenderedReport\(\);/u);
 });
 
 test('Clear and Cancel share a bounded current-session reset without deleting local history', () => {

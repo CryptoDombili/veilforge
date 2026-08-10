@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { webV4Error } from '../../../apps/web/v4/errors.js';
 import { createWorkerMessage } from '../../../apps/web/v4/runtime/protocol.js';
 import { createWorkerRuntime } from '../../../apps/web/v4/runtime/worker-runtime.js';
 import { wait } from './helpers.mjs';
@@ -20,6 +21,15 @@ test('worker returns structured error without source leakage', async () => {
   const messages = []; const runtime = createWorkerRuntime({ postMessage: (message) => messages.push(message), scan: async () => { throw new Error('secret source contract X'); } });
   await runtime.handle(createWorkerMessage('scan-request', 'r1', { scanInput: {}, limits: {} }));
   assert.equal(messages[0].messageType, 'error'); assert.equal(JSON.stringify(messages[0]).includes('secret'), false);
+});
+test('worker preserves safe compilation diagnostics and request identity', async () => {
+  const messages = []; const runtime = createWorkerRuntime({ postMessage: (message) => messages.push(message), scan: async () => { throw webV4Error('WEB_V4_COMPILE_FAILED', 'PRIVATE_SOURCE', { failureType: 'compile', stage: 'compilation', causeCode: 'COMPILER_DIAGNOSTIC_ERROR', diagnosticCount: 1, compilerDiagnostics: [{ type: 'ParserError', severity: 'error', errorCode: '2314', message: 'PRIVATE_SOURCE' }] }); } });
+  await runtime.handle(createWorkerMessage('scan-request', 'compile-r1', { scanInput: {}, limits: {} }));
+  const payload = messages[0].payload;
+  assert.equal(payload.code, 'WEB_V4_COMPILE_FAILED');
+  assert.deepEqual({ failureType: payload.diagnostic.failureType, stage: payload.diagnostic.stage, requestId: payload.diagnostic.requestId, causeCode: payload.diagnostic.causeCode, diagnosticCount: payload.diagnostic.diagnosticCount }, { failureType: 'compile', stage: 'compilation', requestId: 'compile-r1', causeCode: 'COMPILER_DIAGNOSTIC_ERROR', diagnosticCount: 1 });
+  assert.deepEqual(payload.diagnostic.compilerDiagnostics, [{ type: 'ParserError', severity: 'error', errorCode: '2314' }]);
+  assert.equal(JSON.stringify(payload).includes('PRIVATE_SOURCE'), false);
 });
 test('abort cancels active scan and leaves no active request', async () => {
   const messages = []; const runtime = createWorkerRuntime({ postMessage: (message) => messages.push(message), scan: (_input, { signal }) => new Promise((_resolve, reject) => signal.addEventListener('abort', () => reject(signal.reason), { once: true })) });

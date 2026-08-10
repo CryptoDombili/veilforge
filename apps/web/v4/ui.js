@@ -103,6 +103,7 @@ export function v4ErrorMessage(error) {
   const messages = {
     WEB_V4_INPUT_INVALID: 'Choose valid UTF-8 Solidity files with safe project-relative paths.',
     WEB_V4_INPUT_LIMIT: 'The selected project exceeds the browser safety limit (100 files, 512 KiB per file, 1 MiB total).',
+    WEB_V4_COMPILE_FAILED: 'Solidity compilation failed under exact solc 0.8.24. Fix the source diagnostics and retry.',
     WEB_V4_PROTOCOL_INVALID: 'The scanner returned an invalid worker message.',
     WEB_V4_PROTOCOL_MISMATCH: 'This page and its scanner worker are incompatible. Refresh after rebuilding the site.',
     WEB_V4_WORKER_BUSY: 'A V4 scan is already running.',
@@ -586,6 +587,11 @@ export async function initV4Ui(options = {}) {
     renderFiles();
     if (state.inputError) setStatus('Input rejected', state.inputError, 'error');
   };
+  const clearRenderedReport = () => {
+    byId('v4-summary').hidden = true; byId('v4-summary').replaceChildren();
+    byId('v4-controls').hidden = true; byId('v4-findings').replaceChildren();
+    byId('v4-export').hidden = true;
+  };
   const runScan = async () => {
     if (!state.files.length) { setStatus('Solidity sources required', 'Choose one or more .sol files before scanning.', 'error'); return; }
     if (state.inputError) { setStatus('Input rejected', state.inputError, 'error'); return; }
@@ -600,6 +606,7 @@ export async function initV4Ui(options = {}) {
     const runId = ++state.runId;
     state.scanStatus = 'scanning'; state.sessionReset = false; state.restoredReport = false; state.reviewReady = false; state.verifyReady = false; state.reviewedFinding = false; state.exported = false;
     state.verification = null; state.viewModel = null; state.exportBundle = null;
+    clearRenderedReport();
     state.analysis = { state: 'scanning', phase: 'Compiler', message: 'Initializing the isolated compiler…' };
     updateWorkflow();
     const client = createWorkerClient();
@@ -638,9 +645,7 @@ export async function initV4Ui(options = {}) {
     state.analysis = cancelled ? { state: 'cancelled', phase: null, message: 'No partial result was saved. Ready to run again.' } : { state: 'ready', phase: null, message: clearFiles ? 'Select Solidity files to begin.' : 'Current session cleared. Ready to run again.' };
     if (clearFiles) { state.files = []; state.bytes = 0; state.inputError = null; byId('v4-project-name').value = 'VeilForge Web Project'; byId('v4-file-input').value = ''; byId('v4-folder-input').value = ''; }
     for (const [id, key] of [['v4-query', 'query'], ['v4-severity', 'severity'], ['v4-domain-filter', 'domain'], ['v4-disposition', 'disposition'], ['v4-confidence', 'confidence'], ['v4-completeness', 'completeness'], ['v4-detector', 'detector'], ['v4-sort', 'sort']]) byId(id).value = state.filters[key];
-    byId('v4-summary').hidden = true; byId('v4-summary').replaceChildren();
-    byId('v4-controls').hidden = true; byId('v4-findings').replaceChildren();
-    byId('v4-export').hidden = true;
+    clearRenderedReport();
     if (byId('v4-detail').open) byId('v4-detail').close();
     clearTimeout(toastTimer); byId('v4-toast').className = 'v4-toast'; byId('v4-toast').textContent = '';
     byId('v4-progress').value = 0;
