@@ -1922,6 +1922,7 @@ html::-webkit-scrollbar-thumb:hover{background:rgba(111,190,172,.56)}
 }
 
 /* Brighter process navigation, upload format and canonical identity surfaces. */
+.drop-zone{transition:border-color .16s ease,background-color .16s ease,box-shadow .16s ease}.drop-zone.dragging{border-color:rgba(117,247,200,.75);background:rgba(117,247,200,.09);box-shadow:0 0 0 3px rgba(117,247,200,.06),inset 0 0 24px rgba(117,247,200,.04)}
 .drop-format-line{display:flex;align-items:center;justify-content:center;gap:8px;margin:7px 0 13px;color:#8292a7;font-size:11px;line-height:1.45}
 .drop-format-line b{flex:0 0 auto;padding:4px 7px;border:1px solid rgba(117,247,200,.28);border-radius:7px;background:linear-gradient(135deg,rgba(117,247,200,.12),rgba(54,214,170,.045));color:#aaffdf;font:800 10px/1 ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.08em;box-shadow:inset 0 1px rgba(255,255,255,.05),0 0 18px rgba(54,214,170,.06)}
 .mission-nav .nav-button{color:#a9b7c9;text-shadow:0 0 14px rgba(185,214,228,.05)}

@@ -19,9 +19,16 @@ const fixtureRoot = path.join(root, 'tests', 'corpus', 'arc-payments', 'positive
 const source = fs.readFileSync(path.join(fixtureRoot, 'project', 'src', 'Case.sol'), 'utf8');
 const arcPaymentsDemoSource = fs.readFileSync(path.join(root, 'tests', 'fixtures', 'p0', 'ArcPaymentsDemo.sol'), 'utf8');
 const malformedArcPaymentsDemoSource = arcPaymentsDemoSource.replaceAll('paymentReference', 'reference');
+const folderDropRoot = path.join(root, 'tests', 'fixtures', 'v4-folder-drop');
+const folderDropSources = Object.fromEntries([
+  'PaymentRouter.sol',
+  'credit/PrivateCreditVault.sol',
+  'interfaces/ISettlementToken.sol',
+  'treasury/ArcTreasury.sol',
+].map((relativePath) => [relativePath, fs.readFileSync(path.join(folderDropRoot, ...relativePath.split('/')), 'utf8')]));
 const policy = JSON.parse(fs.readFileSync(path.join(fixtureRoot, 'policy.json'), 'utf8'));
 const stageLimits = Object.freeze({ launch: 15_000, context: 5_000, page: requestedBrowser === 'webkit' ? 15_000 : 5_000, navigation: 15_000, app: 15_000, scan: 30_000, cleanup: 3_000, shutdown: 5_000 });
-const result = { browser: requestedBrowser, artifact: 'dist-grant-release', passed: false, version: null, routes: [], pageErrors: 0, module404s: 0, asset404s: 0, stages: [], repeatedScans: 0, orphanWorkers: null, pendingRequests: null, responsive390: false, cleanShutdown: false, errorCode: null };
+const result = { browser: requestedBrowser, artifact: 'dist-grant-release', passed: false, version: null, routes: [], folderDrop: null, pageErrors: 0, module404s: 0, asset404s: 0, stages: [], repeatedScans: 0, orphanWorkers: null, pendingRequests: null, responsive390: false, cleanShutdown: false, errorCode: null };
 let currentStage = 'BROWSER_LAUNCH';
 let browser;
 let context;
@@ -77,11 +84,63 @@ async function loadProject(projectId, content = source) {
   }, { id: projectId, fixturePolicy: policy, sourceContent: content });
 }
 
-async function scan(projectId, content = source) {
-  await loadProject(projectId, content);
+async function configureLoadedProject(projectId) {
+  await page.evaluate(({ id, fixturePolicy }) => {
+    document.querySelector('#v4-project-name').value = id;
+    document.querySelectorAll('[name="v4-domain"]').forEach((node) => { node.checked = node.value === 'arc-payments'; });
+    const mode = document.querySelector('#v4-policy-mode');
+    mode.value = 'custom';
+    mode.dispatchEvent(new Event('change', { bubbles: true }));
+    document.querySelector('#v4-policy').value = JSON.stringify(fixturePolicy);
+  }, { id: projectId, fixturePolicy: policy });
+}
+
+async function loadFolderPickerProject(projectId) {
+  await page.evaluate(({ fixtureSources }) => {
+    const input = document.querySelector('#v4-folder-input');
+    const transfer = new DataTransfer();
+    for (const [relativePath, content] of Object.entries(fixtureSources)) {
+      const file = new File([content], relativePath.split('/').at(-1), { type: 'text/plain' });
+      Object.defineProperty(file, 'webkitRelativePath', { value: `v4-folder-drop/${relativePath}` });
+      transfer.items.add(file);
+    }
+    input.files = transfer.files;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }, { fixtureSources: folderDropSources });
+  await configureLoadedProject(projectId);
+}
+
+async function dropFolderProject(projectId) {
+  const prevented = await page.evaluate(({ fixtureSources }) => {
+    const tree = {};
+    for (const [relativePath, content] of Object.entries(fixtureSources)) {
+      const parts = relativePath.split('/'); let cursor = tree;
+      for (const part of parts.slice(0, -1)) cursor = cursor[part] ??= {};
+      cursor[parts.at(-1)] = content;
+    }
+    const entry = (name, value) => typeof value === 'string'
+      ? { name, isFile: true, isDirectory: false, file(resolve) { resolve(new File([value], name, { type: 'text/plain' })); } }
+      : { name, isFile: false, isDirectory: true, createReader() { let sent = false; return { readEntries(resolve) { if (sent) resolve([]); else { sent = true; resolve(Object.entries(value).map(([childName, child]) => entry(childName, child))); } } }; } };
+    const event = new Event('drop', { bubbles: true, cancelable: true });
+    Object.defineProperty(event, 'dataTransfer', { value: { items: [{ kind: 'file', webkitGetAsEntry() { return entry('v4-folder-drop', tree); }, getAsFile() { return null; } }], files: [] } });
+    return !document.querySelector('#v4-drop-zone').dispatchEvent(event);
+  }, { fixtureSources: folderDropSources });
+  if (!prevented) throw Object.assign(new Error('folder drop navigation was not prevented'), { code: 'FOLDER_DROP_DEFAULT_NOT_PREVENTED' });
+  await page.waitForFunction(() => document.querySelector('#v4-file-count')?.textContent?.startsWith('4 /'), null, { timeout: stageLimits.app });
+  await configureLoadedProject(projectId);
+  return page.evaluate(() => [...document.querySelectorAll('#v4-files span')].map((node) => node.textContent));
+}
+
+async function scanLoadedProject() {
   await page.locator('#v4-scan').click();
   await page.waitForFunction(() => document.querySelector('#v4-scan')?.disabled === true, null, { timeout: stageLimits.app });
-  return waitForScan();
+  const snapshot = await waitForScan();
+  return { ...snapshot, reportHash: await page.evaluate(() => document.querySelector('.v4-report-hash')?.textContent ?? null) };
+}
+
+async function scan(projectId, content = source) {
+  await loadProject(projectId, content);
+  return scanLoadedProject();
 }
 
 async function waitForWorkerCleanup() {
@@ -145,6 +204,29 @@ try {
   await waitForWorkerCleanup();
   Object.assign(result.routes.at(-1), { scanCompleted: true, findings: appRouteScan.findings });
   await verifyProductionRoute('/app#scanner');
+
+  const folderParity = await bounded('FOLDER_DROP_PARITY', stageLimits.scan * 3, async () => {
+    const browserApi = await page.evaluate(() => ({
+      legacyEntry: typeof globalThis.DataTransferItem?.prototype?.webkitGetAsEntry === 'function',
+      fileSystemHandle: typeof globalThis.DataTransferItem?.prototype?.getAsFileSystemHandle === 'function',
+    }));
+    if (!browserApi.legacyEntry && !browserApi.fileSystemHandle) throw Object.assign(new Error('browser exposes no supported folder-drop traversal API'), { code: 'FOLDER_DROP_API_UNAVAILABLE' });
+    const projectId = `${requestedBrowser}-folder-parity`;
+    await loadFolderPickerProject(projectId);
+    const picker = await scanLoadedProject();
+    if (!/Verified result ready/u.test(picker.status) || !picker.reportHash) throw Object.assign(new Error('folder picker scan failed'), { code: 'FOLDER_PICKER_SCAN_FAILED' });
+    await waitForWorkerCleanup();
+    const paths = await dropFolderProject(projectId);
+    const dropped = await scanLoadedProject();
+    if (!/Verified result ready/u.test(dropped.status) || dropped.reportHash !== picker.reportHash) throw Object.assign(new Error('folder drop parity failed'), { code: 'FOLDER_DROP_PARITY_FAILED' });
+    await waitForWorkerCleanup();
+    await dropFolderProject(projectId);
+    const repeated = await scanLoadedProject();
+    if (!/Verified result ready/u.test(repeated.status) || repeated.reportHash !== picker.reportHash) throw Object.assign(new Error('repeated folder drop failed'), { code: 'FOLDER_DROP_REPEAT_FAILED' });
+    await waitForWorkerCleanup();
+    return { browserApi, pickerReportHash: picker.reportHash, droppedReportHash: dropped.reportHash, repeatedReportHash: repeated.reportHash, paths, verified: true };
+  });
+  result.folderDrop = folderParity;
 
   const arcPaymentsDemo = await bounded('ARC_PAYMENTS_DEMO_COMPLETED', stageLimits.scan, () => scan(`${requestedBrowser}-arc-payments-demo`, arcPaymentsDemoSource));
   if (!/Verified result ready/u.test(arcPaymentsDemo.status) || arcPaymentsDemo.findings < 1) throw Object.assign(new Error('ArcPaymentsDemo scan failed'), { code: 'ARC_PAYMENTS_DEMO_FAILED' });
@@ -249,6 +331,6 @@ try {
   const shutdownStarted = performance.now();
   try { await page?.close(); await context?.close(); await browser?.close(); await server?.close(); result.cleanShutdown = true; record('CLEAN_SHUTDOWN', shutdownStarted); } catch { result.passed = false; result.errorCode ??= 'CLEAN_SHUTDOWN_FAILED'; process.exitCode = 1; }
   writeSummary();
-  console.log(JSON.stringify({ browser: result.browser, version: result.version, artifact: result.artifact, routes: result.routes, pageErrors: result.pageErrors, module404s: result.module404s, asset404s: result.asset404s, passed: result.passed, repeatedScans: result.repeatedScans, orphanWorkers: result.orphanWorkers, pendingRequests: result.pendingRequests, cleanShutdown: result.cleanShutdown, errorCode: result.errorCode }));
+  console.log(JSON.stringify({ browser: result.browser, version: result.version, artifact: result.artifact, routes: result.routes, folderDrop: result.folderDrop, pageErrors: result.pageErrors, module404s: result.module404s, asset404s: result.asset404s, passed: result.passed, repeatedScans: result.repeatedScans, orphanWorkers: result.orphanWorkers, pendingRequests: result.pendingRequests, cleanShutdown: result.cleanShutdown, errorCode: result.errorCode }));
   setTimeout(() => process.exit(process.exitCode ?? 0), 0);
 }
