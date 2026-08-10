@@ -47,7 +47,7 @@ export function createWorkerRuntime(options = {}) {
       send('result', message.requestId, { result });
     } catch (error) {
       const reason = controller.signal.aborted ? controller.signal.reason ?? webV4Error('WEB_V4_ABORTED', 'Aborted.') : error;
-      send('error', message.requestId, safeWorkerError(reason));
+      send('error', message.requestId, safeWorkerError(reason, 'WEB_V4_WORKER_CRASH', { requestId: message.requestId }));
     } finally { if (active === current) clearActive(); }
   }
 

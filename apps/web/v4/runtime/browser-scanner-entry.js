@@ -96,6 +96,10 @@ async function scanProject(input, options = {}) {
   } catch (error) {
     if (options.signal?.aborted || error?.code === 'SCAN_ABORTED') throw webV4Error('WEB_V4_ABORTED', 'The browser scan was aborted.');
     if (error?.code === 'SCAN_STAGE_TIMEOUT') throw webV4Error('WEB_V4_TIMEOUT', 'The browser scan exceeded its runtime limit.');
+    if (error?.code === 'SCAN_COMPILATION_FAILED') throw webV4Error('WEB_V4_COMPILE_FAILED', 'Solidity compilation failed.', {
+      failureType: 'compile', stage: 'compilation', causeCode: error.causeCode ?? 'COMPILER_DIAGNOSTIC_ERROR',
+      diagnosticCount: error.details?.diagnosticCount ?? 0, compilerDiagnostics: error.details?.compilerDiagnostics ?? [], errorType: error.name,
+    });
     throw error;
   }
 }

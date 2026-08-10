@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { browserScan, VeilForgeV4BrowserRuntime } from './helpers.mjs';
 
 test('browser scanner runtime exports the exact pinned compiler contract', () => {
@@ -28,4 +29,13 @@ test('verified report creates and verifies a browser export', async () => {
   const exported = await VeilForgeV4BrowserRuntime.createExport(result.report);
   assert.equal(verification.reportHash, result.reportHash);
   assert.equal(exported.manifest.verified, true);
+});
+
+test('ArcPaymentsDemo completes while compiler diagnostics remain fail-closed', async () => {
+  const source = fs.readFileSync(new URL('../../fixtures/p0/ArcPaymentsDemo.sol', import.meta.url), 'utf8');
+  const input = { projectId: 'ArcPaymentsDemo', sources: { 'ArcPaymentsDemo.sol': { content: source } }, compiler: { version: '0.8.24' }, domains: ['arc-payments', 'arc-treasury', 'arc-private-credit'] };
+  const result = await VeilForgeV4BrowserRuntime.scanProject(input);
+  assert.equal(result.verification.verified, true);
+  assert.ok(result.report.findings.length > 0);
+  await assert.rejects(VeilForgeV4BrowserRuntime.scanProject({ ...input, projectId: 'ArcPaymentsDemo-malformed', sources: { 'ArcPaymentsDemo.sol': { content: source.replaceAll('paymentReference', 'reference') } } }), (error) => error.code === 'WEB_V4_COMPILE_FAILED' && error.safeDetails.failureType === 'compile' && error.safeDetails.stage === 'compilation' && error.safeDetails.diagnosticCount === 1 && error.safeDetails.compilerDiagnostics[0].errorCode === '2314');
 });

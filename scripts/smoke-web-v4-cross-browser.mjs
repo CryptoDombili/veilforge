@@ -17,6 +17,8 @@ const root = process.cwd();
 const artifact = path.join(root, 'dist-grant-release');
 const fixtureRoot = path.join(root, 'tests', 'corpus', 'arc-payments', 'positive', 'PAY-POS-001');
 const source = fs.readFileSync(path.join(fixtureRoot, 'project', 'src', 'Case.sol'), 'utf8');
+const arcPaymentsDemoSource = fs.readFileSync(path.join(root, 'tests', 'fixtures', 'p0', 'ArcPaymentsDemo.sol'), 'utf8');
+const malformedArcPaymentsDemoSource = arcPaymentsDemoSource.replaceAll('paymentReference', 'reference');
 const policy = JSON.parse(fs.readFileSync(path.join(fixtureRoot, 'policy.json'), 'utf8'));
 const stageLimits = Object.freeze({ launch: 15_000, context: 5_000, page: requestedBrowser === 'webkit' ? 15_000 : 5_000, navigation: 15_000, app: 15_000, scan: 30_000, cleanup: 3_000, shutdown: 5_000 });
 const result = { browser: requestedBrowser, artifact: 'dist-grant-release', passed: false, version: null, routes: [], pageErrors: 0, module404s: 0, asset404s: 0, stages: [], repeatedScans: 0, orphanWorkers: null, pendingRequests: null, responsive390: false, cleanShutdown: false, errorCode: null };
@@ -143,6 +145,22 @@ try {
   await waitForWorkerCleanup();
   Object.assign(result.routes.at(-1), { scanCompleted: true, findings: appRouteScan.findings });
   await verifyProductionRoute('/app#scanner');
+
+  const arcPaymentsDemo = await bounded('ARC_PAYMENTS_DEMO_COMPLETED', stageLimits.scan, () => scan(`${requestedBrowser}-arc-payments-demo`, arcPaymentsDemoSource));
+  if (!/Verified result ready/u.test(arcPaymentsDemo.status) || arcPaymentsDemo.findings < 1) throw Object.assign(new Error('ArcPaymentsDemo scan failed'), { code: 'ARC_PAYMENTS_DEMO_FAILED' });
+  await waitForWorkerCleanup();
+  result.arcPaymentsDemo = { verified: true, findings: arcPaymentsDemo.findings };
+
+  const malformed = await bounded('MALFORMED_COMPILE_REJECTED', stageLimits.scan, async () => {
+    const snapshot = await scan(`${requestedBrowser}-arc-payments-demo-malformed`, malformedArcPaymentsDemoSource);
+    return { ...snapshot, ...(await page.evaluate(() => ({
+      reviewDisabled: document.querySelector('[data-v4-step="review"]')?.getAttribute('aria-disabled') === 'true',
+      reportVisible: !document.querySelector('#v4-summary')?.hidden,
+    }))) };
+  });
+  if (!/V4 scan blocked/u.test(malformed.status) || !/Solidity compilation failed under exact solc 0\.8\.24/u.test(malformed.statusText) || !malformed.reviewDisabled || malformed.reportVisible) throw Object.assign(new Error('malformed compilation did not fail closed'), { code: 'MALFORMED_COMPILE_NOT_CLOSED' });
+  await waitForWorkerCleanup();
+  result.malformedCompile = { blocked: true, reviewDisabled: true, reportVisible: false };
 
   const first = await bounded('REAL_SCAN_COMPLETED', stageLimits.scan, () => scan(`${requestedBrowser}-first`));
   result.firstScan = { status: first.status, statusText: first.statusText, findings: first.findings };
