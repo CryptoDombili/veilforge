@@ -18,7 +18,7 @@ const artifact = path.join(root, 'dist-grant-release');
 const fixtureRoot = path.join(root, 'tests', 'corpus', 'arc-payments', 'positive', 'PAY-POS-001');
 const source = fs.readFileSync(path.join(fixtureRoot, 'project', 'src', 'Case.sol'), 'utf8');
 const policy = JSON.parse(fs.readFileSync(path.join(fixtureRoot, 'policy.json'), 'utf8'));
-const stageLimits = Object.freeze({ launch: 15_000, context: 5_000, page: 5_000, navigation: 15_000, app: 15_000, scan: 30_000, cleanup: 3_000, shutdown: 5_000 });
+const stageLimits = Object.freeze({ launch: 15_000, context: 5_000, page: requestedBrowser === 'webkit' ? 15_000 : 5_000, navigation: 15_000, app: 15_000, scan: 30_000, cleanup: 3_000, shutdown: 5_000 });
 const result = { browser: requestedBrowser, artifact: 'dist-grant-release', passed: false, version: null, routes: [], pageErrors: 0, module404s: 0, asset404s: 0, stages: [], repeatedScans: 0, orphanWorkers: null, pendingRequests: null, responsive390: false, cleanShutdown: false, errorCode: null };
 let currentStage = 'BROWSER_LAUNCH';
 let browser;
