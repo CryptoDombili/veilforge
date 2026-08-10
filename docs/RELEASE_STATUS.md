@@ -35,7 +35,7 @@ No future tag or release is claimed by this document.
 ## CI and browser validation
 
 - `.github/workflows/v4-gc-release-gate.yml` is the canonical pull-request and `main` source gate. It runs manifest/specification checks, locked dependency audit, external Action consumer, deterministic browser runtime, benchmark/release gate, proof/security boundaries, grant evidence and full preflight. Preflight includes a real Chromium DevTools smoke test.
-- `.github/workflows/v4-web-cross-browser-acceptance.yml` is the full release browser workflow. It runs real Chromium, Firefox, WebKit and Edge/Windows acceptance for `v4.*` tag pushes and manual dispatches.
+- `.github/workflows/v4-web-cross-browser-acceptance.yml` runs the real canonical grant-release artifact in Chromium, Firefox and WebKit for pull requests to `main`; adds Edge/Windows for pushes to `main`; and preserves the full four-browser matrix plus release regression for `v4.*` tags and manual dispatches.
 - Repository YAML supplies an objective release-time path, but GitHub repository settings must require the successful workflow before a release is published. YAML alone cannot enforce that administrative policy.
 - Phase 3 PR/main CI passed on GitHub-hosted Ubuntu with the Chromium smoke. The full four-browser workflow for the current source must not be called passed until its GitHub-hosted run succeeds.
 

@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  buildStandardJsonInput, normalizeSourceBundle, normalizeSourcePath, SourceNormalizationError,
+  buildStandardJsonInput, normalizeSourceBundle, normalizeSourceContent, normalizeSourcePath, SourceNormalizationError,
 } from '../../../packages/analyzer/src/v4/frontend/index.js';
+
+const NodeBuffer = Buffer;
 
 test('Standard JSON contains deterministic normalized sources and required outputs', () => {
   const built = buildStandardJsonInput({
@@ -45,4 +47,21 @@ test('source sorting uses code-point order independent of insertion order', () =
   const second = buildStandardJsonInput({ sources: { '\ud83d\ude00.sol': 'u', 'a.sol': 'a', 'z.sol': 'z' } });
   assert.equal(first.canonicalJson, second.canonicalJson);
   assert.deepEqual(Object.keys(first.input.sources), ['a.sol', 'z.sol', '\ud83d\ude00.sol']);
+});
+
+test('source bytes normalize without a browser Buffer global', () => {
+  const originalBuffer = Object.getOwnPropertyDescriptor(globalThis, 'Buffer');
+  const bytes = new TextEncoder().encode('\uFEFFpragma solidity 0.8.24;\r\ncontract A {}\r');
+  try {
+    Object.defineProperty(globalThis, 'Buffer', { value: undefined, configurable: true, writable: true });
+    assert.equal(normalizeSourceContent(bytes), 'pragma solidity 0.8.24;\ncontract A {}\n');
+    assert.equal(normalizeSourceContent(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)), 'pragma solidity 0.8.24;\ncontract A {}\n');
+  } finally {
+    Object.defineProperty(globalThis, 'Buffer', originalBuffer);
+  }
+});
+
+test('Node Buffer input remains supported and invalid UTF-8 fails closed', () => {
+  assert.equal(normalizeSourceContent(NodeBuffer.from('pragma solidity 0.8.24;\r\n', 'utf8')), 'pragma solidity 0.8.24;\n');
+  assert.throws(() => normalizeSourceContent(Uint8Array.from([0xc3, 0x28])), (error) => error instanceof SourceNormalizationError && error.code === 'invalid-utf8');
 });

@@ -22,8 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '20'
           cache: npm
@@ -35,6 +35,8 @@ jobs:
         run: npm run manifest:check && npm run test:spec
       - name: Clean external Action consumer
         run: npm run test:v4-action
+      - name: Dedicated V4 resolver security suite
+        run: npm run test:v4-project-resolver
       - name: Deterministic browser runtime
         run: npm run build:web-v4-runtime && npm run test:web-v4-runtime && npm run test:web-v4-runtime-determinism
       - name: V4 benchmark and release gate

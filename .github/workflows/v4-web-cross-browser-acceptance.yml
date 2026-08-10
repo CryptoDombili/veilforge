@@ -1,7 +1,12 @@
 name: V4 web cross-browser acceptance
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
+    branches:
+      - main
     tags:
       - 'v4.*'
   workflow_dispatch:
@@ -21,8 +26,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '20'
           cache: npm
@@ -39,55 +44,68 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - browser: chromium
-            os: ubuntu-latest
-            install: chromium
-          - browser: firefox
-            os: ubuntu-latest
-            install: firefox
-          - browser: webkit
-            os: ubuntu-latest
-            install: webkit
-          - browser: edge
-            os: windows-latest
-            install: none
-    runs-on: ${{ matrix.os }}
+        browser: [chromium, firefox, webkit]
+    runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '20'
           cache: npm
       - run: npm ci
       - run: npm install --no-save --package-lock=false playwright@${{ env.PLAYWRIGHT_VERSION }}
-      - if: matrix.install != 'none'
-        run: npx playwright install --with-deps ${{ matrix.install }}
-      - run: npm run build:web-v4-preview
-      - name: Real browser acceptance
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - run: npm run build:grant-release
+      - name: Real production-artifact browser acceptance
         run: node scripts/smoke-web-v4-cross-browser.mjs --browser=${{ matrix.browser }} --summary=output/ci-safe/${{ matrix.browser }}.json
       - if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: v4-web-${{ matrix.browser }}-safe-summary
           path: output/ci-safe/${{ matrix.browser }}.json
           if-no-files-found: error
           retention-days: 7
 
-  regression:
-    needs: [targeted, browser]
-    if: always() && needs.targeted.result == 'success'
-    runs-on: ubuntu-latest
-    timeout-minutes: 35
+  edge:
+    needs: targeted
+    if: github.event_name != 'pull_request'
+    runs-on: windows-latest
+    timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '20'
           cache: npm
       - run: npm ci
-      - run: npm run build:web-v4-preview
+      - run: npm install --no-save --package-lock=false playwright@${{ env.PLAYWRIGHT_VERSION }}
+      - run: npm run build:grant-release
+      - name: Real production-artifact Edge acceptance
+        run: node scripts/smoke-web-v4-cross-browser.mjs --browser=edge --summary=output/ci-safe/edge.json
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: v4-web-edge-safe-summary
+          path: output/ci-safe/edge.json
+          if-no-files-found: error
+          retention-days: 7
+
+  regression:
+    needs: [targeted, browser, edge]
+    if: always() && needs.targeted.result == 'success' && needs.browser.result == 'success' && (needs.edge.result == 'success' || needs.edge.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npm run build:grant-release
+      - run: npm run verify:grant-release-artifact
+      - run: npm run smoke:grant-release-app
       - run: npm run smoke:web-v4-rollback
       - run: npm run build && npm run smoke:browser
       - run: npm run test:web-v4-ui && npm run test:web-v4-ui-accessibility && npm run test:web-v4-ui-history && npm run test:web-v4-ui-export

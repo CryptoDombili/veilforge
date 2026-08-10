@@ -3,6 +3,7 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
+import WebSocket from 'ws';
 
 const root = process.cwd();
 const dist = path.join(root, 'dist');

@@ -8,16 +8,21 @@ const uiSource = fs.readFileSync(new URL('../../../apps/web/v4/ui.js', import.me
 test('preview exposes scan, cancel, progress, recovery, verified history and export controls', () => {
   const html = v4UiTemplate();
   for (const id of ['v4-scan', 'v4-cancel', 'v4-progress', 'v4-status', 'v4-history', 'v4-clear-history', 'v4-export', 'v4-detail']) assert.match(html, new RegExp(`id="${id}"`, 'u'));
-  assert.match(html, /Web Worker/u); assert.match(html, /1 MiB PROJECT LIMIT/u); assert.match(html, /Source is not uploaded/u);
+  assert.match(html, /Deterministic Solidity analysis runs locally in an isolated worker\./u); assert.match(html, /1 MiB MAX/u); assert.match(html, /Source never leaves this browser/u);
 });
 
 test('UI verifies before render/persist and always unlocks after lifecycle errors', () => {
   assert.ok(uiSource.indexOf('await verifyV4Report') < uiSource.indexOf('await saveV4Report'));
-  assert.match(uiSource, /finally \{ state\.client\?\.dispose\(\); state\.client = null; setBusy\(false\); \}/u);
-  assert.match(
-    uiSource,
-    /state\.client\.abort\(\);\s+if \(!state\.client\.disposed\) state\.client\.dispose\(\);/u,
-  );
+  const lifecycle = uiSource.slice(uiSource.indexOf('const client = createWorkerClient()'), uiSource.indexOf('const resetCurrentSession'));
+  assert.match(lifecycle, /finally\s*\{/u);
+  assert.match(lifecycle, /client\.dispose\(\)/u);
+  assert.match(lifecycle, /if \(state\.client === client\) state\.client = null/u);
+  assert.match(lifecycle, /if \(runId === state\.runId\)\s*\{\s*setBusy\(false\);\s*updateWorkflow\(\);\s*\}/u);
+  const resetLifecycle = uiSource.slice(uiSource.indexOf('const resetCurrentSession'), uiSource.indexOf("byId('v4-file-input').addEventListener"));
+  assert.match(resetLifecycle, /const client = state\.client/u);
+  assert.match(resetLifecycle, /if \(client\)\s*\{\s*client\.abort\(\);\s*if \(!client\.disposed\) client\.dispose\(\);\s*\}/u);
+  assert.match(resetLifecycle, /state\.client = null/u);
+  assert.match(resetLifecycle, /setBusy\(false\)/u);
   assert.match(uiSource, /persistenceWarning/u);
 });
 

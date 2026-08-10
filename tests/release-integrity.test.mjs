@@ -93,11 +93,13 @@ test('canonical GC release gate covers pull requests and main without obsolete b
     'npm audit --audit-level=low',
     'npm run manifest:check',
     'npm run test:web-v4-runtime-determinism',
+    'npm run test:v4-project-resolver',
     'npm run test:v4-benchmark',
     'npm run test:web-v4-proof-security',
     'npm run test:grant-evidence',
     'npm run preflight',
   ]) assert.ok(gate.includes(command), `Missing canonical gate command: ${command}`);
   assert.match(crossBrowser, /workflow_dispatch:/u);
-  assert.doesNotMatch(crossBrowser, /codex\/grant-candidate-phase|\npush:/u);
+  assert.match(crossBrowser, /pull_request:[\s\S]*?- main[\s\S]*?push:[\s\S]*?- main/u);
+  assert.doesNotMatch(crossBrowser, /codex\/grant-candidate-phase/u);
 });
