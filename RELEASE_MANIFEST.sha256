@@ -500,7 +500,7 @@ f321822832b3ddf88f0fcfb94b5a0c5d1da6bc8f0e29ec1079867fd4602a30d8  scripts/smoke-
 ad24849f786de7b84d1d984f62baa5450aa2316e24939b7c50102f9dcf1d7f5e  scripts/smoke-web-v4-proof-arc-preflight.mjs
 ad41f2ccaeef22d0ff106fc70790f050c9fbb35e432edc5af49e996fcce4d1c2  scripts/smoke-web-v4-proof-arc-readonly.mjs
 37e05e1b3432f8ea512259c992df76ac0c632104920a73e8ab11588532a166eb  scripts/smoke-web-v4-proof-ui.mjs
-eaa6bf358acd16e3b7ad488e688a1935b3532d87c694ecd6044fc38c9a2fca02  scripts/smoke-web-v4-real-scan.mjs
+4e61563cc4cb9e8ac22e782d200b567475dbf319ad1b24c2d2bf5ae113966f39  scripts/smoke-web-v4-real-scan.mjs
 cdc54f2337bc688cc80b24cf368a2a0889918af7dd6a1c94d220b9a352392c1a  scripts/smoke-web-v4-rollback.mjs
 41b16c65304739b4a100782d6e2da95bc5fb89bb9213aeed5db2662de33ead54  scripts/smoke-web-v4-ui.mjs
 2b048251e12f1a360e611bc22cc3fd2a979dd82059234758bcca13198817e99a  scripts/typecheck.mjs
