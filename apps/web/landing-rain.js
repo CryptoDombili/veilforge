@@ -20,6 +20,7 @@
   let streams = [];
   let accentStreams = [];
   let frame = 0;
+  let resizeFrame = 0;
   let previous = 0;
 
   const randomToken = () => vocabulary[Math.floor(Math.random() * vocabulary.length)];
@@ -42,11 +43,12 @@
   }
 
   function resize() {
-    const ratio = 1;
-    width = window.innerWidth;
-    height = window.innerHeight;
-    canvas.width = Math.round(width * ratio);
-    canvas.height = Math.round(height * ratio);
+    const bounds = canvas.getBoundingClientRect();
+    const ratio = Math.min(Math.max(window.devicePixelRatio || 1, 1), 2);
+    width = Math.max(1, Math.ceil(bounds.width));
+    height = Math.max(1, Math.ceil(bounds.height));
+    canvas.width = Math.ceil(width * ratio);
+    canvas.height = Math.ceil(height * ratio);
     context.setTransform(ratio, 0, 0, ratio, 0, 0);
     // Keep the telemetry field spacious like the Privacy OS workspace.
     density = isEnginePage
@@ -68,6 +70,14 @@
       fill: `rgb(${palette[index % palette.length].join(',')})`,
       alpha: .68
     }));
+  }
+
+  function queueResize() {
+    cancelAnimationFrame(resizeFrame);
+    resizeFrame = requestAnimationFrame(() => {
+      resizeFrame = 0;
+      resize();
+    });
   }
 
   function drawStream(stream, isAccent, delta) {
@@ -107,7 +117,11 @@
   }
 
   resize();
-  window.addEventListener('resize', resize, { passive: true });
+  window.addEventListener('resize', queueResize, { passive: true });
+  window.visualViewport?.addEventListener('resize', queueResize, { passive: true });
   frame = requestAnimationFrame(draw);
-  window.addEventListener('pagehide', () => cancelAnimationFrame(frame), { once: true });
+  window.addEventListener('pagehide', () => {
+    cancelAnimationFrame(frame);
+    cancelAnimationFrame(resizeFrame);
+  }, { once: true });
 })();

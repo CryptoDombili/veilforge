@@ -60,12 +60,19 @@ try {
   if (!await evaluate("document.body.dataset.webRuntime==='v4' && !!document.querySelector('#v4-scan')")) throw new Error('V4 UI did not mount.');
   if (responsive) {
     const results = [];
-    for (const width of [1920, 1440, 1280, 1024, 768, 390, 360]) {
-      await cdp.send('Emulation.setDeviceMetricsOverride', { width, height: 1000, deviceScaleFactor: 1, mobile: width < 600 }); await sleep(100);
-      results.push(await evaluate(`(()=>({width:${width},overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth,scanVisible:!!document.querySelector('#v4-scan')?.offsetParent,resultsWidth:document.querySelector('.v4-results')?.getBoundingClientRect().width??0}))()`));
+    for (const viewport of [
+      { width: 2560, height: 1440, deviceScaleFactor: 1 },
+      { width: 1920, height: 1080, deviceScaleFactor: 2 },
+      { width: 1366, height: 768, deviceScaleFactor: 1 },
+      { width: 390, height: 844, deviceScaleFactor: 2 },
+    ]) {
+      await cdp.send('Emulation.setDeviceMetricsOverride', { ...viewport, mobile: viewport.width < 600 }); await sleep(100);
+      results.push(await evaluate(`(()=>{const canvas=document.querySelector('.veil-rain');const rect=canvas?.getBoundingClientRect();const style=canvas?getComputedStyle(canvas):null;return{width:${viewport.width},height:${viewport.height},deviceScaleFactor:${viewport.deviceScaleFactor},overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth,scanVisible:!!document.querySelector('#v4-scan')?.offsetParent,resultsWidth:document.querySelector('.v4-results')?.getBoundingClientRect().width??0,background:{fixed:style?.position==='fixed',behind:style?.zIndex==='0',pointerSafe:style?.pointerEvents==='none',coversViewport:!!rect&&rect.top<=0&&rect.bottom>=innerHeight&&rect.left<=0&&rect.right>=document.documentElement.clientWidth,dprSized:!!rect&&canvas.width>=Math.ceil(rect.width*devicePixelRatio)&&canvas.height>=Math.ceil(rect.height*devicePixelRatio)}}})()`));
     }
-    if (results.some((item) => item.overflow || !item.scanVisible || item.resultsWidth <= 0)) throw new Error(`Responsive V4 smoke failed: ${JSON.stringify(results)}`);
-    console.log(JSON.stringify({ responsive: true, viewports: results }));
+    await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1920, height: 1080, deviceScaleFactor: 2, mobile: false }); await sleep(100);
+    const longPage = await evaluate(`(()=>{const spacer=document.createElement('div');spacer.id='v4-background-coverage-smoke';spacer.style.cssText='display:block;height:2200px;width:1px';document.body.append(spacer);const previousScrollBehavior=document.documentElement.style.scrollBehavior;document.documentElement.style.scrollBehavior='auto';scrollTo(0,document.documentElement.scrollHeight);const canvas=document.querySelector('.veil-rain');const rect=canvas.getBoundingClientRect();const result={scrollY,scrollHeight:document.documentElement.scrollHeight,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth,coversViewport:rect.top<=0&&rect.bottom>=innerHeight&&rect.left<=0&&rect.right>=document.documentElement.clientWidth};spacer.remove();scrollTo(0,0);document.documentElement.style.scrollBehavior=previousScrollBehavior;return result})()`);
+    if (results.some((item) => item.overflow || !item.scanVisible || item.resultsWidth <= 0 || Object.values(item.background).some((value) => !value)) || longPage.overflow || !longPage.coversViewport || longPage.scrollY <= 0) throw new Error(`Responsive V4 smoke failed: ${JSON.stringify({ results, longPage })}`);
+    console.log(JSON.stringify({ responsive: true, viewports: results, longPage }));
   } else {
     const cases = [
       ['PAY-POS-001', 'arc-payments', 'positive'],
