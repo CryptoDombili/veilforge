@@ -38,7 +38,7 @@ c5be52cd2bd3d787a1dc89cce5be31844c67c1e3296058cc734942567ac0cc64  apps/web/lib/b
 61a94a78e485bb9694ebd3e3eb87790a6c5669b0ffdf44c6d6b4b392b70d750e  apps/web/lib/proof-lab.js
 ed3992a67ffe8299d21cb23043aad78496d919dfbc4f83f1832f821efba6286f  apps/web/lib/unzip.js
 17b5d7d0371cfa69e77100525e0ad0360ccd5b65cf146f0b5e83e7e6c96ac208  apps/web/lib/zip.js
-0128e58028e9950c61316d983a23723d9d85e3fb51ab653205a2619905b8b31a  apps/web/styles.css
+2c29a1952a80213306f7bf409c46b9bfff77ad8c4d4ca14afcf35cdea237708e  apps/web/styles.css
 8f502a37798d1db55680fec537189921db231f8f5aa8df981be66ca94fc5ac8a  apps/web/v4-grant-landing.css
 38f301f377e0de739e50c6493129a084e1824fe5fafff3bf8f7e4e2a9c649f56  apps/web/v4/canonical.js
 dd4a799f69536dda1b38414368750e0971a72ed35175ab17a4991c71f8553d9e  apps/web/v4/errors.js
@@ -74,7 +74,7 @@ eacd09cfe24e9b99a51fab6324ffe2eca15531c18eb362084a50f41d4c16bbb1  apps/web/v4/ru
 d57d45b2574656689a99a3dca3bb7970c66f138daf300c1d4ec885479bd0317a  apps/web/v4/runtime/worker-client.js
 a6e609af1b25c00bf604040bbe1fc744da4c62c7644cf1f2638ab04d54a37c5e  apps/web/v4/runtime/worker-entry.js
 d3b46f4f5318609f084c4810c27189395bf00681218f98eab51cc858c0a4d689  apps/web/v4/runtime/worker-runtime.js
-5a45167ddcc644f12d776048e430b53f9d0f7e9dce5024580250e6eccc4ec905  apps/web/v4/ui.js
+bae4903fb8de393d018914d23f8da4b11a91bf0c3ac028366469bcfabec1100a  apps/web/v4/ui.js
 f3a11207d7c1b78935119d22a5885f0f0237d6456f7cb07c41e4cd97040e1ff4  apps/web/v4/version.js
 ff6619f89c2cd268a788627290604b83c32c140830a89f4e6293e229fff84ae3  apps/web/v4/view-models.js
 9fab2378cccf23048c826e875a07864de7c6a8f9f8d794301d82a5c02063ef21  apps/web/whitepaper/VeilForge_V4_Executive_Brief.pdf
@@ -1149,7 +1149,7 @@ f392a577f24b5c1b310b1fbcef95cae3de2a610b3b6f95ba042340d2feda52c1  tests/web/v4-u
 e3be3c063edd51a7e35bbcda28a30fd4962e44efbbc1b123d7f7a160f252a33e  tests/web/v4-ui/export.test.mjs
 5ff8dc46fb9f4f07084942f3fc151b8c2c60b9a82f8efb1b780dd1ea9a298760  tests/web/v4-ui/history.test.mjs
 ba722302d60fc213855dcc29e47e8e542b6a9f1428f5787db5d95e39383db58a  tests/web/v4-ui/product-polish.test.mjs
-aa011bd472ca0f2986a54634e581c6146ecceed1461cd15c58b11fc049de08b1  tests/web/v4-ui/ui.test.mjs
+6846ee98e1305175377a3c1fb85a8904dabe0263beec1ae3c9217ea1cef38fd1  tests/web/v4-ui/ui.test.mjs
 4c7a0f2b7979f844ec7fc8f14e1a3464ddb95847b36d0f24af51fb122b5694fc  tests/web/v4-ui/workflow.test.mjs
 68edbf4ebc57538cef49028e288809216da06ab276451851cc030744a53981f7  tests/web/v4/determinism.test.mjs
 f14fd44921a48f11d377655abdbd1ecca727eb5374cd062607c989d6f47f2aec  tests/web/v4/export-adapter.test.mjs
