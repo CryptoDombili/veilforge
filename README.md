@@ -1,11 +1,11 @@
 # VeilForge
 
 <p align="center">
-  <strong>Find privacy exposure. Verify the evidence. Prepare Solidity systems for Arc.</strong>
+  <strong>Local Solidity privacy analysis for Arc applications.</strong>
 </p>
 
 <p align="center">
-  VeilForge is a local-first, deterministic privacy-readiness platform for Solidity projects building on Arc. It maps sensitive data flows, identifies disclosure surfaces, produces verifiable reports, and can optionally anchor report evidence on Arc Testnet.
+  VeilForge helps Solidity developers and security reviewers trace how financial data can reach events, public storage, return values, revert data, calldata, metadata, and external calls. It analyzes multi-file projects locally with exact solc 0.8.24 and supports optional report-hash publication on Arc Testnet.
 </p>
 
 <p align="center">
@@ -15,7 +15,6 @@
   <img alt="Network: Arc Testnet" src="https://img.shields.io/badge/network-Arc%20Testnet-6fd5ff">
   <img alt="Compiler: Solidity 0.8.24" src="https://img.shields.io/badge/solidity-0.8.24-363636?logo=solidity">
   <img alt="Tests: passing" src="https://img.shields.io/badge/tests-passing-35d6aa">
-  <img alt="Analysis: local and deterministic" src="https://img.shields.io/badge/analysis-local%20%2B%20deterministic-8b6cff">
   <img alt="Mainnet: disabled" src="https://img.shields.io/badge/mainnet-disabled-8b949e">
   <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue">
 </p>
@@ -32,7 +31,7 @@
   <a href="CONTRIBUTING.md">Contributing</a>
 </p>
 
-VeilForge runs source analysis locally in the browser. Solidity source is not uploaded to an AI API or remote analyzer. Reports are deterministic, findings are bound to source locations and source-to-sink evidence, and the canonical report hash can be independently verified. The live V4 Grant Candidate is a working, tested release candidate—not a specification-only demo.
+The browser workflow keeps source files in the browser; it does not upload them to an AI API or remote analyzer. The maintained benchmark records 60/60 passing cases, scoped to that corpus. The live V4 Grant Candidate is a working, tested release candidate—not a specification-only demo. VeilForge does not claim formal verification, universal vulnerability detection, or confidentiality guarantees.
 
 ## Release identity
 
@@ -45,7 +44,7 @@ The current reviewer-facing product identity is intentionally explicit:
 
 The latest published release packages maintenance, security and reproducibility hardening while retaining the `4.0.0-gc.1` engine identity required by existing V4 reports and proofs. Current `main` may contain additional unreleased hardening beyond that tag. The root npm package remains at `3.2.2` to preserve the legacy V3 command, report, and source-default compatibility boundary; it is not the current V4 product or release version. Canonical V4 reports use schema `4.1.0` and hash payload `veilforge.report.hash.v2`.
 
-The complete reviewer matrix is maintained in [`docs/RELEASE_STATUS.md`](docs/RELEASE_STATUS.md). Build the canonical V4 reviewer artifact with `npm run build:grant-release`; do not use the checked-in `dist/`, which is explicitly retained as the source-default V3.2.2 compatibility artifact.
+The complete reviewer matrix is maintained in [`docs/RELEASE_STATUS.md`](docs/RELEASE_STATUS.md). Build the V4 reviewer artifact with `npm run build:grant-release`; do not use the checked-in `dist/`, which is retained as the source-default V3.2.2 compatibility artifact.
 
 ### Deployment model
 
@@ -66,14 +65,14 @@ V4 also uses one bounded, local-only Solidity import resolver across CLI and bro
 Solidity systems can disclose sensitive financial or identity data through events, public storage, return values, revert data, calldata, metadata, and external calls. VeilForge helps teams find and review those paths before release while keeping the analysis boundary explicit.
 
 - **Local-first source analysis** — browser worker and CLI paths operate without remote source upload.
-- **Deterministic findings** — stable finding identity, grouping, severity, confidence, completeness, and evidence.
+- **Stable finding records** — source locations, grouping, severity, confidence, completeness, and source-to-sink traces.
 - **Sensitive data-flow mapping** — source-to-sink traces across supported internal and external boundaries.
 - **Arc-specific domain packs** — Arc Payments, Arc Treasury, and Arc Private Credit.
 - **Policy-aware review** — declassification, accepted-risk, suppression, and incomplete states remain visible.
-- **Canonical report identity** — schema `4.1.0` with hash payload `veilforge.report.hash.v2`.
+- **Deterministic report identity** — schema `4.1.0` with hash payload `veilforge.report.hash.v2`.
 - **Arc Testnet proof anchoring** — optional, explicit, zero-value publication through Registry V2.
 - **Multi-file and folder intake** — bounded browser input and documented project-local dependency/remapping patterns with exact `solc 0.8.24`.
-- **Verified exports** — canonical JSON, readable Markdown, and an export manifest with digests.
+- **Export packages** — report JSON, readable Markdown, and a manifest with file digests.
 - **CLI and CI integration** — V4 CLI, SDK, SARIF, GitHub Actions, and policy gates.
 - **Fail-closed incomplete analysis** — unsupported or unresolved boundaries are surfaced, not silently treated as safe.
 - **Explicit safety boundaries** — no automatic wallet popup, network switch, transaction, or mainnet publication.
@@ -83,21 +82,21 @@ Solidity systems can disclose sensitive financial or identity data through event
 | Step | What happens |
 |---|---|
 | **1. Configure** | Add Solidity files or a project folder, choose Arc domains, and select an optional policy. |
-| **2. Scan** | Run deterministic compiler-backed analysis locally. Source code stays inside the browser or local CLI process. |
+| **2. Scan** | Run compiler-backed analysis locally. Source code stays inside the browser or local CLI process. |
 | **3. Review** | Inspect findings, severity, confidence, completeness, exact source locations, and source-to-sink traces. |
-| **4. Verify** | Validate schema, evidence integrity, canonical report identity, and the report hash. |
+| **4. Verify** | Recompute the report hash and validate the schema and report identity. |
 | **5. Publish** | With a separate explicit wallet action, optionally publish a zero-value proof on Arc Testnet. Publisher-scoped duplicate protection prevents a second send for the same proof. |
-| **6. Export** | Produce verified JSON, Markdown, and manifest deliverables. SARIF and GitHub Actions support are available for CLI/CI workflows. |
+| **6. Export** | Produce JSON, Markdown, and manifest deliverables. SARIF and GitHub Actions support are available for CLI/CI workflows. |
 
 <p align="center">
-  <img src="assets/v4/veilforge-v4-scanner.png" alt="VeilForge V4 scanner showing local analysis, verified findings, proof workflow, and verified exports" width="100%">
+  <img src="assets/v4/veilforge-v4-scanner.png" alt="VeilForge V4 scanner showing local analysis, findings, proof workflow, and exports" width="100%">
 </p>
 
-## Verified Arc Testnet proof
+## Arc Testnet proof
 
-The following real publication was verified read-only against Arc Testnet transaction, receipt, Registry V2 event, publisher-scoped duplicate state, and report identity.
+The following publication was checked read-only against its Arc Testnet transaction, receipt, Registry V2 event, publisher-scoped duplicate state, and report identity.
 
-| Field | Verified value |
+| Field | Recorded value |
 |---|---|
 | Transaction | [`0x75c62f12…d49ead`](https://testnet.arcscan.app/tx/0x75c62f12af38de075cbca5a3582faf587cec5f3809591efd0eebbef724d49ead) |
 | Block | [`55602504`](https://testnet.arcscan.app/block/55602504) |
@@ -108,9 +107,9 @@ The following real publication was verified read-only against Arc Testnet transa
 
 ### Why two proof transactions are documented
 
-The submitted grant and whitepaper evidence intentionally retains the earlier canonical proof: transaction [`0xdb674c98…4192c`](https://testnet.arcscan.app/tx/0xdb674c986195ed9b3950f34d058637fbb2b887f58ca724400225ba177884192c), block `55469453`, publisher `0x60B6333a0722bBEA39d4026b284Ae1E142bEb914`, and report hash `sha256:fce5ffa529c79d185a6013a362e25658020d1691550557d59173c9acc6a417ea`. The newer proof above is a separate successful Registry V2 publication from the later V4 multi-file/current workflow. Both are independently verified Arc Testnet `publishReport` transactions targeting Registry V2 at `0x88B4055eaB061CEa9BdfefF524f65ff461B5401d`; their different publishers and report hashes represent distinct report identities. The newer proof demonstrates continued workflow operation and does not replace or invalidate the historical grant-evidence proof. Neither transaction is an Arc mainnet proof.
+The submitted grant and whitepaper material retains an earlier proof: transaction [`0xdb674c98…4192c`](https://testnet.arcscan.app/tx/0xdb674c986195ed9b3950f34d058637fbb2b887f58ca724400225ba177884192c), block `55469453`, publisher `0x60B6333a0722bBEA39d4026b284Ae1E142bEb914`, and report hash `sha256:fce5ffa529c79d185a6013a362e25658020d1691550557d59173c9acc6a417ea`. The newer proof above is a separate successful Registry V2 publication from the later V4 multi-file workflow. Both Arc Testnet `publishReport` transactions target Registry V2 at `0x88B4055eaB061CEa9BdfefF524f65ff461B5401d`; receipt and event checks passed for each. Their different publishers and report hashes represent distinct report identities. The newer proof does not replace the historical grant proof. Neither transaction is an Arc mainnet proof.
 
-The proof anchors report evidence; it is **not** a confidentiality certificate. Solidity source code is never published on-chain. Registry V2 records are publisher-scoped and duplicate-protected, and publication always requires an explicit wallet action.
+The proof anchors a report hash; it is **not** a confidentiality certificate. Solidity source code is never published on-chain. Registry V2 records are publisher-scoped and duplicate-protected, and publication always requires an explicit wallet action.
 
 <p align="center">
   <img src="docs/whitepaper/figures/arc-testnet-proof-lifecycle.svg" alt="Arc Testnet proof lifecycle from verified report to receipt and event reconciliation" width="88%">
@@ -125,13 +124,13 @@ This is a **demonstration fixture result**, not a benchmark or a claim about gen
 | `ArcPaymentsDemo.sol` | Arc Payments domain enabled |
 | `ArcTreasuryDemo.sol` | Arc Treasury domain enabled |
 | `ArcPrivateCreditDemo.sol` | Arc Private Credit domain enabled |
-| Combined scan | 3 Solidity files; 41 canonical findings |
+| Combined scan | 3 Solidity files; 41 findings |
 | Review state | 35 active detections; 6 incomplete findings |
 | Integrity | Report hash verified |
 | Proof | Arc Testnet proof published; existing transaction reverified |
 | Completion | Publish and Export completed |
 
-The maintained release benchmark is tracked separately in [`benchmarks/v4`](benchmarks/v4) and its methodology and evidence are documented in the [technical evidence index](docs/grant/final/technical-evidence-index.md).
+The maintained release benchmark is tracked separately in [`benchmarks/v4`](benchmarks/v4). Its 60 cases, oracle, methodology, and reproduction commands are documented in the [technical evidence index](docs/grant/final/technical-evidence-index.md). Results apply only to that corpus.
 
 ## Built for Arc
 
@@ -147,21 +146,21 @@ The current proof workflow uses Arc Testnet Registry V2, ArcScan verification, a
 
 ```text
 Solidity files
-  → canonical parser
-  → deterministic detectors
+  → Solidity parser
+  → detector passes
   → data-flow graph
   → domain policy evaluation
-  → canonical report
+  → versioned report
   → report hash
   → optional Arc Testnet proof
-  → verified export
+  → export package
 ```
 
-The browser runtime uses a bounded worker and exact `solc 0.8.24`. Node, browser, CLI, SDK, proof, and export layers share canonical report and integrity boundaries. See the [architecture documentation](docs/architecture.md) and [V4 whitepaper](docs/whitepaper/veilforge-v4-whitepaper.md) for the detailed model.
+The browser runtime uses a bounded worker and exact `solc 0.8.24`. Node, browser, CLI, SDK, proof, and export layers share the same report schema and hash-validation rules. See the [architecture documentation](docs/architecture.md) and [V4 whitepaper](docs/whitepaper/veilforge-v4-whitepaper.md) for the detailed model.
 
 ## Security boundaries
 
-VeilForge is a privacy-readiness analysis and evidence tool. It is not:
+VeilForge is a privacy-readiness analysis and reporting tool. It is not:
 
 - a formal security audit or replacement for independent review;
 - a full EVM emulator;
@@ -171,7 +170,7 @@ VeilForge is a privacy-readiness analysis and evidence tool. It is not:
 - a system that automatically opens a wallet popup, switches networks, or sends transactions;
 - a mainnet proof publisher.
 
-An **incomplete analysis** result is a positive fail-closed behavior: when VeilForge reaches an unsupported expression, unresolved boundary, budget limit, or other uncertainty, it preserves the evidence and marks the report incomplete instead of presenting absence of a finding as proof of safety.
+An **incomplete analysis** result is a positive fail-closed behavior: when VeilForge reaches an unsupported expression, unresolved boundary, budget limit, or other uncertainty, it records the reason and marks the report incomplete instead of presenting absence of a finding as proof of safety.
 
 Private keys and seed phrases remain inside the user's wallet and are never requested by VeilForge. Review the [security policy](SECURITY.md), [threat model](docs/grant-candidate/threat-model.md), and [product boundaries](docs/grant-candidate/product-boundary.md) before using results in a release decision.
 
@@ -180,10 +179,10 @@ Private keys and seed phrases remain inside the user's wallet and are never requ
 1. Open the [V4 Scanner](https://veilforge.dev/app#scanner).
 2. Upload Solidity files or a project folder.
 3. Select one or more Arc domains and an optional policy.
-4. Run the verified V4 scan.
-5. Review findings, evidence, confidence, and incomplete states.
-6. Optionally publish the verified report proof on Arc Testnet with an explicit wallet action.
-7. Export the verified JSON, Markdown, and manifest deliverables.
+4. Run the V4 scan.
+5. Review findings, source-to-sink traces, confidence, and incomplete states.
+6. Optionally publish the report proof on Arc Testnet with an explicit wallet action.
+7. Export the JSON, Markdown, and manifest deliverables.
 
 ## Local development
 
@@ -207,9 +206,9 @@ npm run smoke:web-v4-ui
 npm run manifest:check
 ```
 
-The canonical PR and `main` release gate is [`.github/workflows/v4-gc-release-gate.yml`](.github/workflows/v4-gc-release-gate.yml); the cross-browser workflow remains an explicit manual acceptance suite.
+The required PR and `main` release gate is [`.github/workflows/v4-gc-release-gate.yml`](.github/workflows/v4-gc-release-gate.yml); the cross-browser workflow remains an explicit manual acceptance suite.
 
-Run the verified V4 CLI against the checked-in three-domain fixture:
+Run the V4 CLI against the checked-in three-domain fixture:
 
 ```bash
 node packages/cli/bin/veilforge.js scan \
@@ -222,29 +221,29 @@ node packages/cli/bin/veilforge.js scan \
   --no-progress
 ```
 
-Use `--output <directory>` instead of `--no-export` to write the verified export set. Run `node packages/cli/bin/veilforge.js --help` for report verification, export verification, SARIF, and gate options.
+Use `--output <directory>` instead of `--no-export` to write the export set. Run `node packages/cli/bin/veilforge.js --help` for report verification, export verification, SARIF, and gate options.
 
 ## Repository structure
 
 | Path | Purpose |
 |---|---|
-| [`apps/web`](apps/web) | Static V3/V4 web application, browser worker adapter, scanner UI, proof UI, and verified exports. |
+| [`apps/web`](apps/web) | Static V3/V4 web application, browser worker adapter, scanner UI, proof UI, and exports. |
 | [`packages/analyzer`](packages/analyzer) | Legacy-compatible analyzer entry points and shared source-analysis code. |
-| [`packages/proof`](packages/proof) | Canonical V4 proof envelopes, network model, verification, persistence, and compatibility. |
+| [`packages/proof`](packages/proof) | V4 proof envelopes, network model, verification, persistence, and compatibility. |
 | [`contracts`](contracts) | Reference publisher-scoped report registry contract and ABI material. |
 | [`examples`](examples) | CLI, SDK, vulnerable, remediated, and multi-contract fixtures. |
 | [`schemas`](schemas) | Report and policy schemas, including V4 report schema `4.1.0`. |
 | [`benchmarks/v4`](benchmarks/v4) | Maintained V4 corpus, oracle, gate configuration, and benchmark identity. |
 | [`docs`](docs) | Architecture, release, proof, grant, business, whitepaper, and operational documentation. |
-| [`tests`](tests) | Deterministic unit, integration, browser, proof, security, benchmark, and regression tests. |
+| [`tests`](tests) | Unit, integration, browser, proof, security, benchmark, and regression tests. |
 | [`scripts`](scripts) | Build, smoke, benchmark, release-manifest, proof-reconciliation, and readiness tools. |
 
 ## Documentation
 
 | Document | Description |
 |---|---|
-| [V4 Whitepaper](docs/whitepaper/veilforge-v4-whitepaper.md) | Architecture, analysis model, evidence, proof, limitations, and roadmap. |
-| [Executive Brief](docs/whitepaper/veilforge-v4-whitepaper-executive-brief.md) | Concise product, Arc relevance, evidence, and grant overview. |
+| [V4 Whitepaper](docs/whitepaper/veilforge-v4-whitepaper.md) | Architecture, analysis model, proof workflow, limitations, and roadmap. |
+| [Executive Brief](docs/whitepaper/veilforge-v4-whitepaper-executive-brief.md) | Concise product, Arc relevance, test results, and grant overview. |
 | [Technical Evidence](docs/grant/final/technical-evidence-index.md) | Reproduction paths for scanner, benchmark, proof, web, and release claims. |
 | [Grant Evidence](docs/grant/final/executive-summary.md) | Final grant evidence package entry point. |
 | [Security](SECURITY.md) | Supported security reporting and operational boundaries. |
@@ -258,9 +257,9 @@ Use `--output <directory>` instead of `--no-export` to write the verified export
 **Current**
 
 - V4 Grant Candidate and live production presentation
-- local browser scanner and deterministic CLI/SDK
+- local browser scanner and CLI/SDK
 - Arc Testnet proof workflow with receipt/event reconciliation
-- verified JSON, Markdown, manifest, and SARIF exports
+- JSON, Markdown, manifest, and SARIF exports
 - CI gates and GitHub Actions integration
 
 **Next**
@@ -271,7 +270,7 @@ Use `--output <directory>` instead of `--no-export` to write the verified export
 - production documentation and onboarding
 - controlled mainnet-readiness work with independent review
 
-Mainnet is not active. `enabled=false`, `proofReadEnabled=false`, and `publishEnabled=false` remain the canonical mainnet state.
+Mainnet is not active. `enabled=false`, `proofReadEnabled=false`, and `publishEnabled=false` remain the configured mainnet state.
 
 ## Why this grant matters
 
