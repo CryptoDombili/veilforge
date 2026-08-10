@@ -111,7 +111,7 @@
     "smoke:v4-proof-preflight": "node scripts/smoke-v4-proof-preflight.mjs",
     "benchmark:v4-negative": "node scripts/benchmark-v4-negative.mjs",
     "smoke:v4-negative-regression": "node scripts/smoke-v4-negative-regression.mjs",
-    "test:web-v4-adapter": "node --test tests/web/v4/input-adapter.test.mjs tests/web/v4/report-adapter.test.mjs tests/web/v4/view-models.test.mjs tests/web/v4/export-adapter.test.mjs tests/web/v4/feature-flag.test.mjs tests/web/v4/v3-compatibility.test.mjs tests/web/v4/privacy.test.mjs",
+    "test:web-v4-adapter": "node --test tests/web/v4/input-adapter.test.mjs tests/web/v4/folder-drop.test.mjs tests/web/v4/report-adapter.test.mjs tests/web/v4/view-models.test.mjs tests/web/v4/export-adapter.test.mjs tests/web/v4/feature-flag.test.mjs tests/web/v4/v3-compatibility.test.mjs tests/web/v4/privacy.test.mjs",
     "test:web-v4-worker": "node --test tests/web/v4/protocol.test.mjs tests/web/v4/worker-runtime.test.mjs tests/web/v4/worker-client.test.mjs",
     "test:web-v4-persistence": "node --test tests/web/v4/persistence.test.mjs",
     "test:web-v4-determinism": "node --test tests/web/v4/determinism.test.mjs",

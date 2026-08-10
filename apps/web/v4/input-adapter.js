@@ -38,7 +38,7 @@ export async function browserFilesToScanInput(files, options = {}) {
   if (!Array.isArray(files) || !files.length) throw webV4Error('WEB_V4_INPUT_INVALID', 'At least one browser file is required.');
   const limits = normalizeWebV4Limits(options.limits);
   if (files.length > limits.maxFileCount) throw webV4Error('WEB_V4_INPUT_LIMIT', 'Browser file count exceeds the safe limit.', { limit: limits.maxFileCount });
-  const folderInputs = files.map((file) => String(file?.webkitRelativePath ?? '').trim()).filter(Boolean);
+  const folderInputs = files.map((file) => String(file?.webkitRelativePath || file?.relativePath || '').trim()).filter(Boolean);
   if (folderInputs.length && folderInputs.length !== files.length) throw webV4Error('WEB_V4_INPUT_INVALID', 'Folder input cannot be mixed with files from another source root.');
   let selectedRoot = null;
   if (folderInputs.length) {

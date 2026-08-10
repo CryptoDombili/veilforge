@@ -1,5 +1,6 @@
 import { createV4WebExport, verifyV4WebExport } from './export-adapter.js';
 import { browserFilesToScanInput } from './input-adapter.js';
+import { bindV4DropZone, selectSupportedBrowserFiles } from './folder-drop.js';
 import { clearV4Reports, listV4Reports, readV3Storage, removeV4Report, saveV4Report } from './persistence.js';
 import { verifyV4Report } from './report-adapter.js';
 import { createWorkerClient } from './runtime/worker-client.js';
@@ -103,6 +104,7 @@ export function v4ErrorMessage(error) {
   const messages = {
     WEB_V4_INPUT_INVALID: 'Choose valid UTF-8 Solidity files with safe project-relative paths.',
     WEB_V4_INPUT_LIMIT: 'The selected project exceeds the browser safety limit (100 files, 512 KiB per file, 1 MiB total).',
+    WEB_V4_DIRECTORY_DROP_UNSUPPORTED: 'This browser cannot read a dropped folder safely. Use the Folder picker instead.',
     WEB_V4_COMPILE_FAILED: 'Solidity compilation failed under exact solc 0.8.24. Fix the source diagnostics and retry.',
     WEB_V4_PROTOCOL_INVALID: 'The scanner returned an invalid worker message.',
     WEB_V4_PROTOCOL_MISMATCH: 'This page and its scanner worker are incompatible. Refresh after rebuilding the site.',
@@ -549,7 +551,7 @@ export async function initV4Ui(options = {}) {
     renderProof(); return state.proof.receipt;
   };
   const renderFiles = () => {
-    byId('v4-files').innerHTML = state.files.length ? state.files.map((file) => `<div><span>${esc(file.webkitRelativePath || file.name)}</span><small>${formatBytes(file.size)}</small></div>`).join('') : '<p>No Solidity files selected.</p>';
+    byId('v4-files').innerHTML = state.files.length ? state.files.map((file) => `<div><span>${esc(file.webkitRelativePath || file.relativePath || file.name)}</span><small>${formatBytes(file.size)}</small></div>`).join('') : '<p>No Solidity files selected.</p>';
     byId('v4-file-count').textContent = `${state.files.length} / ${WEB_V4_LIMITS.maxFileCount} files`;
     byId('v4-byte-count').textContent = `${formatBytes(state.bytes)} / 1 MiB`;
     root.classList.toggle('v4-input-over-limit', state.files.length > WEB_V4_LIMITS.maxFileCount || state.bytes > WEB_V4_LIMITS.maxProjectBytes || state.files.some((file) => file.size > WEB_V4_LIMITS.maxPerFileBytes));
@@ -579,9 +581,9 @@ export async function initV4Ui(options = {}) {
   };
   const acceptFiles = (files) => {
     state.restoredReport = false; state.sessionReset = false;
-    state.files = [...files].filter((file) => file.name.toLowerCase().endsWith('.sol') || file.name.toLowerCase() === 'remappings.txt');
+    state.files = selectSupportedBrowserFiles(files);
     state.bytes = state.files.reduce((total, file) => total + file.size, 0);
-    const paths = state.files.map((file) => file.webkitRelativePath || file.name);
+    const paths = state.files.map((file) => file.webkitRelativePath || file.relativePath || file.name);
     const folded = new Set(); const collision = paths.some((path) => { const key = path.toLowerCase(); if (folded.has(key)) return true; folded.add(key); return false; });
     state.inputError = collision ? 'Duplicate or case-folding-colliding source paths are not accepted.' : state.files.length > WEB_V4_LIMITS.maxFileCount || state.bytes > WEB_V4_LIMITS.maxProjectBytes || state.files.some((file) => file.size > WEB_V4_LIMITS.maxPerFileBytes) ? 'The selected files exceed the browser safety limit.' : null;
     renderFiles();
@@ -659,8 +661,10 @@ export async function initV4Ui(options = {}) {
   byId('v4-clear').addEventListener('click', () => resetCurrentSession({ clearFiles: true }));
   byId('v4-drop-zone').addEventListener('click', (event) => { if (!event.target.closest('label')) byId('v4-file-input').click(); });
   byId('v4-drop-zone').addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); byId('v4-file-input').click(); } });
-  byId('v4-drop-zone').addEventListener('dragover', (event) => event.preventDefault());
-  byId('v4-drop-zone').addEventListener('drop', (event) => { event.preventDefault(); acceptFiles(event.dataTransfer.files); });
+  bindV4DropZone(byId('v4-drop-zone'), {
+    onFiles: acceptFiles,
+    onError(error) { setStatus('Folder drop blocked', v4ErrorMessage(error), 'error'); },
+  });
   const configurationChanged = () => { state.restoredReport = false; state.sessionReset = false; renderWorkflow(); };
   byId('v4-project-name').addEventListener('input', configurationChanged);
   for (const domain of root.querySelectorAll('[name="v4-domain"]')) domain.addEventListener('change', configurationChanged);
