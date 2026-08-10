@@ -35,9 +35,9 @@ body.v4-ui-mode .v4-heading > div > p { max-width: 680px; color: var(--muted); }
 .v4-check input { accent-color: var(--mint); }
 .v4-compiler, .v4-limit, .v4-finding-meta { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 12px; }
 .v4-compiler code, .v4-finding-meta code { color: #6fd5ff; overflow-wrap: anywhere; }
-.v4-files { max-height: 150px; overflow: auto; display: grid; gap: 6px; }
-.v4-files > div { display: flex; justify-content: space-between; gap: 10px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px; font-size: 12px; }
-.v4-files span { overflow-wrap: anywhere; }
+.v4-files { max-height: 150px; min-width: 0; overflow-x: hidden; overflow-y: auto; display: grid; gap: 6px; }
+.v4-files > div { display: flex; justify-content: space-between; gap: 10px; min-width: 0; max-width: 100%; padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px; font-size: 12px; }
+.v4-files span { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .v4-files small { flex: none; color: var(--muted); }
 .v4-intake progress { width: 100%; height: 8px; accent-color: var(--mint); }
 .v4-scan-actions, .v4-button-row { display: flex; flex-wrap: wrap; gap: 8px; }

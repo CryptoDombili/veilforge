@@ -1,5 +1,5 @@
 import { createV4WebExport, verifyV4WebExport } from './export-adapter.js';
-import { browserFilesToScanInput } from './input-adapter.js';
+import { browserFilesToScanInput, canonicalSourcePath } from './input-adapter.js';
 import { bindV4DropZone, selectSupportedBrowserFiles } from './folder-drop.js';
 import { clearV4Reports, listV4Reports, readV3Storage, removeV4Report, saveV4Report } from './persistence.js';
 import { verifyV4Report } from './report-adapter.js';
@@ -39,6 +39,24 @@ const formatBytes = (bytes) => bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).t
 const shortAddress = (value) => value ? `${value.slice(0, 6)}…${value.slice(-4)}` : '—';
 const locationText = (location) => location ? `${location.sourcePath}:${location.startLine ?? '?'}:${location.startColumn ?? '?'}` : 'No safe source location';
 const slug = (value) => String(value || 'veilforge-project').toLowerCase().replace(/[^a-z0-9]+/gu, '-').replace(/^-|-$/gu, '') || 'veilforge-project';
+
+export function v4SourceDisplayPath(file) {
+  const browserRelativePath = String(file?.webkitRelativePath || file?.relativePath || '').trim();
+  if (!browserRelativePath) return String(file?.name ?? '');
+  try {
+    const parts = canonicalSourcePath(browserRelativePath).split('/');
+    return parts.length > 1 ? parts.slice(1).join('/') : parts[0];
+  } catch {
+    return browserRelativePath;
+  }
+}
+
+export function v4SourceRowsTemplate(files) {
+  return files.map((file) => {
+    const displayPath = v4SourceDisplayPath(file);
+    return `<div><span title="${esc(displayPath)}">${esc(displayPath)}</span><small>${formatBytes(file.size)}</small></div>`;
+  }).join('');
+}
 
 export function v4AnalysisPhase(stage) {
   if (stage === 'compilation' || stage === 'input-validation') return 'Compiler';
@@ -551,7 +569,7 @@ export async function initV4Ui(options = {}) {
     renderProof(); return state.proof.receipt;
   };
   const renderFiles = () => {
-    byId('v4-files').innerHTML = state.files.length ? state.files.map((file) => `<div><span>${esc(file.webkitRelativePath || file.relativePath || file.name)}</span><small>${formatBytes(file.size)}</small></div>`).join('') : '<p>No Solidity files selected.</p>';
+    byId('v4-files').innerHTML = state.files.length ? v4SourceRowsTemplate(state.files) : '<p>No Solidity files selected.</p>';
     byId('v4-file-count').textContent = `${state.files.length} / ${WEB_V4_LIMITS.maxFileCount} files`;
     byId('v4-byte-count').textContent = `${formatBytes(state.bytes)} / 1 MiB`;
     root.classList.toggle('v4-input-over-limit', state.files.length > WEB_V4_LIMITS.maxFileCount || state.bytes > WEB_V4_LIMITS.maxProjectBytes || state.files.some((file) => file.size > WEB_V4_LIMITS.maxPerFileBytes));

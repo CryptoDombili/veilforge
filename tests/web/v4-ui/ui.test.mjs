@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { filterAndSortV4Findings, v4ErrorMessage, v4UiTemplate } from '../../../apps/web/v4/ui.js';
+import { browserFilesToScanInput } from '../../../apps/web/v4/input-adapter.js';
+import { filterAndSortV4Findings, v4ErrorMessage, v4SourceDisplayPath, v4SourceRowsTemplate, v4UiTemplate } from '../../../apps/web/v4/ui.js';
 
 const finding = (overrides = {}) => ({ findingId: 'f-1', detectorId: 'payments.event', domain: 'arc-payments', severity: 'high', disposition: 'detected', title: 'Payment event disclosure', summary: 'Sensitive value reaches an event.', sourceClass: 'payment-amount', sinkClass: 'event', primaryLocation: { sourcePath: 'src/A.sol', startLine: 4, startColumn: 2 }, ...overrides });
 
@@ -24,6 +25,30 @@ test('UI exposes V4 scan configuration, verified findings, details, history and 
   assert.match(html, /solc 0\.8\.24/u); assert.match(html, /1 MiB MAX/u);
   const source = fs.readFileSync(new URL('../../../apps/web/v4/ui.js', import.meta.url), 'utf8');
   assert.match(source, /Evaluate in CLI\/CI/u);
+});
+
+test('local source rows remove only the browser root and safely expose the full display path', async () => {
+  const content = new TextEncoder().encode('pragma solidity 0.8.24; contract ArcTreasury {}');
+  const nested = { name: 'ArcTreasury.sol', size: content.byteLength, webkitRelativePath: 'VeilForgeScannerTestPack/VeilForgeScannerTestPack/contracts/deep/ArcTreasury.sol', async arrayBuffer() { return content.slice().buffer; } };
+  const short = { name: 'A.sol', size: 12 };
+  assert.equal(v4SourceDisplayPath(nested), 'VeilForgeScannerTestPack/contracts/deep/ArcTreasury.sol');
+  assert.equal(v4SourceDisplayPath(short), 'A.sol');
+  const input = await browserFilesToScanInput([nested], { projectId: 'display-boundary', domains: ['arc-treasury'] });
+  assert.deepEqual(Object.keys(input.sources), ['VeilForgeScannerTestPack/contracts/deep/ArcTreasury.sol']);
+  assert.equal(nested.webkitRelativePath, 'VeilForgeScannerTestPack/VeilForgeScannerTestPack/contracts/deep/ArcTreasury.sol');
+  const html = v4SourceRowsTemplate([nested, short, { name: 'unsafe.sol', size: 1, relativePath: 'Root/src/<unsafe>.sol' }]);
+  assert.match(html, /title="VeilForgeScannerTestPack\/contracts\/deep\/ArcTreasury\.sol">VeilForgeScannerTestPack\/contracts\/deep\/ArcTreasury\.sol<\/span><small>47 B<\/small>/u);
+  assert.match(html, /title="A\.sol">A\.sol<\/span><small>12 B<\/small>/u);
+  assert.match(html, /title="src\/&lt;unsafe&gt;\.sol">src\/&lt;unsafe&gt;\.sol<\/span>/u);
+  assert.doesNotMatch(html, /title="[^"]*<unsafe>/u);
+});
+
+test('local source list constrains rows, ellipsizes paths, and keeps vertical scrolling', () => {
+  const css = fs.readFileSync(new URL('../../../apps/web/styles.css', import.meta.url), 'utf8');
+  assert.match(css, /\.v4-files \{[^}]*min-width: 0;[^}]*overflow-x: hidden;[^}]*overflow-y: auto;/su);
+  assert.match(css, /\.v4-files > div \{[^}]*min-width: 0;[^}]*max-width: 100%;/su);
+  assert.match(css, /\.v4-files span \{[^}]*flex: 1 1 auto;[^}]*min-width: 0;[^}]*overflow: hidden;[^}]*text-overflow: ellipsis;[^}]*white-space: nowrap;/su);
+  assert.match(css, /\.v4-files small \{[^}]*flex: none;/su);
 });
 
 test('controlled errors do not expose worker internals or source content', () => {
