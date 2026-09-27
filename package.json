@@ -172,7 +172,8 @@
     "test:audit-remediation": "node --test tests/security/independent-audit-remediation.test.mjs tests/security/round2-production-provenance.test.mjs tests/security/round2-csp.test.mjs tests/web/v4-proof/transaction-acceptance.test.mjs tests/v4/proof/receipt.test.mjs",
     "test:audit-round2": "node --test tests/security/round2-production-provenance.test.mjs tests/security/round2-csp.test.mjs tests/web/v4-proof/transaction-acceptance.test.mjs",
     "serve:arc-mainnet-production": "node scripts/serve-arc-mainnet-production.mjs",
-    "smoke:arc-mainnet-production-headers": "node scripts/smoke-arc-mainnet-production-headers.mjs"
+    "smoke:arc-mainnet-production-headers": "node scripts/smoke-arc-mainnet-production-headers.mjs",
+    "smoke:arc-mainnet-production-v4-csp": "node scripts/smoke-arc-mainnet-production-v4-csp.mjs"
   },
   "dependencies": {
     "solc": "0.8.24"

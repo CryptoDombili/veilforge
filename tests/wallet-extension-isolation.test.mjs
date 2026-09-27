@@ -128,7 +128,8 @@ test('Vercel Preview feedback script remains outside the strict VeilForge CSP bo
   const csp = vercel.headers.flatMap((rule) => rule.headers).find((header) => header.key === 'Content-Security-Policy')?.value ?? '';
   const note = fs.readFileSync(new URL('../docs/security/vercel-preview-feedback-csp.md', import.meta.url), 'utf8');
   assert.match(csp, /script-src 'self'/u);
-  assert.doesNotMatch(csp, /_next-live|unsafe-eval|script-src[^;]*\*/u);
+  assert.match(csp, /script-src[^;]*'wasm-unsafe-eval'/u);
+  assert.doesNotMatch(csp, /_next-live|'unsafe-eval'|script-src[^;]*\*/u);
   assert.match(note, /Vercel Preview toolbar\/feedback tooling/u);
   assert.match(note, /not loaded, imported, bundled, or required by the VeilForge runtime/u);
 });

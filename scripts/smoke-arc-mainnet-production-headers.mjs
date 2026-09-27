@@ -10,6 +10,8 @@ try {
     const csp = response.headers.get('content-security-policy') ?? '';
     if (!/frame-ancestors 'none'/u.test(csp)
       || !/script-src 'self'/u.test(csp)
+      || !/script-src[^;]*'wasm-unsafe-eval'/u.test(csp)
+      || /script-src[^;]*'unsafe-eval'/u.test(csp)
       || !/connect-src 'self' https:\/\/rpc\.mainnet\.arc\.io https:\/\/explorer\.arc\.io/u.test(csp)
       || response.headers.get('x-frame-options') !== 'DENY'
       || response.headers.get('x-content-type-options') !== 'nosniff') {

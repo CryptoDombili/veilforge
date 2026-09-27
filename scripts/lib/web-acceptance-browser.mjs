@@ -19,22 +19,22 @@ export function installedChromiumBrowsers() {
   return [...new Map(candidates.map((item) => [item[0], item])).values()].map(([name, executable]) => ({ name, executable }));
 }
 
-export function startStaticServer(routes) {
+export function startStaticServer(routes, { headers = {} } = {}) {
   const mime = new Map([['.html', 'text/html'], ['.js', 'text/javascript'], ['.css', 'text/css'], ['.json', 'application/json'], ['.wasm', 'application/wasm'], ['.png', 'image/png'], ['.ttf', 'font/ttf']]);
   const counters = new Map();
   const server = http.createServer((request, response) => {
     const pathname = new URL(request.url, 'http://localhost').pathname;
     const route = Object.entries(routes).sort((left, right) => right[0].length - left[0].length).find(([prefix]) => pathname.startsWith(prefix));
-    if (!route) { response.writeHead(404); response.end(); return; }
+    if (!route) { response.writeHead(404, headers); response.end(); return; }
     const [prefix, directory] = route;
     let relative = pathname.slice(prefix.length).replace(/^\/+/, '');
     if (!relative || relative === 'app' || relative === 'app/') relative = 'app/index.html';
     const absolute = path.resolve(directory, relative);
-    if (path.relative(directory, absolute).startsWith('..') || !fs.existsSync(absolute) || fs.statSync(absolute).isDirectory()) { response.writeHead(404); response.end(); return; }
+    if (path.relative(directory, absolute).startsWith('..') || !fs.existsSync(absolute) || fs.statSync(absolute).isDirectory()) { response.writeHead(404, headers); response.end(); return; }
     counters.set(pathname, (counters.get(pathname) ?? 0) + 1);
     const body = fs.readFileSync(absolute);
     const cacheControl = /(?:index\.html|config\.js)$/u.test(relative) ? 'no-store' : /soljson-v0\.8\.24\.js$/u.test(relative) ? 'public, max-age=31536000, immutable' : relative.startsWith('v4/') ? 'no-cache, must-revalidate' : 'public, max-age=300';
-    response.writeHead(200, { 'content-type': `${mime.get(path.extname(absolute)) ?? 'application/octet-stream'}; charset=utf-8`, 'content-length': body.byteLength, 'cache-control': cacheControl }); response.end(body);
+    response.writeHead(200, { ...headers, 'content-type': `${mime.get(path.extname(absolute)) ?? 'application/octet-stream'}; charset=utf-8`, 'content-length': body.byteLength, 'cache-control': cacheControl }); response.end(body);
   });
   return new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve({ port: server.address().port, counters, close: () => new Promise((done) => server.close(done)) })));
 }

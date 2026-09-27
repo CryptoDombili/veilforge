@@ -177,7 +177,11 @@ export function v4ErrorMessage(error, profile = { networkKey: DEFAULT_WEB_NETWOR
   if (!diagnostic?.reasonCode || !/^[A-Z0-9_]{1,64}$/u.test(diagnostic.reasonCode)) return message;
   const asset = typeof diagnostic.assetPath === 'string' && /^v4\/[A-Za-z0-9._~%/-]{1,240}$/u.test(diagnostic.assetPath)
     ? ` · asset: ${diagnostic.assetPath}` : '';
-  return `${message} Diagnostic: ${diagnostic.reasonCode}${asset}`;
+  const directive = typeof diagnostic.effectiveDirective === 'string' && /^[a-z][a-z0-9-]{0,63}$/u.test(diagnostic.effectiveDirective)
+    ? ` · directive: ${diagnostic.effectiveDirective}` : '';
+  const blocked = typeof diagnostic.blockedURI === 'string' && /^(?:[a-z][a-z0-9+.-]*(?:-eval)?|https?:\/\/[A-Za-z0-9.-]+)$/u.test(diagnostic.blockedURI)
+    ? ` · blocked: ${diagnostic.blockedURI}` : '';
+  return `${message} Diagnostic: ${diagnostic.reasonCode}${directive}${blocked}${asset}`;
 }
 
 export function filterAndSortV4Findings(findings, filters = {}) {

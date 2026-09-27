@@ -22,6 +22,9 @@ function hostingHeaders(config) {
   if (/\b(?:default|script|connect)-src[^;]*\*/u.test(csp) || /script-src[^;]*'unsafe-(?:inline|eval)'/u.test(csp)) {
     throw new Error('Production CSP contains an unsafe wildcard or script capability.');
   }
+  if (!/script-src[^;]*'wasm-unsafe-eval'/u.test(csp) || /worker-src[^;]*data:/u.test(csp)) {
+    throw new Error('Production CSP does not expose the narrow local compiler/worker boundary.');
+  }
   return Object.freeze(headers);
 }
 

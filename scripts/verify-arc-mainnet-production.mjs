@@ -33,7 +33,9 @@ const landing = read('index.html');
 const deployment = JSON.parse(fs.readFileSync(path.join(root, 'deployment', 'arc-mainnet-registry-deployment.json'), 'utf8'));
 const publication = JSON.parse(fs.readFileSync(path.join(root, 'deployment', 'arc-mainnet-proof-publication.json'), 'utf8'));
 const mainnet = config.WEB_NETWORKS['arc-mainnet'];
-const runtimeAssets = verifyWebV4RuntimeAssets(output);
+const vercel = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'));
+const productionHeaders = Object.fromEntries(vercel.headers?.find((item) => item.source === '/(.*)')?.headers?.map(({ key, value }) => [key, value]) ?? []);
+const runtimeAssets = verifyWebV4RuntimeAssets(output, { csp: productionHeaders['Content-Security-Policy'] });
 
 if (config.DEFAULT_WEB_NETWORK_KEY !== 'arc-mainnet' || config.WEB_V4_ENABLED !== true) throw new Error('Production artifact does not explicitly select Arc Mainnet V4.');
 if (!landing.includes('<span>✓ Arc Mainnet proof</span>')
@@ -79,6 +81,8 @@ console.log(JSON.stringify({
   publishEnabled: mainnet.publishEnabled,
   workerAssetPaths: runtimeAssets.workerAssetPaths,
   compilerAssets: runtimeAssets.compilerAssets,
+  cspCompatible: runtimeAssets.cspCompatible,
+  reachableWorkerModules: runtimeAssets.reachableModuleCount,
   expectedArtifactDigest: trustedArtifact.expectedArtifactDigest,
   deploymentTransaction: metadata.arcMainnet.deploymentTransaction,
   firstProofTransaction: metadata.arcMainnet.firstProofTransaction,

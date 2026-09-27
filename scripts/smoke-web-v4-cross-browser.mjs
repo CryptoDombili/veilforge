@@ -30,7 +30,7 @@ const folderDropSources = Object.fromEntries([
 ].map((relativePath) => [relativePath, fs.readFileSync(path.join(folderDropRoot, ...relativePath.split('/')), 'utf8')]));
 const policy = JSON.parse(fs.readFileSync(path.join(fixtureRoot, 'policy.json'), 'utf8'));
 const stageLimits = Object.freeze({ launch: 15_000, context: 5_000, page: requestedBrowser === 'webkit' ? 15_000 : 5_000, navigation: 15_000, app: 15_000, scan: 30_000, cleanup: 3_000, shutdown: 5_000 });
-const result = { browser: requestedBrowser, artifact: artifactName, passed: false, version: null, routes: [], folderDrop: null, pageErrors: 0, module404s: 0, asset404s: 0, stages: [], repeatedScans: 0, orphanWorkers: null, pendingRequests: null, responsive390: false, cleanShutdown: false, errorCode: null };
+const result = { browser: requestedBrowser, artifact: artifactName, passed: false, version: null, routes: [], folderDrop: null, pageErrors: 0, module404s: 0, moduleMimeFailures: 0, asset404s: 0, cspViolations: [], unauthorizedScriptBlocked: false, unauthorizedWorkerBlocked: false, stages: [], repeatedScans: 0, orphanWorkers: null, pendingRequests: null, responsive390: false, cleanShutdown: false, errorCode: null };
 let currentStage = 'BROWSER_LAUNCH';
 let browser;
 let context;
@@ -180,7 +180,11 @@ async function verifyProductionRoute(route) {
 
 try {
   if (!fs.existsSync(path.join(artifact, 'app', 'index.html'))) throw Object.assign(new Error('grant release artifact missing'), { code: 'GRANT_RELEASE_ARTIFACT_MISSING' });
-  server = await startStaticServer({ '/': artifact });
+  const vercel = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'));
+  const productionHeaders = artifactName === 'dist-mainnet-production'
+    ? Object.fromEntries(vercel.headers.find((item) => item.source === '/(.*)').headers.map(({ key, value }) => [key, value]))
+    : {};
+  server = await startStaticServer({ '/': artifact }, { headers: productionHeaders });
   const browserType = requestedBrowser === 'firefox' ? firefox : requestedBrowser === 'webkit' ? webkit : chromium;
   const launchOptions = { headless: true, timeout: stageLimits.launch };
   if (requestedBrowser === 'edge') launchOptions.channel = 'msedge';
@@ -188,12 +192,35 @@ try {
   result.version = browser.version();
   context = await bounded('CONTEXT_CREATED', stageLimits.context, () => browser.newContext({ viewport: { width: 1280, height: 900 }, acceptDownloads: true }));
   page = await bounded('PAGE_TARGET_CREATED', stageLimits.page, () => context.newPage());
+  await page.addInitScript(() => {
+    globalThis.__VEILFORGE_CSP_VIOLATIONS__ = [];
+    addEventListener('securitypolicyviolation', (event) => {
+      const blockedURI = (() => {
+        if (/^[a-z][a-z0-9+.-]*-eval$/u.test(event.blockedURI)) return event.blockedURI;
+        if (['blob', 'data'].includes(event.blockedURI)) return `${event.blockedURI}:`;
+        try { const parsed = new URL(event.blockedURI); return ['http:', 'https:'].includes(parsed.protocol) ? parsed.origin : parsed.protocol; } catch { return null; }
+      })();
+      let sourceFile = null;
+      try { const pathname = new URL(event.sourceFile).pathname; const marker = pathname.lastIndexOf('/v4/'); if (marker >= 0) sourceFile = pathname.slice(marker + 1); } catch {}
+      globalThis.__VEILFORGE_CSP_VIOLATIONS__.push({
+        effectiveDirective: event.effectiveDirective || null,
+        violatedDirective: event.violatedDirective?.split(/\s+/u)[0] || null,
+        blockedURI,
+        sourceFile,
+        lineNumber: Number.isInteger(event.lineNumber) ? event.lineNumber : null,
+      });
+    });
+  });
   page.on('pageerror', () => { result.pageErrors += 1; });
   page.on('response', (response) => {
     if (response.status() !== 404) return;
     const pathname = new URL(response.url()).pathname;
     if (/\.(?:c?js|mjs)$/u.test(pathname)) result.module404s += 1;
     else result.asset404s += 1;
+  });
+  page.on('response', (response) => {
+    const pathname = new URL(response.url()).pathname;
+    if (/\.(?:c?js|mjs)$/u.test(pathname) && response.status() === 200 && !/^(?:text|application)\/javascript\b/iu.test(response.headers()['content-type'] ?? '')) result.moduleMimeFailures += 1;
   });
   page.on('worker', (worker) => {
     if (!worker.url().includes('veilforge-v4-scanner.worker')) return;
@@ -263,12 +290,15 @@ try {
         await client.scan(input);
         return null;
       } catch (error) {
-        return { stage: 'worker', code: error?.code ?? 'UNKNOWN', reason: error?.safeDetails?.reason ?? null, path: file?.webkitRelativePath ?? null, sources: Object.keys(input.sources) };
+        const details = error?.safeDetails ?? {};
+        return { stage: 'worker', code: error?.code ?? 'UNKNOWN', reasonCode: details.reasonCode ?? null, effectiveDirective: details.effectiveDirective ?? null, violatedDirective: details.violatedDirective ?? null, blockedURI: details.blockedURI ?? null, assetPath: details.assetPath ?? null, sourceFile: details.sourceFile ?? null, lineNumber: details.lineNumber ?? null, path: file?.webkitRelativePath ?? null, sources: Object.keys(input.sources) };
       }
       finally { client.dispose(); }
     }, { fixturePolicy: policy });
   }
   if (!/Verified result ready/u.test(first.status) || first.findings < 1) throw Object.assign(new Error('verified result missing'), { code: 'VERIFIED_REPORT_MISSING' });
+  const scannerViolations = await page.evaluate(() => globalThis.__VEILFORGE_CSP_VIOLATIONS__ ?? []);
+  if (scannerViolations.length || result.moduleMimeFailures) throw Object.assign(new Error('production scanner violated CSP or module MIME policy'), { code: 'SCANNER_CSP_OR_MIME_FAILED' });
   await waitForWorkerCleanup();
   Object.assign(result.routes.at(-1), { scanCompleted: true, findings: first.findings });
 
@@ -321,6 +351,27 @@ try {
     result.responsive390 = true;
   });
 
+  const cspProbe = await bounded('CSP_UNAUTHORIZED_RESOURCES_BLOCKED', stageLimits.app, () => page.evaluate(async () => {
+    const before = globalThis.__VEILFORGE_CSP_VIOLATIONS__.length;
+    const script = document.createElement('script');
+    script.src = 'https://unauthorized.invalid/veilforge-probe.js';
+    document.head.append(script);
+    let workerBlocked = false;
+    try { const worker = new Worker('data:text/javascript,postMessage(1)'); worker.terminate(); } catch { workerBlocked = true; }
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    script.remove();
+    const violations = globalThis.__VEILFORGE_CSP_VIOLATIONS__.slice(before);
+    return {
+      violations,
+      scriptBlocked: violations.some((item) => item.effectiveDirective?.startsWith('script-src') && item.blockedURI === 'https://unauthorized.invalid'),
+      workerBlocked: workerBlocked || violations.some((item) => item.effectiveDirective === 'worker-src' && item.blockedURI === 'data:'),
+    };
+  }));
+  if (!cspProbe.scriptBlocked || !cspProbe.workerBlocked) throw Object.assign(new Error('production CSP did not block unauthorized script and worker probes'), { code: 'CSP_NEGATIVE_PROBE_FAILED' });
+  result.cspViolations = cspProbe.violations;
+  result.unauthorizedScriptBlocked = cspProbe.scriptBlocked;
+  result.unauthorizedWorkerBlocked = cspProbe.workerBlocked;
+
   result.orphanWorkers = activeWorkers.size;
   result.pendingRequests = await page.evaluate(() => document.querySelector('#v4-scan')?.disabled ? 1 : 0);
   if (result.orphanWorkers !== 0 || result.pendingRequests !== 0) throw Object.assign(new Error('resources pending'), { code: 'PENDING_RESOURCES' });
@@ -333,6 +384,6 @@ try {
   const shutdownStarted = performance.now();
   try { await page?.close(); await context?.close(); await browser?.close(); await server?.close(); result.cleanShutdown = true; record('CLEAN_SHUTDOWN', shutdownStarted); } catch { result.passed = false; result.errorCode ??= 'CLEAN_SHUTDOWN_FAILED'; process.exitCode = 1; }
   writeSummary();
-  console.log(JSON.stringify({ browser: result.browser, version: result.version, artifact: result.artifact, routes: result.routes, folderDrop: result.folderDrop, pageErrors: result.pageErrors, module404s: result.module404s, asset404s: result.asset404s, passed: result.passed, repeatedScans: result.repeatedScans, orphanWorkers: result.orphanWorkers, pendingRequests: result.pendingRequests, cleanShutdown: result.cleanShutdown, errorCode: result.errorCode }));
+  console.log(JSON.stringify({ browser: result.browser, version: result.version, artifact: result.artifact, routes: result.routes, folderDrop: result.folderDrop, pageErrors: result.pageErrors, module404s: result.module404s, moduleMimeFailures: result.moduleMimeFailures, asset404s: result.asset404s, cspViolations: result.cspViolations, unauthorizedScriptBlocked: result.unauthorizedScriptBlocked, unauthorizedWorkerBlocked: result.unauthorizedWorkerBlocked, passed: result.passed, repeatedScans: result.repeatedScans, orphanWorkers: result.orphanWorkers, pendingRequests: result.pendingRequests, cleanShutdown: result.cleanShutdown, errorCode: result.errorCode }));
   setTimeout(() => process.exit(process.exitCode ?? 0), 0);
 }

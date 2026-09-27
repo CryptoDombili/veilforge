@@ -10,6 +10,7 @@ test('worker entry captures initialization, uncaught error and unhandled rejecti
   const source = fs.readFileSync(new URL('../../../apps/web/v4/runtime/worker-entry.js', import.meta.url), 'utf8');
   assert.match(source, /addEventListener\?\.\('error'/u);
   assert.match(source, /addEventListener\?\.\('unhandledrejection'/u);
+  assert.match(source, /addEventListener\?\.\('securitypolicyviolation'/u);
   assert.match(source, /import\('\.\/browser-scanner-entry\.js'\)/u);
   assert.match(source, /reportFailure\(error, 'initialization'/u);
 });

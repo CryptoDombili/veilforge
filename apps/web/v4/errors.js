@@ -32,6 +32,24 @@ export function webV4Error(code, message, safeDetails) {
 
 const safeToken = (value, fallback = null) => typeof value === 'string' && /^[A-Za-z0-9_.:-]{1,96}$/u.test(value) ? value : fallback;
 
+function safeDirective(value) {
+  if (typeof value !== 'string') return null;
+  const directive = value.trim().split(/\s+/u)[0]?.toLowerCase();
+  return /^[a-z][a-z0-9-]{0,63}$/u.test(directive ?? '') ? directive : null;
+}
+
+function safeBlockedUri(value) {
+  if (typeof value !== 'string' || !value || value.length > 2_048) return null;
+  if (/^[a-z][a-z0-9+.-]{0,31}-eval$/u.test(value)) return value;
+  if (/^[a-z][a-z0-9+.-]{0,31}:$/u.test(value)) return value;
+  if (['blob', 'data'].includes(value)) return `${value}:`;
+  try {
+    const parsed = new URL(value);
+    if (!['http:', 'https:', 'blob:', 'data:'].includes(parsed.protocol)) return null;
+    return ['http:', 'https:'].includes(parsed.protocol) ? parsed.origin : parsed.protocol;
+  } catch { return null; }
+}
+
 export function safeBrowserAssetPath(value) {
   if (typeof value !== 'string' || !value || value.length > 2_048) return null;
   let pathname;
@@ -59,25 +77,44 @@ function inferredAssetPath(value, explicitPath) {
   return safeBrowserAssetPath(match?.[0]);
 }
 
+export function safeSecurityPolicyViolation(value) {
+  const effectiveDirective = safeDirective(safeFailureValue(value, 'effectiveDirective'));
+  const violatedDirective = safeDirective(safeFailureValue(value, 'violatedDirective'));
+  const blockedURI = safeBlockedUri(safeFailureValue(value, 'blockedURI'));
+  const sourceFile = safeBrowserAssetPath(safeFailureValue(value, 'sourceFile'));
+  const lineNumber = Number(safeFailureValue(value, 'lineNumber'));
+  if (!effectiveDirective && !violatedDirective && !blockedURI && !sourceFile && !Number.isInteger(lineNumber)) return null;
+  return Object.freeze({
+    ...(effectiveDirective ? { effectiveDirective } : {}),
+    ...(violatedDirective ? { violatedDirective } : {}),
+    ...(blockedURI ? { blockedURI } : {}),
+    ...(sourceFile ? { sourceFile } : {}),
+    ...(Number.isInteger(lineNumber) && lineNumber >= 0 ? { lineNumber } : {}),
+  });
+}
+
 export function classifyWorkerFailure(value, { stage = 'runtime', assetPath = null } = {}) {
   const safeStage = safeToken(stage, 'runtime');
   const existingCode = safeFailureValue(value, 'code');
   const existingDetails = safeFailureValue(value, 'safeDetails');
   if (WEB_V4_ERROR_CODES.includes(existingCode) && existingDetails?.reasonCode) {
     const existingPath = safeBrowserAssetPath(existingDetails.assetPath) ?? safeBrowserAssetPath(assetPath);
+    const existingPolicyViolation = safeSecurityPolicyViolation(existingDetails);
     return webV4Error(existingCode, 'The V4 worker reported a safe runtime diagnostic.', {
       reasonCode: safeToken(existingDetails.reasonCode, existingCode.replace('WEB_V4_', '')),
       stage: safeToken(existingDetails.stage, safeStage),
       ...(existingPath ? { assetPath: existingPath } : {}),
+      ...(existingPolicyViolation ?? {}),
     });
   }
+  const policyViolation = safeSecurityPolicyViolation(value);
   const reason = safeFailureValue(value, 'reason');
   const message = String(safeFailureValue(value, 'message') ?? safeFailureValue(reason, 'message') ?? '').toLowerCase();
   const path = inferredAssetPath(value, assetPath);
   let code;
   if (safeStage === 'construction') code = 'WEB_V4_WORKER_CONSTRUCTION_FAILED';
   else if (safeStage === 'message') code = 'WEB_V4_MESSAGE_ERROR';
-  else if (/content security policy|\bcsp\b|violat(?:e|ed|ion)[^.]*(?:worker-src|script-src)/u.test(message)) code = 'WEB_V4_CSP_BLOCKED';
+  else if (policyViolation || /content security policy|\bcsp\b|violat(?:e|ed|ion)[^.]*(?:worker-src|script-src)/u.test(message)) code = 'WEB_V4_CSP_BLOCKED';
   else if (/mime|content-type|module script[^.]*type/u.test(message)) code = 'WEB_V4_MIME_MISMATCH';
   else if (safeStage === 'compiler') code = 'WEB_V4_COMPILER_LOAD_FAILED';
   else if (/\b404\b|not found|failed to fetch|importing a module script failed/u.test(message)) code = 'WEB_V4_ASSET_NOT_FOUND';
@@ -87,6 +124,7 @@ export function classifyWorkerFailure(value, { stage = 'runtime', assetPath = nu
     reasonCode: code.replace('WEB_V4_', ''),
     stage: safeStage,
     ...(path ? { assetPath: path } : {}),
+    ...(policyViolation ?? {}),
   });
 }
 
@@ -119,11 +157,13 @@ export function safeWorkerError(error, fallback = 'WEB_V4_WORKER_CRASH', context
     ...(Array.isArray(details.compilerDiagnostics) ? { compilerDiagnostics: details.compilerDiagnostics.slice(0, 20).map((item) => Object.freeze({ type: safeToken(item?.type, 'CompilerError'), severity: safeToken(item?.severity, 'error'), errorCode: safeToken(String(item?.errorCode ?? ''), 'unknown') })) } : {}),
   }) : null;
   const safeAssetPath = safeBrowserAssetPath(details.assetPath);
+  const policyViolation = safeSecurityPolicyViolation(details);
   const workerDiagnostic = code.startsWith('WEB_V4_WORKER_') || ['WEB_V4_COMPILER_LOAD_FAILED', 'WEB_V4_ASSET_NOT_FOUND', 'WEB_V4_CSP_BLOCKED', 'WEB_V4_MIME_MISMATCH', 'WEB_V4_MESSAGE_ERROR'].includes(code)
     ? Object.freeze({
       reasonCode: safeToken(details.reasonCode, code.replace('WEB_V4_', '')),
       stage: safeToken(details.stage, 'runtime'),
       ...(safeAssetPath ? { assetPath: safeAssetPath } : {}),
+      ...(policyViolation ?? {}),
     }) : null;
   const diagnostic = compileDiagnostic ?? workerDiagnostic;
   return Object.freeze({ code, message, retryable: !['WEB_V4_PROTOCOL_MISMATCH', 'WEB_V4_COMPILE_FAILED'].includes(code), ...(diagnostic ? { diagnostic } : {}) });

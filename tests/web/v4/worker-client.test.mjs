@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { classifyWorkerFailure, safeWorkerError } from '../../../apps/web/v4/errors.js';
+import { classifyWorkerFailure, safeSecurityPolicyViolation, safeWorkerError } from '../../../apps/web/v4/errors.js';
 import { createWorkerMessage } from '../../../apps/web/v4/runtime/protocol.js';
 import { createWorkerClient } from '../../../apps/web/v4/runtime/worker-client.js';
 import { wait } from './helpers.mjs';
@@ -78,6 +78,24 @@ test('CSP, MIME and initialization fetch failures receive distinct safe codes', 
     assert.match(classified.safeDetails.assetPath, /^v4\//u);
     assert.doesNotMatch(JSON.stringify(classified.safeDetails), /PRIVATE|token=/u);
   }
+});
+test('CSP violations retain only safe directive, origin and browser-asset diagnostics', () => {
+  const event = {
+    effectiveDirective: 'script-src',
+    violatedDirective: "script-src 'self'",
+    blockedURI: 'https://user:PRIVATE@blocked.invalid/private/path?token=PRIVATE',
+    sourceFile: 'https://preview.invalid/v4/runtime/browser-scanner-entry.js?token=PRIVATE',
+    lineNumber: 21,
+  };
+  assert.deepEqual(safeSecurityPolicyViolation(event), {
+    effectiveDirective: 'script-src', violatedDirective: 'script-src', blockedURI: 'https://blocked.invalid',
+    sourceFile: 'v4/runtime/browser-scanner-entry.js', lineNumber: 21,
+  });
+  const classified = classifyWorkerFailure(event, { stage: 'initialization' });
+  const safe = safeWorkerError(classified, classified.code);
+  assert.equal(safe.code, 'WEB_V4_CSP_BLOCKED');
+  assert.deepEqual(safe.diagnostic, { reasonCode: 'CSP_BLOCKED', stage: 'initialization', effectiveDirective: 'script-src', violatedDirective: 'script-src', blockedURI: 'https://blocked.invalid', sourceFile: 'v4/runtime/browser-scanner-entry.js', lineNumber: 21 });
+  assert.doesNotMatch(JSON.stringify(safe), /PRIVATE|token|user:/u);
 });
 test('hard timeout aborts then terminates an unresponsive worker without orphan', async () => {
   const worker = new FakeWorker('hang'); const client = createWorkerClient({ workerFactory: () => worker, limits: { globalTimeoutMs: 5, abortGraceMs: 5 } });

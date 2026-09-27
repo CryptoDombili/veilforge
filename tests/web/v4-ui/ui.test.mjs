@@ -61,6 +61,8 @@ test('controlled errors do not expose worker internals or source content', () =>
   const diagnostic = v4ErrorMessage({ code: 'WEB_V4_COMPILER_LOAD_FAILED', message: 'PRIVATE_SENTINEL', safeDetails: { reasonCode: 'COMPILER_LOAD_FAILED', assetPath: 'v4/soljson-v0.8.24.js', privateValue: 'PRIVATE_SENTINEL' } });
   assert.match(diagnostic, /Diagnostic: COMPILER_LOAD_FAILED · asset: v4\/soljson-v0\.8\.24\.js/u);
   assert.doesNotMatch(diagnostic, /PRIVATE_SENTINEL/u);
+  const csp = v4ErrorMessage({ code: 'WEB_V4_CSP_BLOCKED', safeDetails: { reasonCode: 'CSP_BLOCKED', effectiveDirective: 'script-src', blockedURI: 'wasm-eval', assetPath: 'v4/soljson-v0.8.24.js' } });
+  assert.match(csp, /Diagnostic: CSP_BLOCKED · directive: script-src · blocked: wasm-eval · asset: v4\/soljson-v0\.8\.24\.js/u);
 });
 
 test('a new scan clears previously rendered verified evidence before worker execution', () => {

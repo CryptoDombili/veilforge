@@ -17,8 +17,10 @@ test('AUDIT-ROUND2-LOW-CSP-01 production-like HTTP responses enforce CSP and ant
     const csp = response.headers.get('content-security-policy');
     assert.match(csp, /frame-ancestors 'none'/u);
     assert.match(csp, /script-src 'self'/u);
+    assert.match(csp, /script-src[^;]*'wasm-unsafe-eval'/u);
     assert.match(csp, /connect-src 'self' https:\/\/rpc\.mainnet\.arc\.io https:\/\/explorer\.arc\.io/u);
     assert.doesNotMatch(csp, /script-src[^;]*'unsafe-(?:inline|eval)'/u);
+    assert.doesNotMatch(csp, /worker-src[^;]*(?:data:|\*)/u);
     assert.doesNotMatch(csp, /\b(?:default|script|connect)-src[^;]*\*/u);
     assert.equal(response.headers.get('x-frame-options'), 'DENY');
     assert.equal(response.headers.get('x-content-type-options'), 'nosniff');

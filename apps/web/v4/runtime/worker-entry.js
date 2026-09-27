@@ -21,6 +21,10 @@ scope.addEventListener?.('unhandledrejection', (event) => {
   event.preventDefault?.();
   reportFailure(event?.reason ?? event, runtime ? 'runtime' : 'initialization');
 });
+scope.addEventListener?.('securitypolicyviolation', (event) => {
+  event.preventDefault?.();
+  reportFailure(event, runtime ? 'runtime' : 'initialization', event?.sourceFile);
+});
 
 async function bootstrap() {
   try {
