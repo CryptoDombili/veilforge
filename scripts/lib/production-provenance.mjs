@@ -17,6 +17,33 @@ function sha256(value) {
   return `sha256:${createHash('sha256').update(value).digest('hex')}`;
 }
 
+function sanitizeGitDiagnosticPath(value) {
+  return String(value ?? '')
+    .replace(/[\u0000-\u001f\u007f]/gu, '?')
+    .replace(/(https?:\/\/)[^/@\s]+@/giu, '$1[redacted]@')
+    .replace(/\b(api[_-]?key|access[_-]?token|token|secret|password|credential|private[_-]?key|mnemonic|seed[_-]?phrase)=([^/\\\s"]+)/giu, '$1=[redacted]')
+    .replace(/(?:ghp_|github_pat_|glpat-|xox[baprs]-|sk_(?:live|test)_)[A-Za-z0-9_-]+/giu, '[redacted-token]');
+}
+
+function gitPathRecords(value, code) {
+  return String(value ?? '').split('\n').map((line) => line.trim()).filter(Boolean)
+    .map((relativePath) => ({ code, relativePath: sanitizeGitDiagnosticPath(relativePath) }));
+}
+
+function dirtyCheckoutMessage({ status, unstaged, staged, untracked }) {
+  const statusRecords = String(status ?? '').split('\n').map((line) => line.trimEnd()).filter(Boolean)
+    .filter((line) => line.length >= 4)
+    .map((line) => ({ code: line.slice(0, 2), relativePath: sanitizeGitDiagnosticPath(line.slice(3)) }));
+  const fallbackRecords = [
+    ...gitPathRecords(unstaged, ' M'),
+    ...gitPathRecords(staged, 'M '),
+    ...gitPathRecords(untracked, '??'),
+  ];
+  const records = statusRecords.length > 0 ? statusRecords : fallbackRecords;
+  const unique = [...new Map(records.map((record) => [`${record.code}\0${record.relativePath}`, record])).values()];
+  return `Production checkout dirty:\n${unique.map(({ code, relativePath }) => `${code} ${relativePath}`).join('\n')}`;
+}
+
 function listArtifactFiles(directory) {
   const files = [];
   const walk = (current) => {
@@ -72,8 +99,11 @@ export function assertProductionCheckout(root, environment = process.env) {
     throw new Error('Production build requires the exact checked-out source commit SHA.');
   }
 
-  const dirty = git(root, ['status', '--porcelain=v1', '--untracked-files=all']).trim();
-  if (dirty) throw new Error('Production build rejects modified tracked files and untracked files.');
+  const dirty = git(root, ['status', '--porcelain=v1', '--untracked-files=all']).trimEnd();
+  const unstaged = git(root, ['diff', '--name-only']).trimEnd();
+  const staged = git(root, ['diff', '--cached', '--name-only']).trimEnd();
+  const untracked = git(root, ['ls-files', '--others', '--exclude-standard']).trimEnd();
+  if (dirty) throw new Error(dirtyCheckoutMessage({ status: dirty, unstaged, staged, untracked }));
 
   const ignored = git(root, ['ls-files', '--others', '--ignored', '--exclude-standard', '--', ...SOURCE_ROOTS])
     .split('\n').map((item) => item.trim()).filter(Boolean);

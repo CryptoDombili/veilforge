@@ -59,28 +59,41 @@ test('AUDIT-ROUND2-HIGH-PROVENANCE-01 permits deterministic install output and e
   await t.test('arbitrary untracked root content is not treated as platform metadata', (child) => {
     const root = fixture(child);
     fs.writeFileSync(path.join(root, 'vercel-override.js'), 'throw new Error();\n');
-    assert.throws(() => assertProductionCheckout(root), /modified tracked files and untracked files/u);
+    assert.throws(() => assertProductionCheckout(root), /Production checkout dirty:\n\?\? vercel-override\.js/u);
   });
 });
 
 test('AUDIT-ROUND2-HIGH-PROVENANCE-01 rejects dirty tracked and untracked production inputs', async (t) => {
   await t.test('dirty tracked source', (child) => {
-    const root = fixture(child); fs.appendFileSync(path.join(root, 'apps', 'web', 'app.js'), '// dirty\n');
-    assert.throws(() => assertProductionCheckout(root), /modified tracked files and untracked files/u);
+    const root = fixture(child); fs.appendFileSync(path.join(root, 'apps', 'web', 'app.js'), '// diagnostic-must-not-print-file-content\n');
+    assert.throws(
+      () => assertProductionCheckout(root),
+      (error) => /Production checkout dirty:\n M apps\/web\/app\.js/u.test(error.message)
+        && !error.message.includes('diagnostic-must-not-print-file-content'),
+    );
   });
   await t.test('untracked override', (child) => {
     const root = fixture(child); fs.writeFileSync(path.join(root, 'apps', 'web', 'override.js'), 'throw new Error();\n');
-    assert.throws(() => assertProductionCheckout(root), /modified tracked files and untracked files/u);
+    assert.throws(() => assertProductionCheckout(root), /Production checkout dirty:\n\?\? apps\/web\/override\.js/u);
   });
   await t.test('staged tracked source', (child) => {
     const root = fixture(child); fs.appendFileSync(path.join(root, 'apps', 'web', 'app.js'), '// staged dirty\n');
     git(root, ['add', 'apps/web/app.js']);
-    assert.throws(() => assertProductionCheckout(root), /modified tracked files and untracked files/u);
+    assert.throws(() => assertProductionCheckout(root), /Production checkout dirty:\nM  apps\/web\/app\.js/u);
   });
   await t.test('untracked scripts override', (child) => {
     const root = fixture(child); fs.mkdirSync(path.join(root, 'scripts'), { recursive: true });
     fs.writeFileSync(path.join(root, 'scripts', 'override.mjs'), 'throw new Error();\n');
-    assert.throws(() => assertProductionCheckout(root), /modified tracked files and untracked files/u);
+    assert.throws(() => assertProductionCheckout(root), /Production checkout dirty:\n\?\? scripts\/override\.mjs/u);
+  });
+  await t.test('secret-like filename fragments are redacted from diagnostics', (child) => {
+    const root = fixture(child); fs.mkdirSync(path.join(root, 'scripts'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'scripts', 'token=do-not-print-this-value.mjs'), 'throw new Error();\n');
+    assert.throws(
+      () => assertProductionCheckout(root),
+      (error) => error.message.includes('?? scripts/token=[redacted]')
+        && !error.message.includes('do-not-print-this-value'),
+    );
   });
   await t.test('ignored JavaScript injection', (child) => {
     const root = fixture(child); fs.writeFileSync(path.join(root, 'apps', 'web', 'override.ignored.js'), 'throw new Error();\n');
