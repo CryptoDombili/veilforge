@@ -6,6 +6,7 @@ const read = (path) => fs.readFileSync(new URL(`../../${path}`, import.meta.url)
 
 test('VF-SEC-001 hosting and CI consume only the commit-bound Mainnet production artifact', () => {
   const vercel = JSON.parse(read('vercel.json'));
+  assert.equal(vercel.installCommand, 'npm ci --ignore-scripts');
   assert.equal(vercel.buildCommand, 'npm run build:arc-mainnet-production');
   assert.equal(vercel.outputDirectory, 'dist-mainnet-production');
   const build = read('scripts/build-web.mjs');

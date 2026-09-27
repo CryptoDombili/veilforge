@@ -15,7 +15,7 @@ function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'veilforge-provenance-test-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.mkdirSync(path.join(root, 'apps', 'web'), { recursive: true });
-  fs.writeFileSync(path.join(root, '.gitignore'), 'node_modules/\ndist-mainnet-production/\n*.ignored.js\n');
+  fs.writeFileSync(path.join(root, '.gitignore'), 'node_modules/\n.vercel/\ndist-mainnet-production/\n*.ignored.js\n');
   fs.writeFileSync(path.join(root, 'apps', 'web', 'app.js'), 'export const trusted = true;\n');
   fs.writeFileSync(path.join(root, 'package-lock.json'), '{"lockfileVersion":3}\n');
   fs.writeFileSync(path.join(root, 'RELEASE_MANIFEST.sha256'), 'trusted  apps/web/app.js\n');
@@ -37,6 +37,32 @@ test('AUDIT-ROUND2-HIGH-PROVENANCE-01 accepts only a clean exact commit identity
   assert.throws(() => assertProductionCheckout(root, { GITHUB_SHA: '0'.repeat(40) }), /exact checked-out source commit/u);
 });
 
+test('AUDIT-ROUND2-HIGH-PROVENANCE-01 permits deterministic install output and explicit Vercel metadata only outside trusted source roots', async (t) => {
+  await t.test('root dependency install output remains outside the committed source snapshot', (child) => {
+    const root = fixture(child);
+    fs.mkdirSync(path.join(root, 'node_modules', 'installed-package'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'node_modules', 'installed-package', 'index.js'), 'export default true;\n');
+    assert.equal(git(root, ['status', '--porcelain=v1', '--untracked-files=all']), '');
+    assert.doesNotThrow(() => assertProductionCheckout(root));
+  });
+
+  await t.test('explicitly ignored Vercel platform metadata is allowed outside trusted source roots', (child) => {
+    const root = fixture(child);
+    fs.mkdirSync(path.join(root, '.vercel', 'output'), { recursive: true });
+    fs.writeFileSync(path.join(root, '.vercel', 'project.json'), '{"projectId":"preview-fixture"}\n');
+    fs.writeFileSync(path.join(root, '.vercel', 'README.txt'), 'Vercel platform metadata.\n');
+    fs.writeFileSync(path.join(root, '.vercel', 'output', 'config.json'), '{}\n');
+    assert.equal(git(root, ['status', '--porcelain=v1', '--untracked-files=all']), '');
+    assert.doesNotThrow(() => assertProductionCheckout(root));
+  });
+
+  await t.test('arbitrary untracked root content is not treated as platform metadata', (child) => {
+    const root = fixture(child);
+    fs.writeFileSync(path.join(root, 'vercel-override.js'), 'throw new Error();\n');
+    assert.throws(() => assertProductionCheckout(root), /modified tracked files and untracked files/u);
+  });
+});
+
 test('AUDIT-ROUND2-HIGH-PROVENANCE-01 rejects dirty tracked and untracked production inputs', async (t) => {
   await t.test('dirty tracked source', (child) => {
     const root = fixture(child); fs.appendFileSync(path.join(root, 'apps', 'web', 'app.js'), '// dirty\n');
@@ -44,6 +70,16 @@ test('AUDIT-ROUND2-HIGH-PROVENANCE-01 rejects dirty tracked and untracked produc
   });
   await t.test('untracked override', (child) => {
     const root = fixture(child); fs.writeFileSync(path.join(root, 'apps', 'web', 'override.js'), 'throw new Error();\n');
+    assert.throws(() => assertProductionCheckout(root), /modified tracked files and untracked files/u);
+  });
+  await t.test('staged tracked source', (child) => {
+    const root = fixture(child); fs.appendFileSync(path.join(root, 'apps', 'web', 'app.js'), '// staged dirty\n');
+    git(root, ['add', 'apps/web/app.js']);
+    assert.throws(() => assertProductionCheckout(root), /modified tracked files and untracked files/u);
+  });
+  await t.test('untracked scripts override', (child) => {
+    const root = fixture(child); fs.mkdirSync(path.join(root, 'scripts'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'scripts', 'override.mjs'), 'throw new Error();\n');
     assert.throws(() => assertProductionCheckout(root), /modified tracked files and untracked files/u);
   });
   await t.test('ignored JavaScript injection', (child) => {

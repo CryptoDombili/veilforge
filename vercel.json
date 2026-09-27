@@ -1,6 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
+  "installCommand": "npm ci --ignore-scripts",
   "buildCommand": "npm run build:arc-mainnet-production",
   "outputDirectory": "dist-mainnet-production",
   "cleanUrls": true,

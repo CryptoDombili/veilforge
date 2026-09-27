@@ -57,6 +57,7 @@ test('preview-only stylesheet preserves the default V3 source and feature flag',
 
 test('Vercel production build explicitly activates V4 without changing the source default', () => {
   const vercel = JSON.parse(read('vercel.json'));
+  assert.equal(vercel.installCommand, 'npm ci --ignore-scripts');
   assert.equal(vercel.buildCommand, 'npm run build:arc-mainnet-production');
   assert.equal(vercel.outputDirectory, 'dist-mainnet-production');
   assert.match(read('apps/web/config.js'), /WEB_V4_ENABLED = false/u);
