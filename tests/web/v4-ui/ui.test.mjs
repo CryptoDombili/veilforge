@@ -9,7 +9,9 @@ const finding = (overrides = {}) => ({ findingId: 'f-1', detectorId: 'payments.e
 test('V4 mode is an explicit flag branch and V3 remains the default path', () => {
   const source = fs.readFileSync(new URL('../../../apps/web/app.js', import.meta.url), 'utf8');
   assert.match(source, /if \(WEB_V4_ENABLED\) \{[\s\S]*await initV4Ui\(\);[\s\S]*return;/u);
-  assert.match(source, /bindEvents\(\);[\s\S]*await hydrateWallet\(\);/u);
+  assert.match(source, /bindEvents\(\);[\s\S]*setWalletUi\(null\);/u);
+  const init = source.slice(source.indexOf('async function init()'), source.indexOf('\ninit();'));
+  assert.doesNotMatch(init, /requestAnnouncedProviders|hydrateWallet|eip6963:requestProvider/u);
 });
 
 test('finding controls filter and deterministically sort canonical V4 findings', () => {

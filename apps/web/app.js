@@ -216,6 +216,7 @@ const announcedWalletProviders = [];
 const boundWalletProviders = new WeakSet();
 let walletPickerCandidates = [];
 let pendingWalletContext = null;
+let walletDiscoveryStarted = false;
 
 const WALLET_BRANDS = [
   { id: 'keplr', label: 'Keplr EVM', order: 10, tokens: ['keplr', 'app.keplr'] },
@@ -230,12 +231,20 @@ function identifyWalletBrand(suppliedInfo = {}, provider = null) {
   const metadataMatch = WALLET_BRANDS.find((brand) => brand.tokens.some((token) => metadata.includes(token)));
   if (metadataMatch) return metadataMatch;
 
-  if (provider === globalThis.keplr?.ethereum || provider?.isKeplr) return WALLET_BRANDS[0];
-  if (provider === globalThis.phantom?.ethereum || provider?.isPhantom) return WALLET_BRANDS[2];
+  if (provider === safeInjectedEthereum('keplr') || provider?.isKeplr) return WALLET_BRANDS[0];
+  if (provider === safeInjectedEthereum('phantom') || provider?.isPhantom) return WALLET_BRANDS[2];
   if (provider?.isZerion) return WALLET_BRANDS[4];
   if (provider?.isRabby) return WALLET_BRANDS[3];
   if (provider?.isMetaMask) return WALLET_BRANDS[1];
   return null;
+}
+
+function safeGlobalProperty(property) {
+  try { return globalThis?.[property]; } catch { return undefined; }
+}
+
+function safeInjectedEthereum(walletName) {
+  try { return safeGlobalProperty(walletName)?.ethereum; } catch { return undefined; }
 }
 
 function detectLegacyWalletName(provider) {
@@ -281,25 +290,36 @@ function rememberWalletProvider(candidate) {
 }
 
 function collectLegacyWalletProviders() {
-  const injected = globalThis.ethereum;
+  const injected = safeGlobalProperty('ethereum');
   if (Array.isArray(injected?.providers) && injected.providers.length) injected.providers.forEach(rememberWalletProvider);
   else rememberWalletProvider(injected);
 
-  if (globalThis.keplr?.ethereum) {
+  const keplr = safeInjectedEthereum('keplr');
+  if (keplr) {
     rememberWalletProvider({
-      provider: globalThis.keplr.ethereum,
+      provider: keplr,
       info: { name: 'Keplr EVM', rdns: 'app.keplr' },
     });
   }
-  if (globalThis.phantom?.ethereum) {
+  const phantom = safeInjectedEthereum('phantom');
+  if (phantom) {
     rememberWalletProvider({
-      provider: globalThis.phantom.ethereum,
+      provider: phantom,
       info: { name: 'Phantom', rdns: 'app.phantom' },
     });
   }
 }
 
+function startWalletDiscovery() {
+  if (walletDiscoveryStarted) return;
+  try {
+    globalThis.addEventListener?.('eip6963:announceProvider', (event) => rememberWalletProvider(event?.detail));
+    walletDiscoveryStarted = true;
+  } catch {}
+}
+
 function requestAnnouncedProviders() {
+  startWalletDiscovery();
   collectLegacyWalletProviders();
   if (typeof globalThis.dispatchEvent !== 'function') return;
   try { globalThis.dispatchEvent(new Event('eip6963:requestProvider')); } catch {}
@@ -1787,8 +1807,6 @@ function bindEvents() {
 async function init() {
   for (const element of document.querySelectorAll('[data-active-network-name]')) element.textContent = ACTIVE_WEB_NETWORK.chainName;
   for (const element of document.querySelectorAll('[data-active-chain-id]')) element.textContent = String(ACTIVE_WEB_NETWORK.chainId);
-  globalThis.addEventListener?.('eip6963:announceProvider', (event) => rememberWalletProvider(event?.detail));
-  requestAnnouncedProviders();
   window.addEventListener('error', (event) => {
     document.body.dataset.runtimeError = event.message || 'unknown';
   });
@@ -1803,7 +1821,7 @@ async function init() {
     return;
   }
   bindEvents();
-  await hydrateWallet();
+  setWalletUi(null);
   renderFileList();
   renderAll();
   try {

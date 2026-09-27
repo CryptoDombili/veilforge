@@ -16,6 +16,7 @@ import { invalidateNetworkPreflight, preflightProofNetworkProvider } from './pro
 import { createUserGatedProofReview } from './proof-send-boundary.js';
 import { createBrowserProofSendCoordinator, PROOF_SEND_STATES } from './proof-send-coordinator.js';
 import { inspectExistingProofTransaction, isValidProofTransactionHash, reconcileVerifiedProofPublication, submitUserApprovedProofTransaction } from './proof-transaction-acceptance.js';
+import { discoverWalletProvider } from './wallet-provider-discovery.js';
 import { DEFAULT_WEB_NETWORK_KEY, resolveWebNetworkConfig } from '../config.js';
 
 const DOMAIN_LABELS = Object.freeze({
@@ -498,12 +499,13 @@ export async function initV4Ui(options = {}) {
     } catch { state.proof = { ...state.proof, envelope: null, preflight: null, receipt: null, identityVerified: false, status: 'report-unverified' }; }
     renderProof();
     if (!configuredProofNetwork.enabled || !configuredProofNetwork.publishEnabled || !configuredProofNetwork.registryAddress) return;
-    await inspectProofWallet(null, expectedRunId);
   };
   const inspectProofWallet = async (event = null, expectedRunId = null) => {
     if (expectedRunId != null && expectedRunId !== state.runId) return state.proof.wallet;
-    const provider = options.proofProvider ?? globalThis.ethereum;
     if (event && state.proof.wallet.connected && state.proof.wallet.chainId === state.proof.envelope.chainId) return state.proof.wallet;
+    const provider = state.proof.provider ?? (Object.hasOwn(options, 'proofProvider')
+      ? options.proofProvider
+      : await discoverWalletProvider({ scope: options.walletScope ?? globalThis, waitMs: options.walletDiscoveryWaitMs ?? 80 }));
     if (event) {
       state.proof.walletConnecting = true; state.proof.walletError = null; renderProof();
       try { await connectWalletOnUserGesture(provider, { userGesture: event.type === 'click' && event.isTrusted === true }); }
