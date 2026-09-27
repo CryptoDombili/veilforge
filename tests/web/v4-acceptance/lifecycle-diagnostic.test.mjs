@@ -31,7 +31,7 @@ test('dispose while scan awaits ready rejects every promise and clears lifecycle
 
 test('crash rejects the active scan and a fresh worker completes a real protocol scan', async () => {
   const crashed = createWorkerClient({ workerFactory: () => new DiagnosticWorker('crash'), lifecycleIteration: 2 });
-  await assert.rejects(crashed.scan({ projectId: 'crash' }, { requestId: 'crash' }), { code: 'WEB_V4_WORKER_CRASH' });
+  await assert.rejects(crashed.scan({ projectId: 'crash' }, { requestId: 'crash' }), { code: 'WEB_V4_WORKER_RUNTIME_EXCEPTION' });
   assert.equal(crashed.lifecycle.activeWorkers, 0); assert.equal(crashed.lifecycle.pendingPromises, 0);
   const restarted = createWorkerClient({ workerFactory: () => new DiagnosticWorker('result'), lifecycleIteration: 3 });
   assert.deepEqual(await restarted.scan({ projectId: 'restart' }, { requestId: 'restart' }), { verified: true }); restarted.dispose();

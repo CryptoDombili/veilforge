@@ -132,6 +132,14 @@ export function v4ErrorMessage(error, profile = { networkKey: DEFAULT_WEB_NETWOR
     WEB_V4_PROTOCOL_MISMATCH: 'This page and its scanner worker are incompatible. Refresh after rebuilding the site.',
     WEB_V4_WORKER_BUSY: 'A V4 scan is already running.',
     WEB_V4_RUNTIME_UNAVAILABLE: 'The browser-compatible V4 scanner runtime is unavailable in this build.',
+    WEB_V4_WORKER_CONSTRUCTION_FAILED: 'The browser could not construct the isolated V4 scanner worker.',
+    WEB_V4_WORKER_INIT_FAILED: 'The isolated V4 scanner worker could not initialize.',
+    WEB_V4_COMPILER_LOAD_FAILED: 'The pinned solc 0.8.24 browser compiler could not load.',
+    WEB_V4_ASSET_NOT_FOUND: 'A required V4 scanner asset was not found.',
+    WEB_V4_CSP_BLOCKED: 'Browser Content Security Policy blocked the V4 scanner worker or one of its modules.',
+    WEB_V4_MIME_MISMATCH: 'A V4 scanner module was served with an incompatible MIME type.',
+    WEB_V4_MESSAGE_ERROR: 'The browser could not deserialize a V4 scanner worker message.',
+    WEB_V4_WORKER_RUNTIME_EXCEPTION: 'The isolated V4 scanner raised a runtime exception.',
     WEB_V4_ABORTED: 'The V4 scan was cancelled. No partial result was saved.',
     WEB_V4_TIMEOUT: 'The V4 scan exceeded its safe runtime limit and was stopped.',
     WEB_V4_WORKER_CRASH: 'The isolated V4 scanner stopped unexpectedly. Retry with the same local files.',
@@ -164,7 +172,12 @@ export function v4ErrorMessage(error, profile = { networkKey: DEFAULT_WEB_NETWOR
     WEB_V4_REGISTRY_ABI_MISMATCH: 'Trusted Registry V2 runtime bytecode does not expose the expected method.',
     WEB_V4_SEND_DISABLED: 'Transaction sending is disabled in this preflight build.',
   };
-  return messages[error?.code] ?? 'The V4 scan could not complete safely. No unverified result was displayed.';
+  const message = messages[error?.code] ?? 'The V4 scan could not complete safely. No unverified result was displayed.';
+  const diagnostic = error?.safeDetails;
+  if (!diagnostic?.reasonCode || !/^[A-Z0-9_]{1,64}$/u.test(diagnostic.reasonCode)) return message;
+  const asset = typeof diagnostic.assetPath === 'string' && /^v4\/[A-Za-z0-9._~%/-]{1,240}$/u.test(diagnostic.assetPath)
+    ? ` · asset: ${diagnostic.assetPath}` : '';
+  return `${message} Diagnostic: ${diagnostic.reasonCode}${asset}`;
 }
 
 export function filterAndSortV4Findings(findings, filters = {}) {
@@ -714,9 +727,10 @@ export async function initV4Ui(options = {}) {
     clearRenderedReport();
     state.analysis = { state: 'scanning', phase: 'Compiler', message: 'Initializing the isolated compiler…' };
     updateWorkflow();
-    const client = createWorkerClient();
-    state.client = client;
+    let client = null;
     try {
+      client = createWorkerClient();
+      state.client = client;
       const projectId = slug(projectName);
       const input = await browserFilesToScanInput(state.files, { projectId, projectName, domains, compilerVersion: '0.8.24', ...(policy === undefined ? {} : { policy }) });
       if (runId !== state.runId) return;
@@ -734,7 +748,7 @@ export async function initV4Ui(options = {}) {
       setStatus('Verified result ready', `${viewModel.findings.length} canonical finding${viewModel.findings.length === 1 ? '' : 's'} · ${viewModel.reportHash}${persistenceWarning ? ` · History not saved: ${persistenceWarning}` : ''}`, persistenceWarning ? 'warning' : 'success');
       renderReport(); await initializeProof(runId); if (runId !== state.runId) return; await renderHistory(); if (runId !== state.runId) return; updateWorkflow();
     } catch (error) { if (runId !== state.runId) return; const cancelled = error?.code === 'WEB_V4_ABORTED'; state.scanStatus = cancelled ? 'cancelled' : 'error'; state.reviewReady = false; state.verifyReady = false; state.analysis = { state: cancelled ? 'cancelled' : 'error', phase: null, message: cancelled ? 'No partial result was saved.' : uiErrorMessage(error) }; state.proof.status = 'report-unverified'; state.proof.envelope = null; state.proof.identityVerified = false; renderProof(); renderAnalysis(); byId('v4-progress').value = 0; byId('v4-progress-label').textContent = 'Scan did not produce a verified report.'; setStatus(cancelled ? 'Scan cancelled' : 'V4 scan blocked', uiErrorMessage(error), cancelled ? '' : 'error'); }
-    finally { client.dispose(); if (state.client === client) state.client = null; if (runId === state.runId) { setBusy(false); updateWorkflow(); } }
+    finally { client?.dispose(); if (state.client === client) state.client = null; if (runId === state.runId) { setBusy(false); updateWorkflow(); } }
   };
 
   const resetCurrentSession = ({ clearFiles = false, cancelled = false } = {}) => {

@@ -58,11 +58,14 @@ test('controlled errors do not expose worker internals or source content', () =>
   assert.doesNotMatch(v4ErrorMessage({ code: 'WEB_V4_WORKER_CRASH', message: 'PRIVATE_SENTINEL' }), /PRIVATE_SENTINEL/u);
   assert.match(v4ErrorMessage({ code: 'WEB_V4_COMPILE_FAILED', message: 'PRIVATE_SENTINEL' }), /exact solc 0\.8\.24/u);
   assert.doesNotMatch(v4ErrorMessage({ code: 'WEB_V4_COMPILE_FAILED', message: 'PRIVATE_SENTINEL' }), /PRIVATE_SENTINEL/u);
+  const diagnostic = v4ErrorMessage({ code: 'WEB_V4_COMPILER_LOAD_FAILED', message: 'PRIVATE_SENTINEL', safeDetails: { reasonCode: 'COMPILER_LOAD_FAILED', assetPath: 'v4/soljson-v0.8.24.js', privateValue: 'PRIVATE_SENTINEL' } });
+  assert.match(diagnostic, /Diagnostic: COMPILER_LOAD_FAILED · asset: v4\/soljson-v0\.8\.24\.js/u);
+  assert.doesNotMatch(diagnostic, /PRIVATE_SENTINEL/u);
 });
 
 test('a new scan clears previously rendered verified evidence before worker execution', () => {
   const source = fs.readFileSync(new URL('../../../apps/web/v4/ui.js', import.meta.url), 'utf8');
-  const start = source.slice(source.indexOf('const runScan = async'), source.indexOf('const client = createWorkerClient()'));
+  const start = source.slice(source.indexOf('const runScan = async'), source.indexOf('client = createWorkerClient()'));
   assert.match(start, /state\.verification = null; state\.viewModel = null; state\.exportBundle = null;\s*clearRenderedReport\(\);/u);
 });
 

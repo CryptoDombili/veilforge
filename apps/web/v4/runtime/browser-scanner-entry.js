@@ -1,6 +1,6 @@
 import { cloneValue, deepFreeze } from '../canonical.js';
 import { createV4WebExport } from '../export-adapter.js';
-import { webV4Error } from '../errors.js';
+import { classifyWorkerFailure, webV4Error } from '../errors.js';
 import { verifyV4Report } from '../report-adapter.js';
 import { V4_HASH_PAYLOAD_VERSION, V4_REPORT_VERSION, WEB_V4_FOUNDATION_VERSION } from '../version.js';
 import { createV4ViewModel } from '../view-models.js';
@@ -15,14 +15,19 @@ let dependencyInitializationMs = 0;
 async function loadDependencies() {
   if (!dependencies) {
     const started = globalThis.performance.now();
-    dependencies = Promise.all([
-      import('./browser-runtime-assets/engine/v4/orchestration/index.js'),
-      import('./browser/solc-compiler.js'),
-    ]).then(([orchestration, compiler]) => {
-      const value = { orchestration, compiler: compiler.createBrowserCompiler() };
+    dependencies = (async () => {
+      let orchestration;
+      let compilerModule;
+      try { orchestration = await import('./browser-runtime-assets/engine/v4/orchestration/index.js'); }
+      catch (error) { throw classifyWorkerFailure(error, { stage: 'initialization', assetPath: 'v4/runtime/browser-runtime-assets/engine/v4/orchestration/index.js' }); }
+      try { compilerModule = await import('./browser/solc-compiler.js'); }
+      catch (error) { throw classifyWorkerFailure(error, { stage: 'compiler', assetPath: 'v4/runtime/browser/solc-compiler.js' }); }
+      let compiler;
+      try { compiler = compilerModule.createBrowserCompiler(); }
+      catch (error) { throw classifyWorkerFailure(error, { stage: 'compiler', assetPath: 'v4/soljson-v0.8.24.js' }); }
       dependencyInitializationMs = globalThis.performance.now() - started;
-      return value;
-    });
+      return { orchestration, compiler };
+    })();
   }
   return dependencies;
 }

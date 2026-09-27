@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { createHash } from 'node:crypto';
 import { assertMainnetProductionConfig } from './lib/mainnet-read-activation.mjs';
 import { assertProductionArtifactProvenance, assertProductionCheckout, verifyProductionArtifactAgainstTrustedSnapshot } from './lib/production-provenance.mjs';
+import { verifyWebV4RuntimeAssets } from './lib/web-v4-runtime-assets.mjs';
 
 const root = process.cwd();
 const output = path.join(root, 'dist-mainnet-production');
@@ -32,6 +33,7 @@ const landing = read('index.html');
 const deployment = JSON.parse(fs.readFileSync(path.join(root, 'deployment', 'arc-mainnet-registry-deployment.json'), 'utf8'));
 const publication = JSON.parse(fs.readFileSync(path.join(root, 'deployment', 'arc-mainnet-proof-publication.json'), 'utf8'));
 const mainnet = config.WEB_NETWORKS['arc-mainnet'];
+const runtimeAssets = verifyWebV4RuntimeAssets(output);
 
 if (config.DEFAULT_WEB_NETWORK_KEY !== 'arc-mainnet' || config.WEB_V4_ENABLED !== true) throw new Error('Production artifact does not explicitly select Arc Mainnet V4.');
 if (!landing.includes('<span>✓ Arc Mainnet proof</span>')
@@ -75,6 +77,8 @@ console.log(JSON.stringify({
   chainId: mainnet.chainId,
   registryAddress: mainnet.registryAddress,
   publishEnabled: mainnet.publishEnabled,
+  workerAssetPaths: runtimeAssets.workerAssetPaths,
+  compilerAssets: runtimeAssets.compilerAssets,
   expectedArtifactDigest: trustedArtifact.expectedArtifactDigest,
   deploymentTransaction: metadata.arcMainnet.deploymentTransaction,
   firstProofTransaction: metadata.arcMainnet.firstProofTransaction,
