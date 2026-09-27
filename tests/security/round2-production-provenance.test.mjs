@@ -19,6 +19,11 @@ function fixture(t) {
   fs.writeFileSync(path.join(root, 'apps', 'web', 'app.js'), 'export const trusted = true;\n');
   fs.writeFileSync(path.join(root, 'package-lock.json'), '{"lockfileVersion":3}\n');
   fs.writeFileSync(path.join(root, 'RELEASE_MANIFEST.sha256'), 'trusted  apps/web/app.js\n');
+  fs.writeFileSync(path.join(root, 'vercel.json'), `${JSON.stringify({
+    installCommand: 'npm ci --ignore-scripts',
+    buildCommand: 'npm run build:arc-mainnet-production',
+    outputDirectory: 'dist-mainnet-production',
+  }, null, 2)}\n`);
   git(root, ['init', '--initial-branch=main']);
   git(root, ['config', 'user.email', 'security-test@example.invalid']);
   git(root, ['config', 'user.name', 'Security Test']);
@@ -103,6 +108,52 @@ test('AUDIT-ROUND2-HIGH-PROVENANCE-01 rejects dirty tracked and untracked produc
     const root = fixture(child); fs.mkdirSync(path.join(root, 'apps', 'web', 'node_modules', 'shadow'), { recursive: true });
     fs.writeFileSync(path.join(root, 'apps', 'web', 'node_modules', 'shadow', 'index.js'), 'export default false;\n');
     assert.throws(() => assertProductionCheckout(root), /ignored source overrides|shadow modules/u);
+  });
+});
+
+test('AUDIT-ROUND5-PROVENANCE-DIAGNOSTICS reports only safe vercel.json mutation metadata', async (t) => {
+  await t.test('format-only mutation reports hashes, sizes and semantic equivalence without full content', (child) => {
+    const root = fixture(child);
+    const committed = fs.readFileSync(path.join(root, 'vercel.json'), 'utf8');
+    const formatted = `${JSON.stringify(JSON.parse(committed), null, 4)}\r\n`;
+    fs.writeFileSync(path.join(root, 'vercel.json'), formatted);
+    assert.throws(
+      () => assertProductionCheckout(root),
+      (error) => /VERCEL_JSON_MUTATION:/u.test(error.message)
+        && /committedSha256: sha256:[0-9a-f]{64}/u.test(error.message)
+        && /workingSha256: sha256:[0-9a-f]{64}/u.test(error.message)
+        && /committedSize: \d+/u.test(error.message)
+        && /workingSize: \d+/u.test(error.message)
+        && /semanticEquivalent: true/u.test(error.message)
+        && /formatOnly: true/u.test(error.message)
+        && /changedKeys:\n- none/u.test(error.message)
+        && !error.message.includes(committed.trim()),
+    );
+  });
+
+  await t.test('scalar mutation reports only changed key path and non-secret old/new values', (child) => {
+    const root = fixture(child);
+    const config = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'));
+    config.installCommand = 'npm install';
+    fs.writeFileSync(path.join(root, 'vercel.json'), `${JSON.stringify(config, null, 2)}\n`);
+    assert.throws(
+      () => assertProductionCheckout(root),
+      (error) => /semanticEquivalent: false/u.test(error.message)
+        && /formatOnly: false/u.test(error.message)
+        && error.message.includes('- installCommand: "npm ci --ignore-scripts" -> "npm install"'),
+    );
+  });
+
+  await t.test('secret-like scalar mutation is redacted', (child) => {
+    const root = fixture(child);
+    const config = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'));
+    config.installCommand = 'token=do-not-print-this-value';
+    fs.writeFileSync(path.join(root, 'vercel.json'), `${JSON.stringify(config, null, 2)}\n`);
+    assert.throws(
+      () => assertProductionCheckout(root),
+      (error) => error.message.includes('- installCommand: "npm ci --ignore-scripts" -> "token=[redacted]"')
+        && !error.message.includes('do-not-print-this-value'),
+    );
   });
 });
 

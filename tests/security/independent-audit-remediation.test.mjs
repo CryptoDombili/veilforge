@@ -24,6 +24,9 @@ test('VF-SEC-001 hosting and CI consume only the commit-bound Mainnet production
   assert.match(provenance, /'diff', '--name-only'/u);
   assert.match(provenance, /'diff', '--cached', '--name-only'/u);
   assert.match(provenance, /'ls-files', '--others', '--exclude-standard'/u);
+  assert.match(provenance, /'show', 'HEAD:vercel\.json'/u);
+  assert.match(provenance, /semanticEquivalent/u);
+  assert.match(provenance, /formatOnly/u);
   assert.match(provenance, /--others', '--ignored', '--exclude-standard/u);
   assert.match(verify, /artifact byte attestation is invalid/u);
   assert.match(verify, /assertProductionArtifactProvenance/u);

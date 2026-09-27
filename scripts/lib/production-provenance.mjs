@@ -30,7 +30,81 @@ function gitPathRecords(value, code) {
     .map((relativePath) => ({ code, relativePath: sanitizeGitDiagnosticPath(relativePath) }));
 }
 
-function dirtyCheckoutMessage({ status, unstaged, staged, untracked }) {
+function normalizeJson(value) {
+  if (Array.isArray(value)) return value.map(normalizeJson);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, normalizeJson(value[key])]));
+  }
+  return value;
+}
+
+function jsonScalar(value, keyPath) {
+  if (value === undefined) return '[missing]';
+  if (value && typeof value === 'object') return Array.isArray(value) ? `[array:${value.length}]` : '[object]';
+  if (typeof value === 'string') {
+    if (/(?:api[_-]?key|token|secret|password|credential|private[_-]?key|mnemonic|seed[_-]?phrase)/iu.test(keyPath)) {
+      return '"[redacted]"';
+    }
+    return JSON.stringify(sanitizeGitDiagnosticPath(value));
+  }
+  return JSON.stringify(value);
+}
+
+function collectJsonChanges(before, after, keyPath = '') {
+  if (Object.is(before, after)) return [];
+  if (Array.isArray(before) && Array.isArray(after)) {
+    const changes = [];
+    const length = Math.max(before.length, after.length);
+    for (let index = 0; index < length; index += 1) {
+      changes.push(...collectJsonChanges(before[index], after[index], `${keyPath}[${index}]`));
+    }
+    return changes;
+  }
+  if (before && after && typeof before === 'object' && typeof after === 'object'
+    && !Array.isArray(before) && !Array.isArray(after)) {
+    const keys = [...new Set([...Object.keys(before), ...Object.keys(after)])].sort();
+    return keys.flatMap((key) => collectJsonChanges(before[key], after[key], keyPath ? `${keyPath}.${key}` : key));
+  }
+  const safePath = sanitizeGitDiagnosticPath(keyPath || '$');
+  return [`${safePath}: ${jsonScalar(before, safePath)} -> ${jsonScalar(after, safePath)}`];
+}
+
+function parseJsonBytes(bytes) {
+  try {
+    return { parsed: true, value: JSON.parse(bytes.toString('utf8').replace(/^\uFEFF/u, '')) };
+  } catch {
+    return { parsed: false, value: undefined };
+  }
+}
+
+function vercelJsonMutationDiagnostic(root) {
+  const committed = execFileSync('git', ['show', 'HEAD:vercel.json'], { cwd: root, encoding: 'buffer' });
+  const workingPath = path.join(root, 'vercel.json');
+  const working = fs.statSync(workingPath, { throwIfNoEntry: false })?.isFile()
+    ? fs.readFileSync(workingPath)
+    : Buffer.alloc(0);
+  const committedJson = parseJsonBytes(committed);
+  const workingJson = parseJsonBytes(working);
+  const semanticEquivalent = committedJson.parsed && workingJson.parsed
+    && JSON.stringify(normalizeJson(committedJson.value)) === JSON.stringify(normalizeJson(workingJson.value));
+  const sameBytes = committed.equals(working);
+  const changedKeys = committedJson.parsed && workingJson.parsed
+    ? collectJsonChanges(committedJson.value, workingJson.value)
+    : [`$: ${committedJson.parsed ? 'valid-json' : 'invalid-json'} -> ${workingJson.parsed ? 'valid-json' : 'invalid-json'}`];
+  return [
+    'VERCEL_JSON_MUTATION:',
+    `committedSha256: ${sha256(committed)}`,
+    `workingSha256: ${sha256(working)}`,
+    `committedSize: ${committed.length}`,
+    `workingSize: ${working.length}`,
+    `semanticEquivalent: ${semanticEquivalent}`,
+    `formatOnly: ${semanticEquivalent && !sameBytes}`,
+    'changedKeys:',
+    ...(changedKeys.length > 0 ? changedKeys.map((change) => `- ${change}`) : ['- none']),
+  ].join('\n');
+}
+
+function dirtyCheckoutMessage(root, { status, unstaged, staged, untracked }) {
   const statusRecords = String(status ?? '').split('\n').map((line) => line.trimEnd()).filter(Boolean)
     .filter((line) => line.length >= 4)
     .map((line) => ({ code: line.slice(0, 2), relativePath: sanitizeGitDiagnosticPath(line.slice(3)) }));
@@ -41,7 +115,13 @@ function dirtyCheckoutMessage({ status, unstaged, staged, untracked }) {
   ];
   const records = statusRecords.length > 0 ? statusRecords : fallbackRecords;
   const unique = [...new Map(records.map((record) => [`${record.code}\0${record.relativePath}`, record])).values()];
-  return `Production checkout dirty:\n${unique.map(({ code, relativePath }) => `${code} ${relativePath}`).join('\n')}`;
+  const dirtyPaths = new Set([
+    ...gitPathRecords(unstaged, ' M'),
+    ...gitPathRecords(staged, 'M '),
+    ...gitPathRecords(untracked, '??'),
+  ].map(({ relativePath }) => relativePath));
+  const vercelDiagnostic = dirtyPaths.has('vercel.json') ? `\n${vercelJsonMutationDiagnostic(root)}` : '';
+  return `Production checkout dirty:\n${unique.map(({ code, relativePath }) => `${code} ${relativePath}`).join('\n')}${vercelDiagnostic}`;
 }
 
 function listArtifactFiles(directory) {
@@ -103,7 +183,7 @@ export function assertProductionCheckout(root, environment = process.env) {
   const unstaged = git(root, ['diff', '--name-only']).trimEnd();
   const staged = git(root, ['diff', '--cached', '--name-only']).trimEnd();
   const untracked = git(root, ['ls-files', '--others', '--exclude-standard']).trimEnd();
-  if (dirty) throw new Error(dirtyCheckoutMessage({ status: dirty, unstaged, staged, untracked }));
+  if (dirty) throw new Error(dirtyCheckoutMessage(root, { status: dirty, unstaged, staged, untracked }));
 
   const ignored = git(root, ['ls-files', '--others', '--ignored', '--exclude-standard', '--', ...SOURCE_ROOTS])
     .split('\n').map((item) => item.trim()).filter(Boolean);
