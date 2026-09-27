@@ -35,7 +35,7 @@ const WORKFLOW_STEPS = Object.freeze([
 ]);
 const ANALYSIS_PHASES = Object.freeze(['Compiler', 'AST', 'CFG', 'Dataflow', 'Detectors', 'Report']);
 const DEFAULT_FILTERS = Object.freeze({ query: '', severity: 'all', domain: 'all', disposition: 'all', confidence: 'all', completeness: 'all', detector: '', sort: 'severity' });
-const createEmptyProofState = () => ({ envelope: null, wallet: buildWalletState(), walletConnecting: false, walletError: null, preflight: null, networkPreflight: null, review: null, status: 'unavailable', receipt: null, sendAttempt: null, provider: null, identityVerified: false, completionState: null, verificationRequestId: 0, existingVerification: { status: 'idle', message: '', identity: null } });
+const createEmptyProofState = () => ({ envelope: null, wallet: buildWalletState(), walletConnecting: false, walletError: null, preflight: null, networkPreflight: null, review: null, status: 'unavailable', failure: null, receipt: null, sendAttempt: null, provider: null, identityVerified: false, completionState: null, verificationRequestId: 0, existingVerification: { status: 'idle', message: '', identity: null } });
 
 const esc = (value) => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
 const formatBytes = (bytes) => bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(bytes < 10240 ? 1 : 0)} KiB`;
@@ -184,6 +184,65 @@ export function v4ErrorMessage(error, profile = { networkKey: DEFAULT_WEB_NETWOR
   return `${message} Diagnostic: ${diagnostic.reasonCode}${directive}${blocked}${asset}`;
 }
 
+const SAFE_LIFECYCLE_TOKEN = /^[A-Za-z][A-Za-z0-9_.:-]{0,95}$/u;
+
+export function safeV4LifecycleFailure(error, stage, fallbackCode = 'WEB_V4_POST_SCAN_FAILED') {
+  const candidateCode = typeof error?.code === 'string' && error.code ? error.code : error?.name;
+  const code = SAFE_LIFECYCLE_TOKEN.test(candidateCode ?? '') ? candidateCode : fallbackCode;
+  const safeStage = SAFE_LIFECYCLE_TOKEN.test(stage ?? '') ? stage : 'post-scan';
+  return Object.freeze({ code, stage: safeStage });
+}
+
+export function transitionV4Lifecycle(state, event, payload = {}) {
+  if (!state || typeof state !== 'object') throw new TypeError('V4 lifecycle state is required.');
+  if (event === 'scan-failed') {
+    const alreadyVerified = state.scanStatus === 'verified'
+      && state.verification?.verified === true
+      && state.verification?.report?.integrity?.verified === true;
+    if (alreadyVerified) return state;
+    state.scanStatus = payload.cancelled === true ? 'cancelled' : 'error';
+    state.reviewReady = false;
+    state.verifyReady = false;
+    state.analysis = payload.analysis;
+    state.proof = { ...state.proof, envelope: null, failure: null, identityVerified: false, status: 'report-unverified' };
+    return state;
+  }
+  if (event === 'report-verified') {
+    state.verification = payload.verification;
+    state.viewModel = payload.viewModel;
+    state.exportBundle = null;
+    state.scanStatus = 'verified';
+    state.analysis = payload.analysis;
+    state.historyFailure = null;
+    return state;
+  }
+  if (event === 'proof-ready') {
+    state.proof.failure = null;
+    return state;
+  }
+  if (event === 'proof-failed') {
+    state.proof = {
+      ...state.proof,
+      envelope: null,
+      preflight: null,
+      networkPreflight: null,
+      review: null,
+      receipt: null,
+      sendAttempt: null,
+      identityVerified: false,
+      completionState: null,
+      status: 'preparation-error',
+      failure: payload.failure,
+    };
+    return state;
+  }
+  if (event === 'history-failed') {
+    state.historyFailure = payload.failure;
+    return state;
+  }
+  throw new TypeError(`Unsupported V4 lifecycle event: ${event}`);
+}
+
 export function filterAndSortV4Findings(findings, filters = {}) {
   const query = String(filters.query ?? '').trim().toLowerCase();
   const selected = findings.filter((finding) => {
@@ -324,7 +383,7 @@ export async function initV4Ui(options = {}) {
     queueScannerAlignment();
   }
   const byId = (id) => root.querySelector(`#${id}`);
-  const state = { files: [], bytes: 0, inputError: null, client: null, runId: 0, verification: null, viewModel: null, exportBundle: null, scanStatus: 'idle', sessionReset: true, restoredReport: false, reviewReady: false, verifyReady: false, reviewedFinding: false, exported: false, analysis: { state: 'ready', phase: null, message: 'Select Solidity files to begin.' }, proof: createEmptyProofState(), filters: { ...DEFAULT_FILTERS } };
+  const state = { files: [], bytes: 0, inputError: null, client: null, runId: 0, verification: null, viewModel: null, exportBundle: null, scanStatus: 'idle', sessionReset: true, restoredReport: false, reviewReady: false, verifyReady: false, reviewedFinding: false, exported: false, historyFailure: null, analysis: { state: 'ready', phase: null, message: 'Select Solidity files to begin.' }, proof: createEmptyProofState(), filters: { ...DEFAULT_FILTERS } };
   let detailTrigger = null;
 
   let toastTimer = null;
@@ -390,7 +449,10 @@ export async function initV4Ui(options = {}) {
     const proof = state.proof;
     byId('v4-proof-state').textContent = proof.status.replaceAll('-', ' ').toUpperCase();
     if (!proof.envelope) {
-      byId('v4-proof-status').innerHTML = '<p>Run and verify a V4 scan to prepare a proof envelope.</p>';
+      const failure = proof.status === 'preparation-error' ? proof.failure : null;
+      byId('v4-proof-status').innerHTML = failure
+        ? `<p>Arc proof preparation unavailable. <small>Diagnostic: ${esc(failure.code)} · stage: ${esc(failure.stage)}</small></p>`
+        : '<p>Run and verify a V4 scan to prepare a proof envelope.</p>';
       byId('v4-proof-summary').hidden = true; byId('v4-proof-wallet').hidden = true; byId('v4-proof-checks').hidden = true; byId('v4-proof-transaction').hidden = true;
       byId('v4-proof-inspect-wallet').disabled = true; byId('v4-proof-preflight').disabled = true; byId('v4-proof-disclosure').hidden = true;
       byId('v4-proof-review-acknowledgement').hidden = true; byId('v4-proof-send').disabled = true; byId('v4-proof-reconcile').disabled = true;
@@ -412,6 +474,7 @@ export async function initV4Ui(options = {}) {
     byId('v4-proof-inspect-wallet').disabled = walletUi.disabled;
     const acknowledged = proof.envelope.complete || byId('v4-proof-ack').checked;
     byId('v4-proof-preflight').disabled = walletUi.state === 'network-unavailable' || !(wallet.connected && acknowledged);
+    const proofNetwork = resolveWebNetworkConfig(proof.envelope.networkKey);
     const statusMessages = {
       'already-published': 'An identical publisher-scoped proof already exists; no new transaction was prepared.',
       'ready-to-publish': 'Preflight passed. Review the transaction and use the separate Publish Proof action.',
@@ -434,7 +497,6 @@ export async function initV4Ui(options = {}) {
     const fallback = proof.envelope.complete ? 'Verified proof envelope ready for read-only wallet inspection.' : 'Verified incomplete report. Disclosure acknowledgement is required before preflight.';
     const published = ['existing-proof-verified', 'new-transaction-reconciled'].includes(proof.completionState) && proof.identityVerified === true && ['confirmed', 'already-published'].includes(proof.status) && proof.receipt?.status === 'confirmed';
     const existingProofVerified = published && proof.completionState === 'existing-proof-verified';
-    const proofNetwork = resolveWebNetworkConfig(proof.envelope.networkKey);
     const networkConfirmation = `Verified on ${proofNetworkDisplayName(proofNetwork)}`;
     const receiptCard = published ? `<div class="v4-proof-confirmed"><div class="v4-proof-confirmed-title"><span aria-hidden="true">✓</span><div><b>${existingProofVerified ? `Existing ${esc(proofNetwork.chainName)} proof verified` : esc(networkConfirmation)}</b><small>${existingProofVerified ? 'No new transaction required' : 'Receipt and Registry V2 event verified'}</small></div></div><dl class="v4-proof-grid"><div><dt>Transaction</dt><dd><code>${esc(shortAddress(proof.receipt.transactionHash))}</code></dd></div><div><dt>Block</dt><dd>${esc(proof.receipt.blockNumber)}</dd></div><div><dt>Publisher</dt><dd><code>${esc(shortAddress(proof.receipt.publisher))}</code> · verified</dd></div><div><dt>Report hash</dt><dd><code>${esc(shortAddress(proof.receipt.reportHash))}</code> · matched</dd></div><div><dt>Duplicate protection</dt><dd>active</dd></div></dl>${renderProofExplorerLink(proof.receipt)}</div>` : '';
     byId('v4-proof-status').innerHTML = `<p>${esc(statusMessages[proof.status] ?? fallback)}</p>${receiptCard || renderProofExplorerLink(proof.receipt ?? proof.preflight?.transactionIdentity)}`;
@@ -507,15 +569,23 @@ export async function initV4Ui(options = {}) {
   const initializeProof = async (expectedRunId = null) => {
     if (expectedRunId != null && expectedRunId !== state.runId) return;
     try {
-      const envelope = await createWebProofEnvelope(state.verification, { networkKey: proofNetworkKey });
+      const createProofEnvelope = options.createProofEnvelope ?? createWebProofEnvelope;
+      const envelope = await createProofEnvelope(state.verification, { networkKey: proofNetworkKey });
       if (expectedRunId != null && expectedRunId !== state.runId) return;
       state.proof.envelope = envelope;
       state.proof.verificationRequestId += 1; state.proof.existingVerification = { status: 'idle', message: '', identity: null };
       state.proof.preflight = null; state.proof.networkPreflight = null; state.proof.review = null; state.proof.receipt = null; state.proof.sendAttempt = null; state.proof.identityVerified = false; state.proof.completionState = null;
       state.proof.status = state.proof.envelope.complete ? 'ready' : 'incomplete-warning';
-    } catch { state.proof = { ...state.proof, envelope: null, preflight: null, receipt: null, identityVerified: false, status: 'report-unverified' }; }
-    renderProof();
-    if (!configuredProofNetwork.enabled || !configuredProofNetwork.publishEnabled || !configuredProofNetwork.registryAddress) return;
+      transitionV4Lifecycle(state, 'proof-ready');
+      renderProof();
+      return Object.freeze({ ok: true, failure: null });
+    } catch (error) {
+      if (expectedRunId != null && expectedRunId !== state.runId) return;
+      const failure = safeV4LifecycleFailure(error, 'proof-initialization', 'WEB_V4_PROOF_UNAVAILABLE');
+      transitionV4Lifecycle(state, 'proof-failed', { failure });
+      renderProof();
+      return Object.freeze({ ok: false, failure });
+    }
   };
   const inspectProofWallet = async (event = null, expectedRunId = null) => {
     if (expectedRunId != null && expectedRunId !== state.runId) return state.proof.wallet;
@@ -733,25 +803,72 @@ export async function initV4Ui(options = {}) {
     updateWorkflow();
     let client = null;
     try {
-      client = createWorkerClient();
-      state.client = client;
-      const projectId = slug(projectName);
-      const input = await browserFilesToScanInput(state.files, { projectId, projectName, domains, compilerVersion: '0.8.24', ...(policy === undefined ? {} : { policy }) });
-      if (runId !== state.runId) return;
-      const result = await client.scan(input, { onProgress(progress) { if (runId !== state.runId) return; const value = Number(progress?.percent ?? progress?.progress ?? 0); byId('v4-progress').value = Math.max(4, Math.min(96, Number.isFinite(value) ? value : 20)); const stage = progress?.stage ?? 'scan'; const phase = v4AnalysisPhase(stage); byId('v4-progress-label').textContent = `V4 analysis: ${stage}…`; state.analysis = { state: 'scanning', phase, message: `${phase} · running locally` }; renderAnalysis(); } });
-      if (runId !== state.runId) return;
-      const verification = await verifyV4Report(result?.report ?? result);
-      if (runId !== state.runId) return;
-      const viewModel = createV4ViewModel(verification, { gate: result?.gate });
-      state.verification = verification; state.viewModel = viewModel; state.exportBundle = null; state.scanStatus = 'verified';
-      state.analysis = { state: 'verified', phase: 'Report', message: `${shortAddress(viewModel.reportHash)} · ${viewModel.findings.length} finding${viewModel.findings.length === 1 ? '' : 's'}${viewModel.analysis.complete ? '' : ' · incomplete'}` };
-      let persistenceWarning = null;
-      try { await saveV4Report(storage, verification, { viewModel }); } catch (error) { if (error?.code !== 'WEB_V4_STORAGE_QUOTA' && error?.code !== 'WEB_V4_PERSISTENCE_LIMIT') throw error; persistenceWarning = uiErrorMessage(error); }
-      if (runId !== state.runId) return;
+      let verification;
+      let viewModel;
+      try {
+        client = createWorkerClient();
+        state.client = client;
+        const projectId = slug(projectName);
+        const input = await browserFilesToScanInput(state.files, { projectId, projectName, domains, compilerVersion: '0.8.24', ...(policy === undefined ? {} : { policy }) });
+        if (runId !== state.runId) return;
+        const result = await client.scan(input, { onProgress(progress) { if (runId !== state.runId) return; const value = Number(progress?.percent ?? progress?.progress ?? 0); byId('v4-progress').value = Math.max(4, Math.min(96, Number.isFinite(value) ? value : 20)); const stage = progress?.stage ?? 'scan'; const phase = v4AnalysisPhase(stage); byId('v4-progress-label').textContent = `V4 analysis: ${stage}…`; state.analysis = { state: 'scanning', phase, message: `${phase} · running locally` }; renderAnalysis(); } });
+        if (runId !== state.runId) return;
+        verification = await verifyV4Report(result?.report ?? result);
+        if (runId !== state.runId) return;
+        viewModel = createV4ViewModel(verification, { gate: result?.gate });
+      } catch (error) {
+        if (runId !== state.runId) return;
+        const cancelled = error?.code === 'WEB_V4_ABORTED';
+        transitionV4Lifecycle(state, 'scan-failed', {
+          cancelled,
+          analysis: { state: cancelled ? 'cancelled' : 'error', phase: null, message: cancelled ? 'No partial result was saved.' : uiErrorMessage(error) },
+        });
+        renderProof(); renderAnalysis(); byId('v4-progress').value = 0; byId('v4-progress-label').textContent = 'Scan did not produce a verified report.';
+        setStatus(cancelled ? 'Scan cancelled' : 'V4 scan blocked', uiErrorMessage(error), cancelled ? '' : 'error');
+        return;
+      }
+
+      transitionV4Lifecycle(state, 'report-verified', {
+        verification,
+        viewModel,
+        analysis: { state: 'verified', phase: 'Report', message: `${shortAddress(viewModel.reportHash)} · ${viewModel.findings.length} finding${viewModel.findings.length === 1 ? '' : 's'}${viewModel.analysis.complete ? '' : ' · incomplete'}` },
+      });
+      renderReport();
       byId('v4-progress').value = 100; byId('v4-progress-label').textContent = 'Verified V4 report ready.';
-      setStatus('Verified result ready', `${viewModel.findings.length} canonical finding${viewModel.findings.length === 1 ? '' : 's'} · ${viewModel.reportHash}${persistenceWarning ? ` · History not saved: ${persistenceWarning}` : ''}`, persistenceWarning ? 'warning' : 'success');
-      renderReport(); await initializeProof(runId); if (runId !== state.runId) return; await renderHistory(); if (runId !== state.runId) return; updateWorkflow();
-    } catch (error) { if (runId !== state.runId) return; const cancelled = error?.code === 'WEB_V4_ABORTED'; state.scanStatus = cancelled ? 'cancelled' : 'error'; state.reviewReady = false; state.verifyReady = false; state.analysis = { state: cancelled ? 'cancelled' : 'error', phase: null, message: cancelled ? 'No partial result was saved.' : uiErrorMessage(error) }; state.proof.status = 'report-unverified'; state.proof.envelope = null; state.proof.identityVerified = false; renderProof(); renderAnalysis(); byId('v4-progress').value = 0; byId('v4-progress-label').textContent = 'Scan did not produce a verified report.'; setStatus(cancelled ? 'Scan cancelled' : 'V4 scan blocked', uiErrorMessage(error), cancelled ? '' : 'error'); }
+      setStatus('Verified result ready', `${viewModel.findings.length} canonical finding${viewModel.findings.length === 1 ? '' : 's'} · ${viewModel.reportHash}`, 'success');
+
+      let persistenceWarning = null;
+      try { await saveV4Report(storage, verification, { viewModel }); }
+      catch (error) {
+        const failure = safeV4LifecycleFailure(error, 'report-persistence', 'WEB_V4_PERSISTENCE_INVALID');
+        transitionV4Lifecycle(state, 'history-failed', { failure });
+        persistenceWarning = ['WEB_V4_STORAGE_QUOTA', 'WEB_V4_PERSISTENCE_LIMIT'].includes(error?.code) ? uiErrorMessage(error) : `Diagnostic: ${failure.code} · stage: ${failure.stage}`;
+      }
+      if (runId !== state.runId) return;
+
+      let proofResult;
+      try { proofResult = await initializeProof(runId); }
+      catch (error) {
+        const failure = safeV4LifecycleFailure(error, 'proof-initialization', 'WEB_V4_PROOF_UNAVAILABLE');
+        transitionV4Lifecycle(state, 'proof-failed', { failure });
+        proofResult = Object.freeze({ ok: false, failure });
+        try { renderProof(); } catch { /* The verified report remains authoritative even if the isolated proof panel cannot render. */ }
+      }
+      if (runId !== state.runId) return;
+
+      let historyWarning = null;
+      try { await renderHistory(); }
+      catch (error) {
+        const failure = safeV4LifecycleFailure(error, 'history-rendering', 'WEB_V4_PERSISTENCE_INVALID');
+        transitionV4Lifecycle(state, 'history-failed', { failure });
+        historyWarning = `Diagnostic: ${failure.code} · stage: ${failure.stage}`;
+      }
+      if (runId !== state.runId) return;
+      updateWorkflow();
+      const proofWarning = proofResult?.ok === false ? `Proof unavailable: ${proofResult.failure.code} · stage: ${proofResult.failure.stage}` : null;
+      const warnings = [persistenceWarning ? `History not saved: ${persistenceWarning}` : null, historyWarning ? `History unavailable: ${historyWarning}` : null, proofWarning].filter(Boolean);
+      setStatus('Verified result ready', `${viewModel.findings.length} canonical finding${viewModel.findings.length === 1 ? '' : 's'} · ${viewModel.reportHash}${warnings.length ? ` · ${warnings.join(' · ')}` : ''}`, warnings.length ? 'warning' : 'success');
+    }
     finally { client?.dispose(); if (state.client === client) state.client = null; if (runId === state.runId) { setBusy(false); updateWorkflow(); } }
   };
 
@@ -763,7 +880,7 @@ export async function initV4Ui(options = {}) {
     if (state.proof.provider) disposeProviderListeners(state.proof.provider);
     state.verification = null; state.viewModel = null; state.exportBundle = null;
     state.scanStatus = cancelled ? 'cancelled' : 'idle'; state.sessionReset = true; state.restoredReport = false;
-    state.reviewReady = false; state.verifyReady = false; state.reviewedFinding = false; state.exported = false;
+    state.reviewReady = false; state.verifyReady = false; state.reviewedFinding = false; state.exported = false; state.historyFailure = null;
     state.proof = createEmptyProofState(); state.filters = { ...DEFAULT_FILTERS };
     state.analysis = cancelled ? { state: 'cancelled', phase: null, message: 'No partial result was saved. Ready to run again.' } : { state: 'ready', phase: null, message: clearFiles ? 'Select Solidity files to begin.' : 'Current session cleared. Ready to run again.' };
     if (clearFiles) { state.files = []; state.bytes = 0; state.inputError = null; byId('v4-project-name').value = 'VeilForge Web Project'; byId('v4-file-input').value = ''; byId('v4-folder-input').value = ''; }
