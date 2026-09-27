@@ -8,7 +8,7 @@ This is the canonical human-readable status for grant and security reviewers. Hi
 |---|---|---|
 | Product | VeilForge V4 Grant Candidate | Current reviewer-facing product |
 | Latest published GitHub release | `v4.0.0-gc.2` | Latest non-draft, non-prerelease release, published from commit `be33ec62a0a0799f4100cc9d2ecd592e53f2bc12` |
-| Current source | `main`, ahead of `v4.0.0-gc.2` | Phase 3 hardening is merged but not represented by a newer published tag; use `git rev-parse HEAD` for the checkout under review |
+| Current source | `arc-mainnet-production-candidate` | Audited Arc Mainnet production-candidate branch; use `git rev-parse HEAD` for the exact checkout under review |
 | V4 engine compatibility identity | `4.0.0-gc.1` | Preserved in existing V4 reports/proofs; not silently renamed by maintenance packaging |
 | Root package / source-default build | `3.2.2` | Legacy CLI/report and fail-closed V3 web compatibility; not the V4 public release identity |
 | Report schema | `4.1.0` | Canonical V4 report schema |
@@ -21,15 +21,19 @@ No future tag or release is claimed by this document.
 
 - The source default is `WEB_V4_ENABLED=false`. A plain `npm run build:web` therefore produces the legacy-compatible V3.2.2 build.
 - The checked-in `dist/` is that source-default compatibility artifact. It is not the canonical V4 reviewer artifact.
-- The canonical reviewer command is `npm run build:grant-release`. It verifies the release manifest first, explicitly enables V4, cleans `dist-grant-release/`, builds, and fails closed unless product, schema, hash-payload and mainnet identities match.
-- `npm run verify:grant-release` is the high-level local release gate.
-- The production Vercel configuration explicitly supplies `VEILFORGE_WEB_V4_ENABLED=true`; the live web at `veilforge.dev` is the V4 Grant Candidate. That web flag does not enable Arc mainnet.
+- `npm run build:grant-release` remains the generic V4 reviewer-artifact command. It verifies the release manifest first, explicitly enables V4, cleans `dist-grant-release/`, builds, and fails closed unless product, schema, hash-payload and network identities match.
+- The canonical Arc Mainnet production command is `npm run build:arc-mainnet-production`; `npm run verify:arc-mainnet-production` verifies its trusted source snapshot and generated artifact.
+- The production Vercel configuration uses `npm run build:arc-mainnet-production` and `dist-mainnet-production`, explicitly enabling the V4 presentation and selecting the verified `arc-mainnet` profile. The presentation flag and network trust gates remain independent.
 
 ## Network and proof boundary
 
-- Arc Testnet Registry V2 proof publishing and read-only receipt/event reconciliation are implemented. The existing documented proof identities remain Testnet evidence, not a mainnet claim.
+- The official production runtime is `arc-mainnet`, chain ID `5042` (`0x13b2`), using Registry V2 at `0x43D76BfCa31eAd660C5d804FEe20d14C0c577337`.
+- Current status is `deploymentStatus=verified`, `enabled=true`, `proofReadEnabled=true`, and `publishEnabled=true`.
+- The verified deployment transaction is `0x2ad90b2d3c1343295cffbd770ae584bc6f086c0010aabc985ad1af1f8644789f`.
+- The first controlled Mainnet proof transaction is `0xc546c684ccc4a04ae2466926972a3c20d53c8b4616022f03240f4319d3de1693`; receipt, event, Registry readback, and duplicate-send guard evidence were reconciled.
+- Arc Testnet Registry V2 proof publishing and read-only receipt/event reconciliation remain documented as historical milestone evidence, not the current production network identity.
 - Registry V2 is an immutable deployed contract with publisher-scoped records and latest-record overwrite semantics. “Immutable” describes the deployed bytecode contract, not an assurance that hosting, wallets, RPC services or evidence are trustless.
-- Arc mainnet remains unresolved and fail-closed: `enabled=false`, `proofReadEnabled=false`, and `publishEnabled=false`.
+- Mainnet publication remains guarded and explicit: the application does not request private keys, automatically sign, automatically retry, or bypass chain, registry, evidence, and duplicate-send checks.
 - Circle Wallets and Circle Contracts integrations are roadmap work, not implemented product claims.
 
 ## CI and browser validation

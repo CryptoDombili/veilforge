@@ -19,6 +19,7 @@ test('release manifest canonicalizes Windows, Linux, and archive text while pres
       fs.mkdirSync(path.join(fixture, 'docs'), { recursive: true });
       fs.mkdirSync(path.join(fixture, 'assets'), { recursive: true });
       const text = ['first', 'second', ''].join(lineEnding);
+      fs.writeFileSync(path.join(fixture, '.gitattributes'), text);
       fs.writeFileSync(path.join(fixture, '.gitignore'), text);
       fs.writeFileSync(path.join(fixture, 'LICENSE'), text);
       fs.writeFileSync(path.join(fixture, 'scripts', 'tool.py'), text);

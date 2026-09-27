@@ -8,10 +8,9 @@ import {
   keccakHex,
 } from './engine/index.js';
 import {
-  ARC_TESTNET,
   buildProofPayload,
   connectWallet,
-  ensureArcTestnet,
+  ensureProofNetwork,
   publishReport,
 } from './proof/registry.js';
 import { createZip } from './lib/zip.js';
@@ -25,7 +24,7 @@ import {
   verifyBytecodeTruth,
 } from './lib/bytecode-truth.js';
 import { buildProofLabSnapshot, parseProofLabReceipt } from './lib/proof-lab.js';
-import { REGISTRY_ADDRESS, WEB_V4_ENABLED } from './config.js';
+import { DEFAULT_WEB_NETWORK_KEY, REGISTRY_ADDRESS, resolveWebNetworkConfig, WEB_V4_ENABLED } from './config.js';
 import { browserFilesToScanInput, createV4ViewModel, createWorkerClient, verifyV4Report } from './v4/index.js';
 import { initV4Ui } from './v4/ui.js';
 
@@ -34,6 +33,7 @@ const MAX_HISTORY = 12;
 const WALLET_DISCONNECTED_KEY = 'veilforge:v3.2:wallet-disconnected';
 const INTENT_KEY = 'veilforge:v3.2:privacy-intent';
 const DEPLOYMENT_EVIDENCE_KEY = 'veilforge:v3.2:deployment-evidence';
+const ACTIVE_WEB_NETWORK = resolveWebNetworkConfig(DEFAULT_WEB_NETWORK_KEY);
 let detectorClearTimer = null;
 const DEFAULT_INTENT_DECLARATION = Object.freeze({
   defaults: Object.freeze({ publicObserver: 'denied', externalContract: 'restricted', recordOwner: 'allowed' }),
@@ -171,9 +171,9 @@ function setWalletUi(address = null, providerInfo = state.walletProviderInfo) {
   if (elements.walletMenuAddress) elements.walletMenuAddress.textContent = connected ? address : '—';
   if (elements.walletMenuNetwork) {
     const walletName = state.walletProviderInfo?.name;
-    elements.walletMenuNetwork.textContent = connected && walletName ? `Arc Network Testnet · ${walletName}` : 'Arc Network Testnet';
+    elements.walletMenuNetwork.textContent = connected && walletName ? `${ACTIVE_WEB_NETWORK.chainName} · ${walletName}` : ACTIVE_WEB_NETWORK.chainName;
   }
-  if (elements.walletViewExplorer) elements.walletViewExplorer.href = connected ? `${ARC_TESTNET.blockExplorerUrls[0]}/address/${address}` : '#';
+  if (elements.walletViewExplorer) elements.walletViewExplorer.href = connected && ACTIVE_WEB_NETWORK.explorerBaseUrl ? `${ACTIVE_WEB_NETWORK.explorerBaseUrl}/address/${address}` : '#';
 }
 
 function normalizeWalletError(error, walletName = 'EVM wallet') {
@@ -396,7 +396,7 @@ function bindWalletProviderEvents(provider, providerInfo) {
   });
   provider.on('chainChanged', () => {
     if (state.walletProvider === provider && state.walletAccount) {
-      setMessage('Wallet network changed. VeilForge will request Arc Testnet before publishing.');
+      setMessage(`Wallet network changed. VeilForge will require ${ACTIVE_WEB_NETWORK.chainName} before publishing.`);
     }
   });
 }
@@ -412,11 +412,12 @@ async function connectWithWalletCandidate(candidate, context = {}) {
     state.walletProvider = provider;
     state.walletProviderInfo = info;
     bindWalletProviderEvents(provider, info);
+    if (!ACTIVE_WEB_NETWORK.enabled || !ACTIVE_WEB_NETWORK.publishEnabled || !ACTIVE_WEB_NETWORK.registryAddress) throw new Error(`${ACTIVE_WEB_NETWORK.chainName} proof publishing is disabled or unavailable.`);
     const account = await connectWallet(provider);
-    await ensureArcTestnet(provider);
+    await ensureProofNetwork(DEFAULT_WEB_NETWORK_KEY, provider);
     safeStorageRemove(WALLET_DISCONNECTED_KEY);
     setWalletUi(account, info);
-    setMessage(`${info.name} connected: ${shortAddress(account)} on Arc Testnet.`, 'success');
+    setMessage(`${info.name} connected: ${shortAddress(account)} on ${ACTIVE_WEB_NETWORK.chainName}.`, 'success');
     if (resultElement) resultElement.textContent = `Wallet connected: ${account}`;
     if (state.activeView === 'proof') renderWorkspace();
     return account;
@@ -466,6 +467,7 @@ async function connectHeaderWallet() {
 }
 
 async function hydrateWallet() {
+  if (!ACTIVE_WEB_NETWORK.enabled || !ACTIVE_WEB_NETWORK.publishEnabled || !ACTIVE_WEB_NETWORK.registryAddress) { setWalletUi(null); return; }
   requestAnnouncedProviders();
   await new Promise((resolve) => setTimeout(resolve, 60));
   if (safeStorageGet(WALLET_DISCONNECTED_KEY) === '1') { setWalletUi(null); return; }
@@ -1013,7 +1015,7 @@ function renderProof() {
   const payload = buildProofPayload(report, '');
   const rehearsal = report.arcDeployRehearsal;
   const rehearsalChecks = rehearsal.checks.map((check) => `<div class="rehearsal-check check-${esc(check.status)}"><span>${check.status === 'pass' ? '✓' : check.status === 'roadmap' ? '◇' : '!'}</span><div><strong>${esc(check.label)}</strong><small title="${esc(check.detail)}">${esc(check.detail)}</small></div><em>${esc(check.status)}</em></div>`).join('');
-  return workspaceHeader('Proof Center 3.2', 'Anchor hashes on Arc Testnet', 'Only source hash, report hash, score, URI, version, submitter, and timestamp are written onchain.') + `
+  return workspaceHeader('Proof Center 3.2', `Anchor hashes on ${ACTIVE_WEB_NETWORK.chainName}`, 'Only source hash, report hash, score, URI, version, submitter, and timestamp are written onchain.') + `
     <section class="deploy-rehearsal os-panel">
       <div class="os-panel-head"><div><span>ARC DEPLOY REHEARSAL</span><strong>Stop unsafe deployments before the wallet opens</strong></div><em class="${rehearsal.blocking ? 'status-blocked' : 'status-ready'}">${esc(rehearsal.status)}</em></div>
       <div class="rehearsal-body"><div class="rehearsal-checks">${rehearsalChecks}</div><div class="rehearsal-plan"><span>TRANSACTION PLAN</span><ol>${rehearsal.transactionPlan.map((step) => `<li>${esc(step)}</li>`).join('')}</ol><div class="roadmap-tag">APS: ${esc(rehearsal.apsMode)}</div></div></div>
@@ -1023,7 +1025,7 @@ function renderProof() {
         <h4>Arc proof transaction</h4>
         <p>Review the registry and optional report URI. Your wallet will show the final transaction before anything is sent.</p>
         <label class="field-label" for="registry-address">Registry address</label>
-        <input id="registry-address" class="text-input" value="${esc(REGISTRY_ADDRESS)}" />
+        <input id="registry-address" class="text-input" value="${esc(REGISTRY_ADDRESS ?? '')}" />
         <label class="field-label" for="report-uri" style="margin-top:12px">Optional report URI</label>
         <input id="report-uri" class="text-input" placeholder="ipfs://… or https://…" />
         <div class="proof-actions">
@@ -1035,7 +1037,7 @@ function renderProof() {
       <section class="proof-card">
         <h4>Canonical payload</h4>
         <div class="info-list">
-          <div class="info-row"><span>Network</span><code>${esc(ARC_TESTNET.chainName)} · ${ARC_TESTNET.chainId}</code></div>
+          <div class="info-row"><span>Network</span><code>${esc(ACTIVE_WEB_NETWORK.chainName)} · ${ACTIVE_WEB_NETWORK.chainId}</code></div>
           <div class="info-row"><span>Project ID</span><code title="${payload.projectId}">${esc(shortHash(payload.projectId))}</code></div>
           <div class="info-row"><span>Source hash</span><code title="${payload.sourceHash}">${esc(shortHash(payload.sourceHash))}</code></div>
           <div class="info-row"><span>Report hash</span><code title="${payload.reportHash}">${esc(shortHash(payload.reportHash))}</code></div>
@@ -1183,7 +1185,7 @@ function renderBytecodeTruth() {
     <section class="bytecode-hero truth-${bytecodeTruthStatusClass(status)}"><div><span>CHAIN IDENTITY</span><strong>${esc(status)}</strong><p>${status === 'ARC VERIFIED' ? 'Full deployed runtime bytecode matches the compiler artifact byte-for-byte.' : status === 'STRUCTURAL MATCH' ? 'Executable runtime matches after Solidity metadata and immutable slots are normalized.' : status === 'MISMATCH' ? 'The Arc runtime does not match this compiler artifact.' : 'Load an artifact and verify a deployed Arc contract.'}</p></div><div class="truth-seal"><b>${result?.verified ? '✓' : '?'}</b><span>${result?.matchedKind ? esc(result.matchedKind) : 'awaiting proof'}</span></div></section>
     <div class="bytecode-layout">
       ${artifactCard}
-      <section class="bytecode-card verify-card"><header><span>LIVE ARC QUERY</span><strong>Runtime bytecode</strong></header><div class="bytecode-fields"><label><span>Contract address</span><input id="bytecode-target-address" class="text-input" placeholder="0x…" value="${esc(result?.targetAddress || state.deploymentEvidence.contractAddress || '')}"></label><label><span>RPC endpoint</span><input id="bytecode-rpc-url" class="text-input" value="${esc(result?.rpcUrl || ARC_TESTNET.rpcUrls[0])}"></label></div><button class="action-button primary verify-bytecode-button" data-action="verify-bytecode" ${artifact ? '' : 'disabled'}>Verify on Arc</button><small>Checks eth_chainId first, then reads eth_getCode and the ERC-1967 implementation slot. No wallet or transaction is required.</small></section>
+      <section class="bytecode-card verify-card"><header><span>LIVE ARC QUERY</span><strong>Runtime bytecode</strong></header><div class="bytecode-fields"><label><span>Contract address</span><input id="bytecode-target-address" class="text-input" placeholder="0x…" value="${esc(result?.targetAddress || state.deploymentEvidence.contractAddress || '')}"></label><label><span>RPC endpoint</span><input id="bytecode-rpc-url" class="text-input" value="${esc(result?.rpcUrl || ACTIVE_WEB_NETWORK.rpcUrls?.[0] || '')}"></label></div><button class="action-button primary verify-bytecode-button" data-action="verify-bytecode" ${artifact && ACTIVE_WEB_NETWORK.proofReadEnabled ? '' : 'disabled'}>Verify on Arc</button><small>Checks eth_chainId first, then reads eth_getCode and the ERC-1967 implementation slot. No wallet or transaction is required.</small></section>
     </div>
     ${proxy}
     ${hashRows ? `<section class="truth-hashes"><header><span>CRYPTOGRAPHIC RECEIPT</span><strong>Keccak-256 fingerprints</strong></header>${hashRows}</section>` : ''}
@@ -1209,6 +1211,7 @@ async function loadBytecodeArtifact(file) {
 }
 
 async function verifyArcBytecode() {
+  if (!ACTIVE_WEB_NETWORK.enabled || !ACTIVE_WEB_NETWORK.proofReadEnabled || !ACTIVE_WEB_NETWORK.registryAddress) throw new Error(`${ACTIVE_WEB_NETWORK.chainName} proof reads are disabled or unavailable.`);
   const artifact = state.bytecodeTruth.artifact;
   if (!artifact) throw new Error('Load a Foundry or Hardhat artifact first.');
   const targetAddress = document.querySelector('#bytecode-target-address')?.value.trim();
@@ -1217,11 +1220,11 @@ async function verifyArcBytecode() {
   if (!/^https?:\/\//i.test(rpcUrl || '')) throw new Error('Enter a valid Arc RPC URL.');
   state.bytecodeTruth.verification = null;
   state.bytecodeTruth.error = null;
-  setMessage('Confirming Arc Testnet before reading runtime bytecode…');
+  setMessage(`Confirming ${ACTIVE_WEB_NETWORK.chainName} before reading runtime bytecode…`);
   try {
     const rpcChainId = await bytecodeRpcCall(rpcUrl, 'eth_chainId', []);
-    const chainIdHex = assertRpcChainId(rpcChainId, ARC_TESTNET.chainIdHex, `${ARC_TESTNET.chainName} chain ${ARC_TESTNET.chainId}`);
-    setMessage('Arc Testnet confirmed. Reading live runtime bytecode…');
+    const chainIdHex = assertRpcChainId(rpcChainId, ACTIVE_WEB_NETWORK.chainIdHex, `${ACTIVE_WEB_NETWORK.chainName} chain ${ACTIVE_WEB_NETWORK.chainId}`);
+    setMessage(`${ACTIVE_WEB_NETWORK.chainName} confirmed. Reading live runtime bytecode…`);
     const targetBytecode = await bytecodeRpcCall(rpcUrl, 'eth_getCode', [targetAddress, 'latest']);
     let implementationAddress = null;
     try {
@@ -1230,7 +1233,7 @@ async function verifyArcBytecode() {
     } catch { implementationAddress = null; }
     const implementationBytecode = implementationAddress ? await bytecodeRpcCall(rpcUrl, 'eth_getCode', [implementationAddress, 'latest']) : null;
     const verification = verifyBytecodeTruth({ artifact, targetBytecode, implementationBytecode, targetAddress, implementationAddress, hash: keccakHex });
-    state.bytecodeTruth.verification = { ...verification, rpcUrl, chainId: ARC_TESTNET.chainId, chainIdHex, verifiedAt: new Date().toISOString(), sourceHash: state.report?.sourceHash || null, reportHash: state.report?.reportHash || null };
+    state.bytecodeTruth.verification = { ...verification, rpcUrl, chainId: ACTIVE_WEB_NETWORK.chainId, chainIdHex, verifiedAt: new Date().toISOString(), sourceHash: state.report?.sourceHash || null, reportHash: state.report?.reportHash || null };
     state.bytecodeTruth.error = null;
     renderWorkspace();
     setMessage(verification.verified ? `${verification.status}: Arc runtime identity proven.` : 'Bytecode mismatch detected.', verification.verified ? 'success' : 'error');
@@ -1603,6 +1606,8 @@ async function handleWorkspaceAction(button) {
         account: state.walletAccount,
         report: state.report,
         reportURI: document.querySelector('#report-uri')?.value.trim() || '',
+        networkKey: DEFAULT_WEB_NETWORK_KEY,
+        userApproved: true,
         onTransactionHash: ({ transactionHash, explorerUrl }) => {
           if (!result) return;
           result.innerHTML = `Transaction submitted. Waiting for Arc confirmation… <a href="${esc(explorerUrl)}" target="_blank" rel="noreferrer">${esc(shortHash(transactionHash, 10, 8))}</a>`;
@@ -1610,7 +1615,7 @@ async function handleWorkspaceAction(button) {
       });
       state.walletAccount = response.account;
       setWalletUi(response.account);
-      if (result) result.innerHTML = `Confirmed on Arc Testnet: <a href="${esc(response.explorerUrl)}" target="_blank" rel="noreferrer">${esc(shortHash(response.transactionHash, 10, 8))}</a>`;
+      if (result) result.innerHTML = `Confirmed on ${esc(ACTIVE_WEB_NETWORK.chainName)}: <a href="${esc(response.explorerUrl)}" target="_blank" rel="noreferrer">${esc(shortHash(response.transactionHash, 10, 8))}</a>`;
     } catch (error) {
       if (!result) return;
       const message = error instanceof Error ? error.message : String(error);
@@ -1635,7 +1640,8 @@ async function handleWorkspaceAction(button) {
     state.deploymentEvidence = {
       projectId: state.report.projectId,
       sourceHash: state.report.sourceHash,
-      chainId: ARC_TESTNET.chainId,
+      chainId: ACTIVE_WEB_NETWORK.chainId,
+      networkKey: DEFAULT_WEB_NETWORK_KEY,
       contractAddress: document.querySelector('#deployment-address')?.value.trim() || '',
       transactionHash: document.querySelector('#deployment-tx')?.value.trim() || '',
       bytecodeHash: document.querySelector('#deployment-bytecode')?.value.trim() || '',
@@ -1779,6 +1785,8 @@ function bindEvents() {
 }
 
 async function init() {
+  for (const element of document.querySelectorAll('[data-active-network-name]')) element.textContent = ACTIVE_WEB_NETWORK.chainName;
+  for (const element of document.querySelectorAll('[data-active-chain-id]')) element.textContent = String(ACTIVE_WEB_NETWORK.chainId);
   globalThis.addEventListener?.('eip6963:announceProvider', (event) => rememberWalletProvider(event?.detail));
   requestAnnouncedProviders();
   window.addEventListener('error', (event) => {

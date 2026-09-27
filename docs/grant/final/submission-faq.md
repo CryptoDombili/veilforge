@@ -22,7 +22,7 @@ The V4 analyzer, domain packs, SDK, CLI, SARIF, GitHub Action, policy gate, veri
 
 ## What is not live?
 
-Production-default V4 web rollout, Arc mainnet deployment/publishing, accounts, billing, paid plans, hosted CI service, team workspaces, SSO, SLA, private runners, and production card/USDC subscriptions are not live.
+Accounts, billing, paid plans, hosted CI service, team workspaces, SSO, SLA, private runners, and production card/USDC subscriptions are not live. The provenance-bound V4 Arc Mainnet production build and guarded proof workflow are available only for the exact verified chain and Registry profile.
 
 ## How is privacy preserved?
 
@@ -54,11 +54,11 @@ The plan is to keep local verification free while charging, after validation, fo
 
 ## What are the main risks?
 
-Corpus gaps, audit-tool confusion, browser compatibility, sensitive hosted data, tenant isolation, infrastructure cost, free-to-paid conversion, pricing mismatch, enterprise sales cycles, and unresolved mainnet operations.
+Corpus gaps, audit-tool confusion, browser compatibility, immutable-registry operations, sensitive hosted data, tenant isolation, infrastructure cost, free-to-paid conversion, pricing mismatch, and enterprise sales cycles.
 
 ## What happens if mainnet details change?
 
-Mainnet config remains untrusted and disabled until official values are independently verified. A versioned config/manifest update, read-only validation, deployment review, staged rollout, and rollback drill are required. Testnet identities are never reused as mainnet identities.
+The active profile remains trusted only while its versioned chain, Registry, runtime bytecode, deployment/publication evidence, and production provenance match. Any change requires independent review, read-only validation, a versioned config/manifest update, and rollback readiness. Testnet identities are never reused as Mainnet identities.
 
 ## Why should Circle/Arc fund this?
 

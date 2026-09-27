@@ -111,9 +111,25 @@ test('budget and month-12 MRR arithmetic are consistent', () => {
   assert.equal(manifest.commercialStatus.billingLive, false);
 });
 
-test('mainnet and unsupported-claim boundaries fail closed', () => {
-  assert.deepEqual({ enabled: manifest.mainnetStatus.enabled, proofReadEnabled: manifest.mainnetStatus.proofReadEnabled, publishEnabled: manifest.mainnetStatus.publishEnabled, deployed: manifest.mainnetStatus.deployed }, { enabled: false, proofReadEnabled: false, publishEnabled: false, deployed: false });
+test('verified mainnet identity and unsupported-claim boundaries remain explicit', () => {
+  assert.deepEqual({
+    status: manifest.mainnetStatus.status,
+    chainId: manifest.mainnetStatus.chainId,
+    registryAddress: manifest.mainnetStatus.registryAddress,
+    enabled: manifest.mainnetStatus.enabled,
+    proofReadEnabled: manifest.mainnetStatus.proofReadEnabled,
+    publishEnabled: manifest.mainnetStatus.publishEnabled,
+    deployed: manifest.mainnetStatus.deployed,
+  }, {
+    status: 'verified',
+    chainId: 5042,
+    registryAddress: '0x43D76BfCa31eAd660C5d804FEe20d14C0c577337',
+    enabled: true,
+    proofReadEnabled: true,
+    publishEnabled: true,
+    deployed: true,
+  });
   const corpus = manifest.evidenceFiles.map(read).join('\n');
-  for (const unsupported of [/Circle endorses VeilForge/iu, /Arc endorses VeilForge/iu, /grant (?:is )?guaranteed/iu, /universal correctness is proven/iu, /production billing is live/iu, /mainnet (?:is )?deployed/iu]) assert.doesNotMatch(corpus, unsupported);
+  for (const unsupported of [/Circle endorses VeilForge/iu, /Arc endorses VeilForge/iu, /grant (?:is )?guaranteed/iu, /universal correctness is proven/iu, /production billing is live/iu]) assert.doesNotMatch(corpus, unsupported);
   assert.match(corpus, /not (?:a |an )?(?:audit|endorsement|forecast|guarantee)/iu);
 });

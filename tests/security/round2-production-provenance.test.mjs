@@ -1,0 +1,149 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { assertFreshProductionOutput, assertProductionArtifactMatchesTrustedSnapshot, assertProductionArtifactProvenance, assertProductionCheckout, createProductionSnapshot } from '../../scripts/lib/production-provenance.mjs';
+
+function git(root, args) {
+  return execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
+}
+
+function fixture(t) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'veilforge-provenance-test-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  fs.mkdirSync(path.join(root, 'apps', 'web'), { recursive: true });
+  fs.writeFileSync(path.join(root, '.gitignore'), 'node_modules/\ndist-mainnet-production/\n*.ignored.js\n');
+  fs.writeFileSync(path.join(root, 'apps', 'web', 'app.js'), 'export const trusted = true;\n');
+  fs.writeFileSync(path.join(root, 'package-lock.json'), '{"lockfileVersion":3}\n');
+  fs.writeFileSync(path.join(root, 'RELEASE_MANIFEST.sha256'), 'trusted  apps/web/app.js\n');
+  git(root, ['init', '--initial-branch=main']);
+  git(root, ['config', 'user.email', 'security-test@example.invalid']);
+  git(root, ['config', 'user.name', 'Security Test']);
+  git(root, ['add', '.']);
+  git(root, ['commit', '-m', 'fixture']);
+  return root;
+}
+
+test('AUDIT-ROUND2-HIGH-PROVENANCE-01 accepts only a clean exact commit identity', (t) => {
+  const root = fixture(t);
+  const provenance = assertProductionCheckout(root);
+  assert.equal(provenance.sourceCommit, git(root, ['rev-parse', 'HEAD']));
+  assert.match(provenance.sourceTreeDigest, /^sha256:[0-9a-f]{64}$/u);
+  assert.match(provenance.packageLockDigest, /^sha256:[0-9a-f]{64}$/u);
+  assert.match(provenance.releaseManifestDigest, /^sha256:[0-9a-f]{64}$/u);
+  assert.throws(() => assertProductionCheckout(root, { GITHUB_SHA: '0'.repeat(40) }), /exact checked-out source commit/u);
+});
+
+test('AUDIT-ROUND2-HIGH-PROVENANCE-01 rejects dirty tracked and untracked production inputs', async (t) => {
+  await t.test('dirty tracked source', (child) => {
+    const root = fixture(child); fs.appendFileSync(path.join(root, 'apps', 'web', 'app.js'), '// dirty\n');
+    assert.throws(() => assertProductionCheckout(root), /modified tracked files and untracked files/u);
+  });
+  await t.test('untracked override', (child) => {
+    const root = fixture(child); fs.writeFileSync(path.join(root, 'apps', 'web', 'override.js'), 'throw new Error();\n');
+    assert.throws(() => assertProductionCheckout(root), /modified tracked files and untracked files/u);
+  });
+  await t.test('ignored JavaScript injection', (child) => {
+    const root = fixture(child); fs.writeFileSync(path.join(root, 'apps', 'web', 'override.ignored.js'), 'throw new Error();\n');
+    assert.throws(() => assertProductionCheckout(root), /ignored source overrides/u);
+  });
+  await t.test('source-tree node_modules shadow', (child) => {
+    const root = fixture(child); fs.mkdirSync(path.join(root, 'apps', 'web', 'node_modules', 'shadow'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'apps', 'web', 'node_modules', 'shadow', 'index.js'), 'export default false;\n');
+    assert.throws(() => assertProductionCheckout(root), /ignored source overrides|shadow modules/u);
+  });
+});
+
+test('AUDIT-ROUND2-HIGH-PROVENANCE-01 Git archive excludes stale dist and local dependency overrides', (t) => {
+  const root = fixture(t);
+  fs.mkdirSync(path.join(root, 'dist-mainnet-production'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'dist-mainnet-production', 'stale.js'), 'stale\n');
+  assert.throws(() => assertFreshProductionOutput(root), /stale production output/u);
+  fs.mkdirSync(path.join(root, 'node_modules', 'override'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'node_modules', 'override', 'index.js'), 'local override\n');
+  const provenance = assertProductionCheckout(root);
+  const snapshot = createProductionSnapshot(root, provenance);
+  try {
+    assert.equal(fs.existsSync(path.join(snapshot, 'dist-mainnet-production', 'stale.js')), false);
+    assert.equal(fs.existsSync(path.join(snapshot, 'node_modules', 'override', 'index.js')), false);
+    assert.equal(fs.readFileSync(path.join(snapshot, 'apps', 'web', 'app.js'), 'utf8').replace(/\r\n?/gu, '\n'), 'export const trusted = true;\n');
+  } finally { fs.rmSync(snapshot, { recursive: true, force: true }); }
+});
+
+test('AUDIT-ROUND2-HIGH-PROVENANCE-01 rejects wrong commit, profile, lock, tree and manifest evidence', (t) => {
+  const root = fixture(t);
+  const provenance = assertProductionCheckout(root);
+  const base = {
+    sourceCommit: provenance.sourceCommit,
+    sourceTreeDigest: provenance.sourceTreeDigest,
+    packageLockDigest: provenance.packageLockDigest,
+  };
+  const build = { ...base, buildProfile: 'arc-mainnet-production' };
+  const metadata = { ...base, releaseManifestDigest: provenance.releaseManifestDigest, verificationCommand: 'npm run verify:arc-mainnet-production' };
+  const attestation = { ...base, releaseManifestDigest: provenance.releaseManifestDigest, sourceSnapshot: 'git-archive-v1', dependencyInstall: 'npm-ci-lockfile' };
+  assert.equal(assertProductionArtifactProvenance({ build, metadata, attestation }, provenance), true);
+  for (const mutation of [
+    { area: 'build', field: 'sourceCommit', value: '0'.repeat(40) },
+    { area: 'metadata', field: 'sourceTreeDigest', value: `sha256:${'0'.repeat(64)}` },
+    { area: 'attestation', field: 'packageLockDigest', value: `sha256:${'0'.repeat(64)}` },
+    { area: 'metadata', field: 'releaseManifestDigest', value: `sha256:${'0'.repeat(64)}` },
+    { area: 'build', field: 'buildProfile', value: 'development' },
+  ]) {
+    const evidence = { build: { ...build }, metadata: { ...metadata }, attestation: { ...attestation } };
+    evidence[mutation.area][mutation.field] = mutation.value;
+    assert.throws(() => assertProductionArtifactProvenance(evidence, provenance));
+  }
+});
+
+test('AUDIT-ROUND3-HIGH-PROVENANCE-02 rejects artifact mutation even after its mutable attestation is recomputed', (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'veilforge-artifact-anchor-test-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const trusted = path.join(root, 'trusted');
+  const attacked = path.join(root, 'attacked');
+  fs.mkdirSync(path.join(trusted, 'v4'), { recursive: true });
+  fs.writeFileSync(path.join(trusted, 'v4', 'proof-send-boundary.js'), 'export const trusted = true;\n');
+  fs.writeFileSync(path.join(trusted, 'production-attestation.json'), '{"artifactDigest":"trusted-build-output"}\n');
+  fs.mkdirSync(path.join(attacked, 'v4'), { recursive: true });
+  fs.copyFileSync(path.join(trusted, 'v4', 'proof-send-boundary.js'), path.join(attacked, 'v4', 'proof-send-boundary.js'));
+  fs.copyFileSync(path.join(trusted, 'production-attestation.json'), path.join(attacked, 'production-attestation.json'));
+
+  const criticalPath = path.join(attacked, 'v4', 'proof-send-boundary.js');
+  fs.writeFileSync(criticalPath, 'export const trusted = false;\n');
+  const recomputed = createHash('sha256').update(fs.readFileSync(criticalPath)).digest('hex');
+  fs.writeFileSync(path.join(attacked, 'production-attestation.json'), `${JSON.stringify({ artifactDigest: `sha256:${recomputed}` })}\n`);
+
+  assert.throws(
+    () => assertProductionArtifactMatchesTrustedSnapshot(attacked, trusted),
+    /independently rebuilt trusted source snapshot/u,
+  );
+});
+
+test('AUDIT-ROUND4-HIGH-PROVENANCE-03 authenticates trusted bytes before candidate config import', () => {
+  const verifier = fs.readFileSync(path.resolve('scripts/verify-arc-mainnet-production.mjs'), 'utf8');
+  const trustBoundary = verifier.indexOf('const trustedArtifact = verifyProductionArtifactAgainstTrustedSnapshot({ root });');
+  const candidateRead = verifier.indexOf("const read = (relative) => fs.readFileSync(path.join(output, relative), 'utf8');");
+  const candidateImport = verifier.indexOf('const config = await import(');
+  assert.ok(trustBoundary >= 0, 'trusted snapshot verification must be explicit');
+  assert.ok(candidateRead > trustBoundary, 'candidate metadata must not be read before trusted verification');
+  assert.ok(candidateImport > trustBoundary, 'candidate config must not be imported before trusted verification');
+});
+
+test('AUDIT-ROUND4-HIGH-PROVENANCE-04 candidate metadata cannot define the trusted release expectation', (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'veilforge-release-expectation-test-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const trusted = path.join(root, 'trusted');
+  const candidate = path.join(root, 'candidate');
+  fs.mkdirSync(trusted, { recursive: true });
+  fs.mkdirSync(candidate, { recursive: true });
+  fs.writeFileSync(path.join(trusted, 'config.js'), 'export const release = "trusted";\n');
+  fs.writeFileSync(path.join(trusted, 'production-attestation.json'), '{"artifactDigest":"trusted"}\n');
+  fs.writeFileSync(path.join(candidate, 'config.js'), 'export const release = "candidate";\n');
+  fs.writeFileSync(path.join(candidate, 'production-attestation.json'), '{"artifactDigest":"candidate-self-declared"}\n');
+  assert.throws(
+    () => assertProductionArtifactMatchesTrustedSnapshot(candidate, trusted),
+    /independently rebuilt trusted source snapshot/u,
+  );
+});

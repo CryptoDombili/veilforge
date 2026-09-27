@@ -3,6 +3,7 @@ dist/*
 !dist/README.md
 dist-grant-release/
 dist-preview-v4/
+dist-mainnet-production/
 output/
 tmp/
 .DS_Store

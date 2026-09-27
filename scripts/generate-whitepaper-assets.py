@@ -56,7 +56,7 @@ class FigureFlowable(Flowable):
         "configure-to-export-workflow.svg": ["Configure", "Scan", "Review", "Verify", "Publish", "Export"],
         "arc-testnet-proof-lifecycle.svg": ["Report hash", "Preflight", "Approval", "Publish", "Reconcile", "No duplicate"],
         "open-core-sustainability-loop.svg": ["Local core", "Adoption", "Demand", "Managed", "Reinvest"],
-        "mainnet-staged-rollout.svg": ["Resolve", "Review", "Rehearse", "Read only", "Limited publish"],
+        "mainnet-staged-rollout.svg": ["Config verified", "Review complete", "Rehearsed", "Reads enabled", "Publish enabled"],
     }
 
     def __init__(self, filename: str, caption: str):
@@ -140,7 +140,7 @@ def cover_story(title: str, subtitle: str, digest: str, brief: bool):
         Paragraph(title, s["title"]),
         Paragraph(subtitle, s["subtitle"]),
         Spacer(1, 12 * mm),
-        Table([["DOCUMENT", "Executive brief" if brief else "Technical whitepaper"], ["STATUS", "Grant Candidate / evidence package"], ["DATE", "August 2026"], ["SOURCE DIGEST", digest]], colWidths=[36 * mm, 128 * mm], style=TableStyle([("BACKGROUND", (0, 0), (0, -1), PALE), ("TEXTCOLOR", (0, 0), (0, -1), INK), ("FONTNAME", (0, 0), (0, -1), "Manrope-Bold"), ("FONTNAME", (1, 0), (1, -1), "Manrope"), ("FONTSIZE", (0, 0), (-1, -1), 7.5), ("LEADING", (0, 0), (-1, -1), 11), ("GRID", (0, 0), (-1, -1), .4, colors.HexColor("#ccd8d5")), ("VALIGN", (0, 0), (-1, -1), "TOP"), ("WORDWRAP", (0, 0), (-1, -1), "CJK"), ("TOPPADDING", (0, 0), (-1, -1), 7), ("BOTTOMPADDING", (0, 0), (-1, -1), 7)])),
+        Table([["DOCUMENT", "Executive brief" if brief else "Technical whitepaper"], ["STATUS", "Grant Candidate / production evidence"], ["DATE", "September 2026"], ["SOURCE DIGEST", digest]], colWidths=[36 * mm, 128 * mm], style=TableStyle([("BACKGROUND", (0, 0), (0, -1), PALE), ("TEXTCOLOR", (0, 0), (0, -1), INK), ("FONTNAME", (0, 0), (0, -1), "Manrope-Bold"), ("FONTNAME", (1, 0), (1, -1), "Manrope"), ("FONTSIZE", (0, 0), (-1, -1), 7.5), ("LEADING", (0, 0), (-1, -1), 11), ("GRID", (0, 0), (-1, -1), .4, colors.HexColor("#ccd8d5")), ("VALIGN", (0, 0), (-1, -1), "TOP"), ("WORDWRAP", (0, 0), (-1, -1), "CJK"), ("TOPPADDING", (0, 0), (-1, -1), 7), ("BOTTOMPADDING", (0, 0), (-1, -1), 7)])),
         Spacer(1, 32 * mm),
         Paragraph("Evidence-first release engineering for Solidity teams building on Arc.", ParagraphStyle("covercallout", parent=s["subtitle"], fontSize=15, leading=22, textColor=VIOLET)),
         PageBreak(),

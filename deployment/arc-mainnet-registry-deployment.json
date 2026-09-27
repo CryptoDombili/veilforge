@@ -1,0 +1,59 @@
+{
+  "manifestVersion": "veilforge.registry.deployment.v1",
+  "environment": "mainnet",
+  "networkKey": "arc-mainnet",
+  "chainId": 5042,
+  "contractName": "VeilForgeReportRegistry",
+  "contractVersion": "2.0.0",
+  "compilerVersion": "0.8.24",
+  "optimizer": {
+    "enabled": false,
+    "runs": 200
+  },
+  "evmVersion": "shanghai",
+  "constructorArgs": [],
+  "transactionValue": "0x0",
+  "sourceDigest": "sha256:34f7fce947346237f3f651aa3d79a38e4b8b52f5cecaa5d4eb44794ffd5fa6f5",
+  "abiDigest": "sha256:ab6b794e1e18429bacc19c4b4ac130333995f83b9e0e9ebeadb59aa7c6b3ee17",
+  "creationBytecodeDigest": "sha256:85b7f7e9411d2e481b37cec7ec5af2062da46f979bbcd7e7179aaed8c76ae583",
+  "runtimeBytecodeDigest": "sha256:183a480c37821dbdf8212a0454313c45f0ea49569448e712b0524bbfafab145d",
+  "deployedRuntimeBytecodeDigest": "sha256:183a480c37821dbdf8212a0454313c45f0ea49569448e712b0524bbfafab145d",
+  "runtimeBytecodeExactMatch": true,
+  "deployer": "0x17aDD951d71A3c79Cfa389A61f7494F3a8146E4b",
+  "transactionHash": "0x2ad90b2d3c1343295cffbd770ae584bc6f086c0010aabc985ad1af1f8644789f",
+  "contractAddress": "0x43D76BfCa31eAd660C5d804FEe20d14C0c577337",
+  "blockNumber": 21532278,
+  "blockHash": "0xfbfcc705c3274e17f930f97a83fecfbdbc7f6a87d9405903512c5f8aca3453c8",
+  "receiptStatus": "success",
+  "receiptStatusHex": "0x1",
+  "gasUsed": "1069039",
+  "effectiveGasPrice": "22534000000",
+  "actualDeploymentFeeBaseUnits": "24089724826000000",
+  "actualDeploymentFee": "0.024089724826 USDC",
+  "nativeFeeAsset": {
+    "name": "USDC",
+    "symbol": "USDC",
+    "decimals": 18
+  },
+  "transaction": {
+    "from": "0x17aDD951d71A3c79Cfa389A61f7494F3a8146E4b",
+    "to": null,
+    "value": "0x0",
+    "inputExactCreationBytecodeMatch": true
+  },
+  "contractReads": {
+    "REGISTRY_VERSION": "2.0.0",
+    "PUBLISHER_SCOPED": true
+  },
+  "deploymentTimestamp": "2026-09-18T17:17:43.000Z",
+  "deploymentTimestampUnix": 1789751863,
+  "verifiedAt": "2026-09-18T17:19:30.809Z",
+  "deploymentStatus": "verified",
+  "gitCommit": "9873bd60ce2d1f430fbb751e40e0713eeb66029d",
+  "gitDirty": false,
+  "gitDirtyAtDeployment": false,
+  "explorerTransactionUrl": "https://explorer.arc.io/tx/0x2ad90b2d3c1343295cffbd770ae584bc6f086c0010aabc985ad1af1f8644789f",
+  "explorerContractUrl": "https://explorer.arc.io/address/0x43D76BfCa31eAd660C5d804FEe20d14C0c577337",
+  "mainnetDeploymentTransactionCount": 1,
+  "proofPublicationTransactionCount": 0
+}

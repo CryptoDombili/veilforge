@@ -43,7 +43,8 @@ test('canonical transaction, report and benchmark identities are unchanged', () 
 
 test('version, runtime and mainnet boundaries remain explicit', () => {
   for (const value of ['4.0.0-gc.1', 'V4 RC1', 'V4 Grant Candidate', 'schema 4.1.0', 'veilforge.report.hash.v2', 'solc 0.8.24', '1 MiB']) assert.match(whitepaper, new RegExp(value.replaceAll('.', '\\.'), 'u'));
-  for (const value of ['enabled=false', 'proofReadEnabled=false', 'publishEnabled=false']) assert.match(whitepaper, new RegExp(value, 'u'));
+  for (const value of ['5042', '0x43D76BfCa31eAd660C5d804FEe20d14C0c577337', 'enabled=true', 'proofReadEnabled=true', 'publishEnabled=true']) assert.match(whitepaper, new RegExp(value, 'u'));
+  for (const value of ['enabled=false', 'proofReadEnabled=false', 'publishEnabled=false']) assert.doesNotMatch(`${whitepaper}\n${brief}`, new RegExp(value, 'u'));
   assert.match(read('apps/web/config.js'), /WEB_V4_ENABLED = false/u);
   assert.match(read('scripts/build-web.mjs'), /v4-preview-pending/u);
 });
@@ -58,7 +59,7 @@ test('commercial and grant arithmetic match the final evidence package', () => {
 
 test('unsupported claims and secret-shaped material are absent', () => {
   const corpus = `${whitepaper}\n${brief}`;
-  for (const unsupported of [/Circle endorses VeilForge/iu, /Arc endorses VeilForge/iu, /grant (?:is )?guaranteed/iu, /universal correctness is proven/iu, /mainnet (?:is )?deployed/iu, /production billing is live/iu]) assert.doesNotMatch(corpus, unsupported);
+  for (const unsupported of [/Circle endorses VeilForge/iu, /Arc endorses VeilForge/iu, /grant (?:is )?guaranteed/iu, /universal correctness is proven/iu, /production billing is live/iu]) assert.doesNotMatch(corpus, unsupported);
   for (const secret of [/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/u, /\b(?:seed phrase|private key)\s*[:=]\s*\S+/iu, /\b(?:api[_-]?key|password|bearer token)\s*[:=]\s*\S+/iu]) assert.doesNotMatch(corpus, secret);
 });
 

@@ -1,29 +1,28 @@
-# Arc Mainnet Readiness Evidence
+# Arc Mainnet Production Evidence
 
-Decision: **readiness package GO; Arc mainnet deployment and publishing NO-GO**.
+Decision: **verified Arc Mainnet production profile GO within documented controls**.
 
-## GO — available readiness evidence
+## Current verified production identity
 
-- Versioned fail-closed mainnet readiness model.
-- `enabled=false`, `proofReadEnabled=false`, and `publishEnabled=false` defaults.
-- Unresolved chain, RPC, explorer, fee-asset, registry, deployment block, and transaction fields remain null/untrusted.
-- Deterministic Registry V2 source, ABI, creation/runtime bytecode, selector, event-topic, ownership, value, and calldata manifesting.
-- Deployment rehearsal procedure that performs no RPC, wallet, signing, or transaction action.
-- Staged rollout, rollback, incident response, key policy, and Testnet-to-mainnet migration plans.
-- Existing Testnet receipt/event reconciliation as execution evidence, clearly separated from mainnet.
+- Network key: `arc-mainnet`.
+- Chain ID: `5042` (`0x13b2`).
+- Registry V2: `0x43D76BfCa31eAd660C5d804FEe20d14C0c577337`.
+- Deployment status: `verified`.
+- Runtime bytecode digest: `sha256:183a480c37821dbdf8212a0454313c45f0ea49569448e712b0524bbfafab145d`.
+- Contract getters: `REGISTRY_VERSION=2.0.0`; `PUBLISHER_SCOPED=true`.
+- Production gates: `enabled=true`, `proofReadEnabled=true`, and `publishEnabled=true`.
 
-## NO-GO — unresolved prerequisites
+The separately deployed Mainnet Registry was verified from transaction `0x2ad90b2d3c1343295cffbd770ae584bc6f086c0010aabc985ad1af1f8644789f` at block `21532278`. Receipt status, contract address, runtime bytecode, getters, gas, and actual fee were reconciled read-only in `deployment/arc-mainnet-registry-deployment.json`.
 
-- No real Arc mainnet deploy or registry identity.
-- Official mainnet chain ID/name, public RPC reference, explorer, and native fee asset are unresolved.
-- Independent contract/security review is not recorded.
-- Controlled ephemeral deployment rehearsal is pending.
-- Named deployment, publication, incident, signing, custody, and change-approval owners are pending outside source control.
-- Mainnet fee behavior, balance UX, monitoring, and provider redundancy are unvalidated.
+## Controlled first publication
+
+One deterministic test fixture was published in transaction `0xc546c684ccc4a04ae2466926972a3c20d53c8b4616022f03240f4319d3de1693` at block `21545612`. Receipt, `ReportPublished` event, publisher, project ID, report hash, and Registry readback matched. The duplicate second-send guard was verified. Canonical evidence is stored in `deployment/arc-mainnet-proof-publication.json`.
+
+This Mainnet evidence is separate from the historical Arc Testnet milestone in `docs/grant/final/arc-testnet-proof-evidence.md`. The Testnet Registry, transaction, publisher, and observed fee are not Mainnet identities or Mainnet fee estimates.
 
 ## Registry V2 decision
 
-**Compatible with operational limitations.** Registry V2 is immutable, non-upgradeable, and has no owner, admin, pause, moderation, revocation, or protocol-wide recovery. Any address can publish its own publisher-scoped record. A publisher can replace its latest record for a project; contract-level duplicate immutability does not exist. Bad deployment/config recovery requires client trust removal and, after review, a new deployment. Independent review remains mandatory before mainnet.
+**Compatible with operational limitations.** Registry V2 is immutable, non-upgradeable, and has no owner, admin, pause, moderation, revocation, or protocol-wide recovery. Any address can publish its own publisher-scoped record. A publisher can replace its latest record for a project; contract-level duplicate immutability does not exist. Client identity checks, receipt/event/readback reconciliation, duplicate protection, and rollback controls remain mandatory.
 
 ## Rollback boundary
 
@@ -40,8 +39,7 @@ Read-only/offline validation:
 
 ```powershell
 npm.cmd run test:v4-mainnet-readiness
-npm.cmd run rehearse:arc-mainnet-registry
+npm.cmd run verify:arc-mainnet-production
 ```
 
-These commands do not authorize a mainnet transaction or deployment.
-
+These commands validate evidence and the production artifact; they do not authorize a new Mainnet transaction.

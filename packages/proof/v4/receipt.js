@@ -54,7 +54,7 @@ export function decodeReportPublishedLog(log) {
   });
 }
 
-export function verifyRegistryRecord(record, envelope, { publisher } = {}) {
+export function verifyRegistryRecord(record, envelope, { publisher, reportURI = '' } = {}) {
   verifyV4ProofEnvelope(envelope);
   const normalized = Array.isArray(record) ? {
     sourceHash: record[0], reportHash: record[1], score: record[2], scannerVersion: record[3],
@@ -70,10 +70,18 @@ export function verifyRegistryRecord(record, envelope, { publisher } = {}) {
   if (requireBytes32(normalized.sourceHash, 'sourceHash') !== expected.sourceHash
     || requireBytes32(normalized.reportHash, 'reportHash') !== expected.reportHash
     || Number(normalized.score) !== 0
-    || normalized.scannerVersion !== expected.scannerVersion) throw proofError('PROOF_DUPLICATE_CONFLICT');
+    || normalized.scannerVersion !== expected.scannerVersion
+    || normalized.reportURI !== reportURI
+    || !Number.isSafeInteger(Number(normalized.publishedAt))
+    || Number(normalized.publishedAt) <= 0) throw proofError('PROOF_DUPLICATE_CONFLICT');
   if (publisher && checksumAddress(normalized.publisher, 'publisher').toLowerCase() !== checksumAddress(publisher, 'publisher').toLowerCase()) {
     throw proofError('PROOF_DUPLICATE_CONFLICT');
   }
+  return true;
+}
+
+export function verifyReportLocatorContent(report, envelope) {
+  verifyV4ProofEnvelope(envelope, { report });
   return true;
 }
 
@@ -100,7 +108,8 @@ export function normalizeRegistryReceipt(receipt, envelope, context = {}) {
     || event.projectId !== registryProjectId(envelope.projectId)
     || event.sourceHash !== digestToBytes32(envelope.sourceManifestDigest)
     || event.reportHash !== digestToBytes32(envelope.reportHash)
-    || event.scannerVersion !== registryScannerVersion(envelope)) receiptFail('event');
+    || event.scannerVersion !== registryScannerVersion(envelope)
+    || event.reportURI !== (context.reportURI ?? '')) receiptFail('event');
   return Object.freeze({
     chainId: network.chainId,
     networkKey: network.networkKey,

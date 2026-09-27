@@ -1,14 +1,14 @@
 # VeilForge V4 Grant Candidate — Executive Summary
 
-Status: final grant evidence package. This document does not claim Circle or Arc endorsement, grant approval, customers, revenue, or mainnet deployment.
+Status: final Grant Candidate production evidence package. This document does not claim Circle or Arc endorsement, grant approval, customers, revenue, audit assurance, or universal correctness.
 
 ## One-sentence pitch
 
-VeilForge helps Arc payment, treasury, and private-credit builders find application-level Solidity disclosure risks before deployment through local compiler-backed analysis, verified reports, CI integration, and optional Arc Testnet proof anchoring.
+VeilForge helps Arc payment, treasury, and private-credit builders find application-level Solidity disclosure risks through local compiler-backed analysis, verified reports, CI integration, and trusted Arc proof publication.
 
 ## 100-word summary
 
-VeilForge is a local-first privacy-readiness scanner for Solidity applications built around Arc Payments, Arc Treasury, and Arc Private Credit workflows. It compiles projects with exact Solidity 0.8.24, constructs AST, IR, control-flow, call-graph, and dataflow evidence, and produces deterministic schema 4.1.0 reports. The V4 Grant Candidate supports CLI, SDK, SARIF, GitHub Action, policy gates, browser workers, verified exports, and Arc Testnet proof anchoring. Its maintained 60-case oracle passes 60/60 with 56 true positives, zero false positives, and zero false negatives. This bounded result is not universal correctness, an audit, formal verification, or a confidentiality guarantee for reviewed pre-deployment financial application workflows.
+VeilForge is a local-first privacy-readiness scanner for Solidity applications built around Arc Payments, Arc Treasury, and Arc Private Credit workflows. It compiles projects with exact Solidity 0.8.24, constructs AST, IR, control-flow, call-graph, and dataflow evidence, and produces deterministic schema 4.1.0 reports. The V4 Grant Candidate supports CLI, SDK, SARIF, GitHub Action, policy gates, browser workers, verified exports, and trusted Arc proof publication. Its maintained 60-case oracle passes 60/60 with 56 true positives, zero false positives, and zero false negatives. This bounded result is not universal correctness, an audit, formal verification, or a confidentiality guarantee for reviewed pre-deployment financial application workflows.
 
 ## 250-word summary
 
@@ -18,7 +18,7 @@ VeilForge V4 addresses this problem with compiler-backed, deterministic analysis
 
 The maintained oracle contains 60 positive, negative, and adversarial cases across Arc Payments, Arc Treasury, and Arc Private Credit. The current candidate passes 60/60 with 56 TP, 0 FP, 0 FN, negative FP 0, release gate `passed / allow`, and nondeterminism 0. This result is bounded to that corpus and does not replace an audit or formal verification.
 
-A real Arc Testnet `publishReport` transaction was receipt- and event-verified against Registry V2, including publisher, registry, and report-hash identity. Duplicate reconciliation prevents a second send for the same publisher-scoped identity. Mainnet deployment remains NO-GO while official network values, independent review, operational ownership, and fee validation are unresolved. Grant funding would accelerate hosted CI, secure account/metering foundations, team workflows, detector/corpus expansion, independent security validation, and Arc developer onboarding while keeping the open local core free under documented release limits.
+Historical Arc Testnet `publishReport` evidence remains receipt- and event-verified against Registry V2, including publisher, registry, and report-hash identity. Duplicate reconciliation prevents a second send for the same publisher-scoped identity. Arc Mainnet is verified: chain `5042`, Registry `0x43D76BfCa31eAd660C5d804FEe20d14C0c577337`, deployment, first publication, and all production gates are separately verified. Grant funding would accelerate hosted CI, secure account/metering foundations, team workflows, detector/corpus expansion, independent security validation, and Arc developer onboarding while keeping the open local core free under documented release limits.
 
 ## 500-word technical summary
 
@@ -32,7 +32,7 @@ The release benchmark is a fixed 60-case oracle: 20 cases per domain, including 
 
 Proof anchoring binds a verified V4 report envelope to trusted Arc network metadata. A real Arc Testnet transaction, `0xdb674c986195ed9b3950f34d058637fbb2b887f58ca724400225ba177884192c`, published the canonical report hash through Registry V2. Receipt, event, publisher, registry, block, and report hash were reconciled read-only. Publisher-scoped duplicate lookup returns `already-published`, leaves `transactionRequest=null`, and blocks a second transaction. The observed `0.001175966 USDC` fee is historical Testnet evidence, not a mainnet estimate.
 
-Mainnet controls are fail-closed: `enabled=false`, `proofReadEnabled=false`, and `publishEnabled=false`, with official network identity and deployment values unresolved. Registry V2 is compatible with operational limitations but still requires independent review and controlled deployment rehearsal. Commercially, the open/local Community core remains free. Developer, Team, and Enterprise offerings are roadmap hypotheses centered on managed CI, private repositories, hosted history, collaboration, support, and private deployment. No paid plan, billing system, customer, partnership, or revenue is claimed live. The grant evidence package links each shipped claim to repository paths and reproduction commands, separates roadmap and commercial hypotheses, and keeps browser, registry, and mainnet limitations visible for independent review.
+Arc Mainnet is verified on chain `5042` at Registry `0x43D76BfCa31eAd660C5d804FEe20d14C0c577337`; `enabled=true`, `proofReadEnabled=true`, and `publishEnabled=true`. The deployment receipt, first publication, event/readback consistency, and duplicate guard are verified. Registry V2 remains limited and immutable. Commercially, the open/local Community core remains free. Developer, Team, and Enterprise offerings are roadmap hypotheses centered on managed CI, private repositories, hosted history, collaboration, support, and private deployment. No paid plan, billing system, customer, partnership, or revenue is claimed live. The grant evidence package links each shipped claim to repository paths and reproduction commands, separates roadmap and commercial hypotheses, and keeps browser, registry, and Mainnet limitations visible for independent review.
 
 ## Why now
 

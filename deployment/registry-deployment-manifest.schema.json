@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://veilforge.local/schemas/registry-deployment-manifest.v1.json",
+  "title": "VeilForge Registry Deployment Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifestVersion", "environment", "networkKey", "chainId", "contractName", "contractVersion",
+    "compilerVersion", "optimizer", "evmVersion", "constructorArgs", "transactionValue", "sourceDigest",
+    "creationBytecodeDigest", "runtimeBytecodeDigest", "abiDigest", "deployer", "transactionHash",
+    "contractAddress", "blockNumber", "deploymentStatus", "verifiedAt", "gitCommit", "gitDirty"
+  ],
+  "properties": {
+    "manifestVersion": { "const": "veilforge.registry.deployment.v1" },
+    "environment": { "enum": ["local", "mainnet"] },
+    "networkKey": { "type": "string", "minLength": 1 },
+    "chainId": { "type": "integer", "minimum": 1 },
+    "contractName": { "const": "VeilForgeReportRegistry" },
+    "contractVersion": { "const": "2.0.0" },
+    "compilerVersion": { "const": "0.8.24" },
+    "optimizer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "runs"],
+      "properties": { "enabled": { "const": false }, "runs": { "const": 200 } }
+    },
+    "evmVersion": { "const": "shanghai" },
+    "constructorArgs": { "type": "array", "maxItems": 0 },
+    "transactionValue": { "const": "0x0" },
+    "sourceDigest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "creationBytecodeDigest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "runtimeBytecodeDigest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "abiDigest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "deployer": { "type": ["string", "null"] },
+    "transactionHash": { "type": ["string", "null"] },
+    "contractAddress": { "type": ["string", "null"] },
+    "blockNumber": { "type": ["integer", "null"], "minimum": 0 },
+    "deploymentStatus": { "enum": ["rehearsal", "unresolved", "deployed", "verified"] },
+    "verifiedAt": { "type": ["string", "null"] },
+    "gitCommit": { "type": ["string", "null"] },
+    "gitDirty": { "type": ["boolean", "null"] },
+    "deployedRuntimeBytecodeDigest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "runtimeBytecodeExactMatch": { "type": "boolean" },
+    "blockHash": { "type": "string", "pattern": "^0x[0-9a-fA-F]{64}$" },
+    "receiptStatus": { "enum": ["success", "failed"] },
+    "receiptStatusHex": { "enum": ["0x0", "0x1"] },
+    "gasUsed": { "type": "string", "pattern": "^[0-9]+$" },
+    "effectiveGasPrice": { "type": "string", "pattern": "^[0-9]+$" },
+    "actualDeploymentFeeBaseUnits": { "type": "string", "pattern": "^[0-9]+$" },
+    "actualDeploymentFee": { "type": "string", "minLength": 1 },
+    "nativeFeeAsset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "symbol", "decimals"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "symbol": { "type": "string", "minLength": 1 },
+        "decimals": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "transaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "to", "value", "inputExactCreationBytecodeMatch"],
+      "properties": {
+        "from": { "type": "string", "pattern": "^0x[0-9a-fA-F]{40}$" },
+        "to": { "type": "null" },
+        "value": { "const": "0x0" },
+        "inputExactCreationBytecodeMatch": { "const": true }
+      }
+    },
+    "contractReads": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["REGISTRY_VERSION", "PUBLISHER_SCOPED"],
+      "properties": {
+        "REGISTRY_VERSION": { "const": "2.0.0" },
+        "PUBLISHER_SCOPED": { "const": true }
+      }
+    },
+    "deploymentTimestamp": { "type": "string", "format": "date-time" },
+    "deploymentTimestampUnix": { "type": "integer", "minimum": 0 },
+    "gitDirtyAtDeployment": { "type": "boolean" },
+    "explorerTransactionUrl": { "type": "string", "format": "uri" },
+    "explorerContractUrl": { "type": "string", "format": "uri" },
+    "mainnetDeploymentTransactionCount": { "type": "integer", "minimum": 0 },
+    "proofPublicationTransactionCount": { "type": "integer", "minimum": 0 }
+  }
+}

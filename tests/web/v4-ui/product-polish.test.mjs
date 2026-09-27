@@ -16,7 +16,8 @@ test('V4 surface presents the product journey and progressive disclosure', () =>
   assert.match(html, /id="v4-toast"[^>]*aria-live="polite"/u);
   const source = fs.readFileSync(new URL('../../../apps/web/v4/ui.js', import.meta.url), 'utf8');
   assert.match(source, /data-v4-history-export/u);
-  assert.match(source, /Verified on Arc Testnet/u);
+  assert.match(source, /Verified on \$\{proofNetworkDisplayName\(proofNetwork\)\}/u);
+  assert.doesNotMatch(source, /Verified on Arc Testnet/u);
   assert.match(source, /An identical publisher-scoped proof already exists; no new transaction was prepared\./u);
   assert.match(source, /proof\.networkPreflight\?\.duplicate !== true/u);
   assert.match(source, /v4-proof-transaction'\)\.hidden = !summary \|\| existingProofVerified/u);

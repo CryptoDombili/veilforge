@@ -36,10 +36,10 @@ test('connect boundary rejects a provider with no account', async () => {
   await assert.rejects(() => connectWalletOnUserGesture(connectProvider([]), { userGesture: true, timeoutMs: 250 }), (error) => error.code === 'WEB_V4_ACCOUNT_UNAVAILABLE');
 });
 
-test('safe transaction review becomes ready but send remains hard disabled', async () => {
+test('safe Testnet transaction review delegates sending to the trusted lower-level gate', async () => {
   const result = await createUserGatedProofReview(await reviewInput());
-  assert.equal(result.reviewReady, true); assert.equal(result.sendEnabled, false); assert.equal(WEB_PROOF_SEND_ENABLED, false);
-  assert.match(result.sendDisabledReason, /disabled in this preflight build/u);
+  assert.equal(result.reviewReady, true); assert.equal(result.sendEnabled, true); assert.equal(WEB_PROOF_SEND_ENABLED, true);
+  assert.equal(result.sendDisabledReason, null);
 });
 
 test('review requires an explicit user gesture and acknowledgement', async () => {

@@ -2,10 +2,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { PUBLISH_REPORT_SELECTOR } from '../../../packages/proof/src/registry.js';
-import { boundedReadOnlyRequest, invalidateNetworkPreflight, preflightArcTestnetProvider, REGISTRY_GET_LATEST_REPORT_SELECTOR, REGISTRY_HAS_REPORT_SELECTOR } from '../../../apps/web/v4/proof-network-preflight.js';
+import { compileRegistryArtifact } from '../../../scripts/lib/registry-artifact.mjs';
+import { ARC_MAINNET_REGISTRY_ADDRESS, ARC_MAINNET_REGISTRY_RUNTIME_DIGEST } from '../../../packages/proof/v4/network.js';
+import { boundedReadOnlyRequest, invalidateNetworkPreflight, preflightArcTestnetProvider, preflightProofRegistryReads, REGISTRY_GET_LATEST_REPORT_SELECTOR, REGISTRY_HAS_REPORT_SELECTOR, REGISTRY_PUBLISHER_SCOPED_SELECTOR, REGISTRY_VERSION_SELECTOR } from '../../../apps/web/v4/proof-network-preflight.js';
 import { readyProof } from './helpers.mjs';
 
 const word = (value) => `0x${BigInt(value).toString(16).padStart(64, '0')}`;
+const abiString = (value) => {
+  const hex = Buffer.from(value, 'utf8').toString('hex');
+  return `0x${BigInt(32).toString(16).padStart(64, '0')}${BigInt(hex.length / 2).toString(16).padStart(64, '0')}${hex.padEnd(Math.ceil(hex.length / 64) * 64, '0')}`;
+};
 
 function arcProvider(overrides = {}) {
   const calls = [];
@@ -51,6 +57,31 @@ test('correct Arc chain and trusted registry runtime pass read-only preflight', 
   assert.equal(result.passed, true); assert.equal(result.chainId, 5_042_002); assert.equal(result.registryAddress, envelope.registryAddress);
 });
 
+test('verified Arc Mainnet Registry passes exact read-only runtime and getter preflight', async () => {
+  const artifact = compileRegistryArtifact();
+  const calls = [];
+  const provider = { async request(request) {
+    calls.push(structuredClone(request));
+    if (request.method === 'eth_chainId') return '0x13b2';
+    if (request.method === 'eth_getCode') return artifact.runtimeBytecode;
+    if (request.method === 'eth_call') {
+      const data = String(request.params?.[0]?.data ?? '').toLowerCase();
+      if (data === REGISTRY_VERSION_SELECTOR.toLowerCase()) return abiString('2.0.0');
+      if (data === REGISTRY_PUBLISHER_SCOPED_SELECTOR.toLowerCase()) return word(1);
+    }
+    throw new Error('unsupported read');
+  } };
+  const result = await preflightProofRegistryReads({ provider, networkKey: 'arc-mainnet', timeoutMs: 250 });
+  assert.equal(result.passed, true);
+  assert.equal(result.registryAddress, ARC_MAINNET_REGISTRY_ADDRESS);
+  assert.equal(result.runtimeBytecodeDigest, ARC_MAINNET_REGISTRY_RUNTIME_DIGEST);
+  assert.equal(result.registryVersion, '2.0.0');
+  assert.equal(result.publisherScoped, true);
+  assert.equal(result.explorerContractUrl, `https://explorer.arc.io/address/${ARC_MAINNET_REGISTRY_ADDRESS}`);
+  assert.deepEqual([...new Set(calls.map((item) => item.method))].sort(), ['eth_call', 'eth_chainId', 'eth_getCode']);
+  assert.equal(calls.some((item) => item.method.startsWith('eth_send')), false);
+});
+
 test('wrong chain fails before registry reads', async () => {
   const { result, provider } = await run(arcProvider({ chainId: '0x1' }));
   assert.equal(result.status, 'wrong-network'); assert.deepEqual(provider.calls.map((item) => item.method), ['eth_chainId']);
@@ -89,7 +120,7 @@ test('publish simulation failure blocks readiness', async () => {
 
 test('preflight uses only bounded read-only provider methods', async () => {
   const { provider } = await run();
-  assert.deepEqual([...new Set(provider.calls.map((item) => item.method))].sort(), ['eth_blockNumber', 'eth_call', 'eth_chainId', 'eth_estimateGas', 'eth_getCode']);
+  assert.deepEqual([...new Set(provider.calls.map((item) => item.method))].sort(), ['eth_blockNumber', 'eth_call', 'eth_chainId', 'eth_estimateGas', 'eth_gasPrice', 'eth_getCode']);
   await assert.rejects(() => boundedReadOnlyRequest(provider, { method: 'eth_sendTransaction', params: [] }));
 });
 

@@ -47,7 +47,7 @@ export function prepareRegistryPublish(envelope, context = {}) {
   try { account = checksumAddress(context.account, 'account'); } catch { throw proofError('PROOF_SIGNER_REQUIRED'); }
   const payload = registryPayload(envelope, context.reportURI ?? '');
   if (context.existingRecord) {
-    try { verifyRegistryRecord(context.existingRecord, envelope, { publisher: account }); }
+    try { verifyRegistryRecord(context.existingRecord, envelope, { publisher: account, reportURI: context.reportURI ?? '' }); }
     catch { throw proofError('PROOF_DUPLICATE_CONFLICT'); }
     const identity = context.existingTransactionIdentity ?? null;
     if (identity && (

@@ -23,7 +23,7 @@ for (const browser of browsers) {
     try {
       await session.navigate(base);
       const baseline = await session.evaluate("({runtime:document.body.dataset.webRuntime,flag:document.querySelector('.versionPill')?.textContent,ready:window.__VEILFORGE_READY__===true})");
-      if (baseline.runtime !== 'v4' || !/V4 RC1/u.test(baseline.flag)) throw new Error(`${browser.name} did not mount V4 preview.`);
+      if (baseline.runtime !== 'v4' || !/V4 GC/u.test(baseline.flag)) throw new Error(`${browser.name} did not mount V4 preview.`);
 
       const first = await session.evaluate(scanExpression(`${browser.name}-first`));
       if (!/Verified result ready/u.test(first.status) || first.findings < 1 || !first.scanEnabled) throw new Error(`${browser.name} first scan failed: ${JSON.stringify(first)}`);

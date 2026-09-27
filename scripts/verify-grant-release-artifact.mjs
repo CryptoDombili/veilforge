@@ -20,7 +20,17 @@ const mainnet = await import(`${pathToFileURL(path.join(output, 'proof-v4', 'mai
 if (config.WEB_V4_ENABLED !== true || config.BUILD_VERSION !== '4.0.0-gc.1') throw new Error('Grant artifact is not explicitly V4-enabled.');
 if (build.name !== 'VeilForge V4 Grant Candidate' || build.productVersion !== '4.0.0-gc.1' || build.reportSchemaVersion !== '4.1.0') throw new Error('Grant artifact build identity is invalid.');
 if (metadata.artifact !== 'veilforge-v4-grant-candidate-web' || metadata.reportSchemaVersion !== '4.1.0' || metadata.hashPayloadVersion !== 'veilforge.report.hash.v2') throw new Error('Grant artifact metadata identity is invalid.');
-if (metadata.webV4Enabled !== true || Object.values(metadata.arcMainnet).some((value) => value !== false)) throw new Error('Grant artifact safety gates are invalid.');
+if (metadata.webV4Enabled !== true
+  || metadata.arcMainnet.enabled !== true
+  || metadata.arcMainnet.proofReadEnabled !== true
+  || metadata.arcMainnet.publishEnabled !== true
+  || metadata.arcMainnet.deploymentStatus !== 'verified'
+  || metadata.arcMainnet.publicationStatus !== 'verified'
+  || !/^0x[0-9a-fA-F]{40}$/u.test(metadata.arcMainnet.registryAddress)
+  || !/^sha256:[0-9a-f]{64}$/u.test(metadata.arcMainnet.runtimeBytecodeDigest)
+  || !/^0x[0-9a-f]{64}$/u.test(metadata.arcMainnet.firstProofTransaction)
+  || !/^0x[0-9a-f]{64}$/u.test(metadata.arcMainnet.firstProofProjectId)
+  || !/^0x[0-9a-f]{64}$/u.test(metadata.arcMainnet.firstProofReportHash)) throw new Error('Grant artifact Mainnet production evidence gates are invalid.');
 if (!/^sha256:[0-9a-f]{64}$/u.test(metadata.releaseManifestDigest) || 'manifestVerified' in metadata) throw new Error('Grant artifact manifest provenance is invalid.');
 if (mainnet.ARC_MAINNET_UNRESOLVED.enabled !== false || mainnet.ARC_MAINNET_UNRESOLVED.proofReadEnabled !== false || mainnet.ARC_MAINNET_UNRESOLVED.publishEnabled !== false) throw new Error('Arc mainnet is not fail-closed.');
 for (const html of [landing, app]) {
@@ -28,4 +38,4 @@ for (const html of [landing, app]) {
   if (/VeilForge v3\.2\.2|V3\.2 ASCENSION|REGISTRY SECURITY UPDATE/u.test(html)) throw new Error('Stale V3 reviewer-facing identity detected.');
 }
 
-console.log(JSON.stringify({ verified: true, artifact: metadata.artifact, product: metadata.product, engineCompatibilityIdentity: metadata.engineCompatibilityIdentity, reportSchemaVersion: metadata.reportSchemaVersion, manifestDigest: metadata.releaseManifestDigest, mainnetEnabled: false }));
+console.log(JSON.stringify({ verified: true, artifact: metadata.artifact, product: metadata.product, engineCompatibilityIdentity: metadata.engineCompatibilityIdentity, reportSchemaVersion: metadata.reportSchemaVersion, manifestDigest: metadata.releaseManifestDigest, mainnetEnabled: true, mainnetReadEnabled: true, mainnetPublishEnabled: true }));

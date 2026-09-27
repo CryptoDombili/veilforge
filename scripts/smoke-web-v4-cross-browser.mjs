@@ -10,11 +10,13 @@ const options = Object.fromEntries(process.argv.slice(2).map((item) => {
 }));
 const requestedBrowser = options.browser;
 const summaryPath = options.summary;
+const artifactName = options.artifact || 'dist-mainnet-production';
 if (!['chromium', 'firefox', 'webkit', 'edge'].includes(requestedBrowser)) throw new Error('Use --browser=chromium|firefox|webkit|edge.');
 if (!summaryPath) throw new Error('Use --summary=<safe-json-path>.');
+if (!['dist-mainnet-production', 'dist-grant-release'].includes(artifactName)) throw new Error('Use --artifact=dist-mainnet-production|dist-grant-release.');
 
 const root = process.cwd();
-const artifact = path.join(root, 'dist-grant-release');
+const artifact = path.join(root, artifactName);
 const fixtureRoot = path.join(root, 'tests', 'corpus', 'arc-payments', 'positive', 'PAY-POS-001');
 const source = fs.readFileSync(path.join(fixtureRoot, 'project', 'src', 'Case.sol'), 'utf8');
 const arcPaymentsDemoSource = fs.readFileSync(path.join(root, 'tests', 'fixtures', 'p0', 'ArcPaymentsDemo.sol'), 'utf8');
@@ -28,7 +30,7 @@ const folderDropSources = Object.fromEntries([
 ].map((relativePath) => [relativePath, fs.readFileSync(path.join(folderDropRoot, ...relativePath.split('/')), 'utf8')]));
 const policy = JSON.parse(fs.readFileSync(path.join(fixtureRoot, 'policy.json'), 'utf8'));
 const stageLimits = Object.freeze({ launch: 15_000, context: 5_000, page: requestedBrowser === 'webkit' ? 15_000 : 5_000, navigation: 15_000, app: 15_000, scan: 30_000, cleanup: 3_000, shutdown: 5_000 });
-const result = { browser: requestedBrowser, artifact: 'dist-grant-release', passed: false, version: null, routes: [], folderDrop: null, pageErrors: 0, module404s: 0, asset404s: 0, stages: [], repeatedScans: 0, orphanWorkers: null, pendingRequests: null, responsive390: false, cleanShutdown: false, errorCode: null };
+const result = { browser: requestedBrowser, artifact: artifactName, passed: false, version: null, routes: [], folderDrop: null, pageErrors: 0, module404s: 0, asset404s: 0, stages: [], repeatedScans: 0, orphanWorkers: null, pendingRequests: null, responsive390: false, cleanShutdown: false, errorCode: null };
 let currentStage = 'BROWSER_LAUNCH';
 let browser;
 let context;

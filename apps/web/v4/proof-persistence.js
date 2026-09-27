@@ -3,11 +3,22 @@ import { webV4Error } from './errors.js';
 import { verifyWebProofEnvelope } from './proof-adapter.js';
 import { safeWebExplorerLink } from './proof-receipt.js';
 import { WEB_PROOF_STATES } from './proof-lifecycle.js';
+import { PROOF_SEND_STATES } from './proof-send-coordinator.js';
 
 export const WEB_PROOF_STORAGE_PREFIX = 'veilforge:v4:web-proof:';
-export const WEB_PROOF_PERSISTENCE_VERSION = 'veilforge.web-proof-state.v2';
+export const WEB_PROOF_PERSISTENCE_VERSION = 'veilforge.web-proof-state.v3';
 export const WEB_PROOF_TRANSACTION_SOURCES = Object.freeze(['wallet-submission', 'provider-verified']);
 const FORBIDDEN = new Set(['provider', 'signer', 'privateKey', 'seedPhrase', 'mnemonic', 'source', 'sourceCode', 'content', 'ast', 'ir', 'rawReceipt', 'rawError']);
+const PUBLICATION_STATES = new Set(Object.values(PROOF_SEND_STATES));
+
+function inferredPublicationState(status) {
+  if (status === 'wallet-request-pending') return PROOF_SEND_STATES.WALLET_REQUEST_PENDING;
+  if (status === 'pending') return PROOF_SEND_STATES.TX_HASH_KNOWN;
+  if (status === 'reconciliation-required') return PROOF_SEND_STATES.RECONCILIATION_REQUIRED;
+  if (['confirmed', 'already-published'].includes(status)) return PROOF_SEND_STATES.CONFIRMED;
+  if (status === 'user-rejected') return PROOF_SEND_STATES.REJECTED;
+  return null;
+}
 
 function assertSafe(value, depth = 0, seen = new Set()) {
   if (!value || typeof value !== 'object') return;
@@ -43,23 +54,35 @@ function verifiedReceiptMatches(envelope, transactionHash, receiptSummary) {
     && receiptSummary.registryAddress?.toLowerCase() === envelope.registryAddress.toLowerCase()
     && receiptSummary.registryContractVersion === envelope.registryContractVersion
     && receiptSummary.reportHash === envelope.reportHash
+    && receiptSummary.evidenceStatus === 'current-state-verified'
+    && /^0x[0-9a-f]{64}$/u.test(receiptSummary.projectId ?? '')
+    && /^0x[0-9a-f]{64}$/u.test(receiptSummary.sourceHash ?? '')
+    && typeof receiptSummary.reportURI === 'string'
     && /^0x[0-9a-fA-F]{40}$/u.test(receiptSummary.publisher ?? '')
     && Number.isSafeInteger(receiptSummary.blockNumber) && receiptSummary.blockNumber >= 0
     && receiptSummary.explorerUrl === safeWebExplorerLink(transactionHash, envelope.networkKey);
 }
 
-export async function saveWebProofState(storage, { envelope, preflight = null, status = 'ready', transactionHash = null, transactionSource = null, receiptSummary = null, updatedAt = new Date().toISOString() } = {}, options = {}) {
+export async function saveWebProofState(storage, { envelope, preflight = null, status = 'ready', intentId = null, publicationState = inferredPublicationState(status), transactionHash = null, transactionSource = null, receiptSummary = null, updatedAt = new Date().toISOString() } = {}, options = {}) {
   await verifyWebProofEnvelope(envelope);
   if (!WEB_PROOF_STATES.includes(status)) throw webV4Error('WEB_V4_PROOF_PERSISTENCE_FAILED', 'Proof state status is invalid.');
   if (transactionHash !== null) safeWebExplorerLink(transactionHash, envelope.networkKey);
   if (transactionSource !== null && !WEB_PROOF_TRANSACTION_SOURCES.includes(transactionSource)) throw webV4Error('WEB_V4_PROOF_PERSISTENCE_FAILED', 'Proof transaction source is invalid.');
-  if (status === 'pending' && (transactionSource !== 'wallet-submission' || !transactionHash || receiptSummary !== null)) throw webV4Error('WEB_V4_PROOF_PERSISTENCE_FAILED', 'Pending proof state is not wallet-bound.');
+  if (publicationState !== null && !PUBLICATION_STATES.has(publicationState)) throw webV4Error('WEB_V4_PROOF_PERSISTENCE_FAILED', 'Proof publication state is invalid.');
+  if (intentId !== null && !/^0x[0-9a-f]{64}$/u.test(intentId)) throw webV4Error('WEB_V4_PROOF_PERSISTENCE_FAILED', 'Proof publication intent is invalid.');
+  if (status === 'pending' && (transactionSource !== 'wallet-submission' || !intentId || !transactionHash || receiptSummary !== null)) throw webV4Error('WEB_V4_PROOF_PERSISTENCE_FAILED', 'Pending proof state is not wallet-bound.');
+  if (status === 'pending' && publicationState !== PROOF_SEND_STATES.TX_HASH_KNOWN) throw webV4Error('WEB_V4_PROOF_PERSISTENCE_FAILED', 'Pending proof publication state is invalid.');
+  if (status === 'wallet-request-pending' && (publicationState !== PROOF_SEND_STATES.WALLET_REQUEST_PENDING || transactionSource !== 'wallet-submission' || !intentId || transactionHash !== null || receiptSummary !== null)) throw webV4Error('WEB_V4_PROOF_PERSISTENCE_FAILED', 'Pre-provider proof state is not wallet-bound.');
+  if (status === 'reconciliation-required' && (transactionSource !== 'wallet-submission' || !intentId || receiptSummary !== null)) throw webV4Error('WEB_V4_PROOF_PERSISTENCE_FAILED', 'Indeterminate proof state is not wallet-bound.');
+  if (status === 'reconciliation-required' && ![PROOF_SEND_STATES.PROVIDER_CALL_STARTED, PROOF_SEND_STATES.RECONCILIATION_REQUIRED].includes(publicationState)) throw webV4Error('WEB_V4_PROOF_PERSISTENCE_FAILED', 'Indeterminate proof publication state is invalid.');
   if (['confirmed', 'already-published'].includes(status) && (transactionSource !== 'provider-verified' || !transactionHash || !verifiedReceiptMatches(envelope, transactionHash, receiptSummary))) throw webV4Error('WEB_V4_PROOF_PERSISTENCE_FAILED', 'Confirmed proof state is not provider-verified.');
   const payload = {
     persistenceVersion: WEB_PROOF_PERSISTENCE_VERSION,
     envelope: cloneValue(envelope),
     preflight: safePreflight(preflight),
     status,
+    intentId,
+    publicationState,
     transactionHash,
     transactionSource,
     receiptSummary: receiptSummary ? cloneValue(receiptSummary) : null,
@@ -86,9 +109,11 @@ export async function loadWebProofState(storage, key) {
   await verifyWebProofEnvelope(record.envelope);
   if (webProofStorageKey(record.envelope) !== key) throw webV4Error('WEB_V4_PROOF_PERSISTENCE_FAILED', 'Stored proof identity is invalid.');
   if (record.transactionHash && record.explorerUrl !== safeWebExplorerLink(record.transactionHash, record.envelope.networkKey)) throw webV4Error('WEB_V4_PROOF_PERSISTENCE_FAILED', 'Stored explorer identity is invalid.');
-  if (record.status === 'pending' && record.transactionSource !== 'wallet-submission') throw webV4Error('WEB_V4_PROOF_PERSISTENCE_FAILED', 'Stored pending identity is invalid.');
+  const publicationState = record.publicationState ?? inferredPublicationState(record.status);
+  if (publicationState !== null && !PUBLICATION_STATES.has(publicationState)) throw webV4Error('WEB_V4_PROOF_PERSISTENCE_FAILED', 'Stored publication state is invalid.');
+  if (['wallet-request-pending', 'pending', 'reconciliation-required'].includes(record.status) && (record.transactionSource !== 'wallet-submission' || !/^0x[0-9a-f]{64}$/u.test(record.intentId ?? ''))) throw webV4Error('WEB_V4_PROOF_PERSISTENCE_FAILED', 'Stored wallet attempt identity is invalid.');
   if (['confirmed', 'already-published'].includes(record.status) && (record.transactionSource !== 'provider-verified' || !verifiedReceiptMatches(record.envelope, record.transactionHash, record.receiptSummary))) throw webV4Error('WEB_V4_PROOF_PERSISTENCE_FAILED', 'Stored confirmed identity is invalid.');
-  return deepFreeze(record);
+  return deepFreeze({ ...record, publicationState });
 }
 
 export async function loadVerifiedWebProofPublication(storage, envelope, publisher) {
@@ -98,4 +123,11 @@ export async function loadVerifiedWebProofPublication(storage, envelope, publish
   if (!['confirmed', 'already-published'].includes(record.status) || record.transactionSource !== 'provider-verified') return null;
   if (record.receiptSummary?.publisher?.toLowerCase() !== String(publisher ?? '').toLowerCase()) return null;
   return record;
+}
+
+export async function loadWebProofSendAttempt(storage, envelope) {
+  const key = webProofStorageKey(envelope);
+  if (storage.getItem(key) === null) return null;
+  const record = await loadWebProofState(storage, key);
+  return ['wallet-request-pending', 'pending', 'reconciliation-required'].includes(record.status) && record.transactionSource === 'wallet-submission' ? record : null;
 }

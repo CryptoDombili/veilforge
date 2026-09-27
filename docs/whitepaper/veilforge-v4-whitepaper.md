@@ -6,11 +6,11 @@
 **Product version:** 4.0.0-gc.1  
 **Technical candidate:** V4 RC1  
 **Grant status:** V4 Grant Candidate  
-**Implementation boundary:** Arc Testnet  
-**Document date:** 2026-08-05  
-**Document status:** Grant review draft; evidence-backed and not a release, audit, endorsement, or mainnet availability statement
+**Implementation boundary:** Verified Arc Mainnet production profile with historical Arc Testnet evidence
+**Document date:** 2026-09-26
+**Document status:** Grant Candidate production evidence; not an audit, endorsement, formal verification, or confidentiality guarantee
 
-VeilForge is an independent open-source project. Circle and Arc do not endorse this document or the product. The on-chain evidence described here is a real Arc Testnet implementation. Arc mainnet deployment is not claimed.
+VeilForge is an independent open-source project. Circle and Arc do not endorse this document or the product. The historical Arc Testnet evidence remains reproducible, and the current production profile uses the separately deployed and verified Arc Mainnet Registry at `0x43D76BfCa31eAd660C5d804FEe20d14C0c577337` on chain `5042`.
 
 > **Version terminology.** “V4 GC” describes the product's grant-application status. “V4 RC1” describes technical Release Candidate 1. They refer to the same candidate baseline from different review perspectives, not to two products.
 
@@ -20,13 +20,15 @@ VeilForge is an independent open-source project. Circle and Arc do not endorse t
 
 Financial Solidity applications disclose information through more than contract state. Calldata can reveal parameters before and during execution. Events can create durable, indexable records. Public storage and generated getters can expose values directly. Return data, revert data, metadata, and arguments passed to external calls can continue a disclosure chain. These behaviors are often legitimate parts of a public blockchain application, but teams still need a reliable way to see them, classify them against policy, and discuss the result before deployment.
 
-VeilForge V4 is a local-first, deterministic privacy-readiness analysis system for Solidity projects, with an initial focus on Arc Payments, Arc Treasury, and Arc Private Credit workflows. It compiles exact Solidity 0.8.24 projects, builds compiler-backed program representations, follows source-to-sink provenance, produces stable findings, and packages results in verifiable reports. The same report model supports browser review, CLI and SDK use, SARIF, GitHub Action integration, policy gates, exports, local history, and an optional Arc Testnet proof-publication workflow.
+VeilForge V4 is a local-first, deterministic privacy-readiness analysis system for Solidity projects, with an initial focus on Arc Payments, Arc Treasury, and Arc Private Credit workflows. It compiles exact Solidity 0.8.24 projects, builds compiler-backed program representations, follows source-to-sink provenance, produces stable findings, and packages results in verifiable reports. The same report model supports browser review, CLI and SDK use, SARIF, GitHub Action integration, policy gates, exports, local history, and an optional proof-publication workflow selected from a trusted Arc runtime profile.
 
 The product is designed around evidence rather than a promise of perfect detection. Findings include domain, severity, confidence, disposition, source and sink context, trace information, remediation guidance, and explicit incomplete-analysis states. A deterministic schema 4.1.0 report is bound by the `veilforge.report.hash.v2` payload. Verification recomputes integrity instead of trusting a displayed “verified” flag. “No finding” is never presented as proof of confidentiality.
 
 The maintained benchmark currently contains 60 oracle cases across the three Arc-oriented domains. The recorded release baseline passes 60/60 with 56 true positives, zero false positives, zero false negatives, zero negative-case false positives, a release-gate result of `passed / allow`, and zero nondeterministic results. This is strong evidence for the maintained corpus, not a claim of universal correctness, audit assurance, or formal verification. Behavior outside the corpus can differ, and continued corpus and detector expansion remains necessary.
 
 VeilForge also demonstrates a complete Arc Testnet proof lifecycle. A verified report identity was published through Registry V2 in transaction `0xdb674c986195ed9b3950f34d058637fbb2b887f58ca724400225ba177884192c` at block 55469453. Receipt, event, publisher, registry, and report hash were reconciled. The browser can restore the provider-verified identity and recognize the proof as already published, preventing a second transaction request. This evidence is Testnet-only and the observed fee is not a mainnet cost estimate.
+
+The current Arc Mainnet production profile is independently evidence-bound to chain `5042` and Registry `0x43D76BfCa31eAd660C5d804FEe20d14C0c577337`. Deployment status is `verified`; `enabled=true`, `proofReadEnabled=true`, and `publishEnabled=true`. The first controlled Mainnet publication was separately receipt-, event-, and readback-verified. These current Mainnet facts do not change or relabel the earlier Testnet milestone.
 
 Grant support would fund the next measurable stage: hosted CI foundations, secure account and metering boundaries, private-repository workflow pilots, Team workspace foundations, detector and benchmark expansion, independent security validation, and Arc ecosystem onboarding. These items are roadmap deliverables, not current product claims. The local/open core is intended to remain useful without payment; proposed revenue would come from managed infrastructure, private collaboration workflows, support, and private deployment. Pricing and MRR figures in this paper are planning hypotheses, not customers, revenue, commitments, or guarantees.
 
@@ -62,15 +64,15 @@ Third, outputs are **deterministic**. Stable identifiers, canonical ordering, ex
 
 Fourth, claims are **bounded**. Unsupported or incomplete paths remain visible. The benchmark is described as a maintained corpus, not proof over every Solidity program. VeilForge is not an audit, formal-verification system, or confidentiality guarantee.
 
-Fifth, the product produces **verifiable evidence**. Reports can be verified independently, exported in portable formats, gated in CI, and optionally anchored on Arc Testnet through a user-approved transaction whose receipt and event are reconciled against the report identity.
+Fifth, the product produces **verifiable evidence**. Reports can be verified independently, exported in portable formats, gated in CI, and optionally anchored through a trusted Arc network profile using a user-approved transaction whose receipt and event are reconciled against the report identity.
 
 ## 4. Product Scope
 
 The current V4 Grant Candidate supports three initial analysis domains: Arc Payments, Arc Treasury, and Arc Private Credit. It accepts bounded Solidity projects, compiles exact version 0.8.24, runs the V4 analysis pipeline, classifies candidate disclosure paths, applies domain detectors and policy dispositions, and emits deterministic reports.
 
-Shipped interfaces include the local browser scanner, CLI, SDK, JSON and Markdown exports, SARIF, GitHub Action integration, a policy release gate, report verification, limited local report history, and the proof envelope and Arc Testnet publication flow. The browser provides progressive disclosure: reviewers can begin with a status and finding summary, then inspect source-to-sink evidence, technical details, proof preflight, transaction identity, and exports.
+Shipped interfaces include the local browser scanner, CLI, SDK, JSON and Markdown exports, SARIF, GitHub Action integration, a policy release gate, report verification, limited local report history, and a network-aware Arc proof envelope and publication flow. The browser provides progressive disclosure: reviewers can begin with a status and finding summary, then inspect source-to-sink evidence, technical details, proof preflight, transaction identity, and exports.
 
-The current scope does not include formal verification, audit replacement, universal vulnerability detection, arbitrary-chain guarantees, a confidentiality guarantee, production accounts, live billing, paid subscriptions, or Arc mainnet deployment. Hosted private CI, higher service limits, collaboration, and organization workflows are roadmap items.
+The current scope does not include formal verification, audit replacement, universal vulnerability detection, arbitrary-chain guarantees, a confidentiality guarantee, production accounts, live billing, or paid subscriptions. Hosted private CI, higher service limits, collaboration, and organization workflows are roadmap items. Arc Mainnet proof availability is bounded to the verified production Registry and its documented operational controls.
 
 ## 5. Technical Architecture
 
@@ -123,7 +125,7 @@ The project limit is 100 files, 512 KiB per file, and 1 MiB total. One active sc
 
 Source is not persisted in V4 report history. Verified report data and proof identities may be stored locally, and those artifacts can reveal project findings or metadata even when source is absent. Users should treat them as security-sensitive evidence. The browser product does not promise confidentiality against a compromised browser, extension, operating system, pasted content, screenshot, or user-directed export.
 
-Chromium and WebKit have documented local acceptance evidence. Edge and Firefox clean-CI acceptance remains a bounded limitation in the current evidence package. The production feature flag defaults to false, the default build remains V3, and V4 is distributed separately as a preview candidate.
+Chromium and WebKit have documented local acceptance evidence. Edge and Firefox clean-CI acceptance remains a bounded limitation in the current evidence package. Source defaults remain fail-closed and the ordinary compatibility build remains V3; the provenance-bound `arc-mainnet-production` build explicitly activates the V4 runtime.
 
 ## 7. Detection Domains
 
@@ -167,9 +169,9 @@ SARIF output maps findings into a standard format suitable for code-scanning sys
 
 These shipped tools support local and self-managed CI today. A managed service for private repositories, hosted history, metering, higher limits, and Team collaboration is roadmap work. The whitepaper does not present hosted private CI as currently live.
 
-## 11. Arc Testnet Proof Architecture
+## 11. Arc Proof Architecture and Evidence
 
-The proof workflow begins only after report verification. A V4 proof envelope binds the report schema, hash payload, report hash, project and source-manifest anchors, compiler and scanner identity, completeness, and policy/finding summaries. Browser preflight validates the trusted Arc Testnet chain, registry address, contract code, expected publish selector, publisher identity, exact-zero transaction value, calldata, gas-estimation status, and duplicate state.
+The proof workflow begins only after report verification. A V4 proof envelope binds the report schema, hash payload, report hash, project and source-manifest anchors, compiler and scanner identity, completeness, and policy/finding summaries. Browser preflight validates the selected trusted Arc runtime profile, registry address, contract code, expected publish selector, publisher identity, exact-zero transaction value, calldata, gas-estimation status, and duplicate state.
 
 Wallet behavior is user-gated. VeilForge does not automatically connect a wallet, request a network switch, sign, or send. A transaction request is released only after trusted preflight and explicit review. Receipt normalization then verifies success, chain, registry log address, event ABI, hashes, scanner/version token, and publisher. Persistence accepts only the reconciled identity. A later lookup for the same chain, registry, publisher, and report hash returns `already-published`, sets the transaction request to null, and blocks a second send.
 
@@ -196,6 +198,21 @@ The observed fee is historical Testnet evidence, not a mainnet fee or cost estim
 
 **Figure 2 — Arc Testnet proof publication lifecycle.** Verified report -> trusted preflight -> explicit user approval -> Testnet transaction -> receipt/event reconciliation -> provider-verified persistence -> duplicate prevention.
 
+### 11.2 Current verified Arc Mainnet production state
+
+| Field | Verified value |
+|---|---|
+| Network | Arc Mainnet |
+| Chain ID | `5042` (`0x13b2`) |
+| Registry V2 | `0x43D76BfCa31eAd660C5d804FEe20d14C0c577337` |
+| Deployment status | `verified` |
+| Runtime bytecode digest | `sha256:183a480c37821dbdf8212a0454313c45f0ea49569448e712b0524bbfafab145d` |
+| Deployment transaction | `0x2ad90b2d3c1343295cffbd770ae584bc6f086c0010aabc985ad1af1f8644789f` |
+| First controlled proof transaction | `0xc546c684ccc4a04ae2466926972a3c20d53c8b4616022f03240f4319d3de1693` |
+| Runtime gates | `enabled=true`, `proofReadEnabled=true`, `publishEnabled=true` |
+
+The Mainnet deployment and first controlled proof publication were verified separately from the historical Testnet evidence. The production client remains fail-closed for unknown profiles, mismatched chain or Registry identity, invalid runtime code, unverified receipts, and duplicate sends.
+
 ## 12. Benchmark and Validation
 
 The maintained oracle contains 60 cases: 20 Arc Payments, 20 Arc Treasury, and 20 Arc Private Credit. Each domain currently contains eight positive, six negative, and six adversarial cases. The release result is 60/60 cases passed, 56 true positives, zero false positives, zero false negatives, zero negative-case false positives, gate `passed / allow`, and zero nondeterministic results.
@@ -214,7 +231,7 @@ Proof workflows do not automatically connect a wallet, switch networks, request 
 
 Mainnet configuration is versioned and fail-closed. Unknown or unresolved values do not become trusted defaults. Operational procedures include deployment rehearsal, staged rollout, rollback, incident response, migration planning, secret separation, and deterministic manifests. On-chain history cannot be erased by rollback, so rollback controls stop new activity and restore safe application configuration rather than claiming chain reversal.
 
-This model reduces specific risks but does not guarantee source confidentiality or eliminate false positives and false negatives. Independent contract and application review remains necessary before mainnet use.
+This model reduces specific risks but does not guarantee source confidentiality or eliminate false positives and false negatives. Independent contract and application review remains necessary before any Mainnet identity, contract, or production-control change.
 
 ## 14. Registry V2
 
@@ -222,17 +239,17 @@ Registry V2 is an immutable, non-payable report-anchor contract. It has no owner
 
 Immutability reduces administrative trust but limits incident response and evolution. There is no emergency pause, role rotation, migration hook, or contract-level schema understanding. Public events and publisher identity are observable. Storage and gas costs require environment-specific validation. Operational ownership, monitoring, and migration procedures must therefore exist outside the contract.
 
-The readiness assessment considers Registry V2 compatible with operational limitations. Registry V3 is not currently required, but this is not a declaration that V2 is appropriate for mainnet without independent review. A future contract version should be justified by concrete requirements rather than version churn.
+The readiness assessment considers Registry V2 compatible with documented operational limitations. The deployed Arc Mainnet instance passed the independent production-readiness review, bytecode/getter checks, receipt/event verification, and first-publication acceptance gates recorded by this release. Registry V3 is not currently required; a future contract version should be justified by concrete requirements rather than version churn.
 
 ## 15. Arc Mainnet Readiness
 
-The mainnet readiness package is split into GO and NO-GO evidence.
+The mainnet readiness package records the completed production gates and the controls that remain fail-closed during operation.
 
-**GO for preparation:** versioned fail-closed configuration; deterministic deployment manifest generation; reproducible contract compilation; deployment rehearsal; staged rollout; rollback; incident response; network-config governance; and a migration plan that recognizes immutable on-chain history.
+**GO for production:** Arc Mainnet chain `5042`; separately deployed Registry V2 at `0x43D76BfCa31eAd660C5d804FEe20d14C0c577337`; verified runtime bytecode and contract getters; evidence-bound deployment and first controlled publication; versioned network-aware configuration; deterministic deployment manifests; rollback and incident response; and duplicate-send protection.
 
-**NO-GO for deployment and publishing:** official mainnet network values remain unresolved; no trusted mainnet registry deployment is recorded; independent contract review is pending; operational ownership and approval roles are unresolved; and mainnet fee validation is pending. Accordingly `enabled=false`, `proofReadEnabled=false`, and `publishEnabled=false` remain the canonical mainnet state.
+**Current production state:** `deploymentStatus=verified`, `enabled=true`, `proofReadEnabled=true`, and `publishEnabled=true`. These values are valid only for the exact trusted profile and Registry identity above. Unknown networks, mismatched chain IDs, stale or unverified artifacts, unsafe transaction requests, and duplicate publication attempts remain blocked.
 
-The product does not claim mainnet availability. Testnet success is useful implementation evidence, not authorization to deploy or publish on mainnet.
+Arc Mainnet availability is claimed only for the audited production profile described here. Historical Testnet success remains a distinct implementation milestone and is not presented as Mainnet evidence.
 
 ![Fail-closed Arc mainnet staged rollout and rollback controls.](figures/mainnet-staged-rollout.svg)
 
@@ -294,11 +311,11 @@ Deliverables include workspace boundaries, roles, tenant isolation, shared polic
 
 ### Milestone 4 — Arc Expansion
 
-Deliverables include detector and corpus expansion, onboarding material, ecosystem integration work, and independent security review. Acceptance evidence should include versioned fixtures, bounded benchmark reports, integration documentation, review findings and remediation, and a mainnet decision package rather than an assumed deploy.
+Deliverables include detector and corpus expansion, onboarding material, ecosystem integration work, and independent security review. Acceptance evidence should include versioned fixtures, bounded benchmark reports, integration documentation, review findings and remediation, and a production-evolution decision package rather than an assumed contract or configuration change.
 
 ## 20. Roadmap
 
-**Current — V4 Grant Candidate:** compiler-backed analysis, three Arc-oriented detector domains, deterministic reports, CLI/SDK/SARIF/Action/gate, browser preview, verified exports, Arc Testnet proof publication and reconciliation, duplicate protection, mainnet readiness controls, and grant evidence.
+**Current — V4 Grant Candidate:** compiler-backed analysis, three Arc-oriented detector domains, deterministic reports, CLI/SDK/SARIF/Action/gate, a provenance-bound Arc Mainnet production web build, verified exports, historical Arc Testnet proof evidence, verified Mainnet deployment and first controlled publication, duplicate protection, production controls, and grant evidence.
 
 **V4.1 hypothesis:** secure accounts, usage metering, private CI, a billing abstraction that does not yet imply live payment processing, and a Developer-plan pilot.
 
@@ -324,7 +341,7 @@ Roadmap labels are deliberate. None of these future capabilities should be prese
 
 **Enterprise cycle and compliance.** Sales, procurement, card or USDC payments, privacy, and tax obligations may take longer than expected. Mitigation: treat pricing and payment methods as hypotheses, obtain specialist review, and avoid revenue guarantees.
 
-**Arc dependency and network changes.** Network details, explorers, fees, and ecosystem priorities can change. Mitigation: versioned config, trusted evidence, read-only preflight, explicit mainnet NO-GO, and portable reports.
+**Arc dependency and network changes.** Network details, explorers, fees, and ecosystem priorities can change. Mitigation: versioned config, trusted evidence, read-only preflight, identity-bound production gates, rollback controls, and portable reports.
 
 **Immutable Registry V2.** No pause or upgrade exists. Mitigation: independent review, operational gating, limited publication, monitoring, migration planning, and readiness to use a future registry only when requirements justify it.
 
@@ -340,7 +357,7 @@ The following limitations are central, not footnotes:
 - VeilForge is not an audit or formal-verification replacement.
 - VeilForge does not guarantee confidentiality, vulnerability absence, or correctness outside the corpus.
 - Source remains local in the intended browser flow, but the browser, host, extensions, reports, history, screenshots, and exports remain security boundaries.
-- Arc mainnet is not deployed or enabled.
+- Arc Mainnet proof support is limited to chain `5042`, the verified Registry at `0x43D76BfCa31eAd660C5d804FEe20d14C0c577337`, and the documented production controls; other profiles fail closed.
 - Paid plans and production billing are not live.
 - Registry V2 is immutable, public, publisher-scoped, and operationally limited.
 - Testnet fees are historical observations, not mainnet estimates.
@@ -356,9 +373,9 @@ Grant funding would unlock measurable infrastructure, security, corpus, and onbo
 
 ## 24. Conclusion
 
-VeilForge V4 is a grant candidate and technical release candidate for deterministic Solidity privacy-readiness analysis. It provides compiler-backed evidence, explicit uncertainty, reproducible reports, developer and CI interfaces, a local browser workflow, and a verified Arc Testnet publication identity. The maintained benchmark and validation record are strong within their defined scope.
+VeilForge V4 is a grant candidate and technical release candidate for deterministic Solidity privacy-readiness analysis. It provides compiler-backed evidence, explicit uncertainty, reproducible reports, developer and CI interfaces, a local browser workflow, historical verified Arc Testnet evidence, and a separately verified Arc Mainnet production Registry and publication identity. The maintained benchmark and validation record are strong within their defined scope.
 
-The project also has clear boundaries. It does not replace an audit, guarantee confidentiality, claim universal detection, operate production billing, or claim Arc mainnet deployment. Browser coverage, compiler support, corpus breadth, Registry V2 operations, hosted security, and commercial conversion remain areas for continued work.
+The project also has clear boundaries. It does not replace an audit, guarantee confidentiality, claim universal detection, or operate production billing. Browser coverage, compiler support, corpus breadth, Registry V2 operations, hosted security, and commercial conversion remain areas for continued work. Mainnet availability remains limited to the exact verified profile, Registry, artifact provenance, and guarded wallet flow.
 
 The proposed grant stage converts those open areas into measurable milestones: secure hosted foundations, Developer and Team workflows, expanded Arc evidence, independent review, documentation, and operations. A coordinated release should proceed only after its separate release, browser, deployment, and human-review gates are satisfied.
 
@@ -366,7 +383,7 @@ The proposed grant stage converts those open areas into measurable milestones: s
 
 ## 25. Evidence Governance and Document Control
 
-A grant evidence package is useful only if reviewers can distinguish observed facts from plans and can trace important statements back to stable sources. VeilForge therefore treats evidence governance as part of the product boundary rather than as final-stage marketing work. This paper uses six statuses: shipped and verified; shipped with bounded limitations; roadmap; mainnet unresolved; commercial hypothesis; and not claimed. A capability can move between these categories only when new implementation and acceptance evidence exists.
+A grant evidence package is useful only if reviewers can distinguish observed facts from plans and can trace important statements back to stable sources. VeilForge therefore treats evidence governance as part of the product boundary rather than as final-stage marketing work. This paper uses six statuses: shipped and verified; shipped with bounded limitations; roadmap; Mainnet production verified; commercial hypothesis; and not claimed. A capability can move between these categories only when new implementation and acceptance evidence exists.
 
 ### 25.1 Claim lifecycle
 
@@ -400,7 +417,7 @@ Presentation-only changes can use a narrower path when protected sources remain 
 
 Three decisions should remain separate. **Evidence-package readiness** asks whether the documents are consistent and reviewable. **Coordinated V4 release readiness** asks whether code, browser support, versioning, manifests, rollout, rollback, and human approvals are complete. **Grant submission readiness** additionally asks whether public repository visibility, live links, team/contact information, requested amount, video, screenshots, legal review, and final editorial review are complete.
 
-Passing one decision does not automatically pass the others. A complete whitepaper can coexist with a production feature flag that remains false. A real Testnet transaction can coexist with mainnet NO-GO. A benchmark gate can pass while external submission assets remain TODO. This separation prevents documentation work from silently authorizing operational actions.
+Passing one decision does not automatically pass the others. Source defaults can remain fail-closed while the exact provenance-bound Mainnet production profile is enabled. Historical Testnet evidence can coexist with a separately verified Mainnet deployment. A benchmark gate can pass while external submission assets remain TODO. This separation prevents documentation work from silently authorizing operational actions.
 
 ## 26. Appendices
 
@@ -463,6 +480,10 @@ The Phase 5F-3 task intentionally does not rerun the full analyzer, benchmark, c
 - Publisher: `0x60B6333a0722bBEA39d4026b284Ae1E142bEb914`
 - Registry: `0x88B4055eaB061CEa9BdfeFF524f65ff461B5401d`
 - Report hash: `sha256:fce5ffa529c79d185a6013a362e25658020d1691550557d59173c9acc6a417ea`
+- Mainnet chain: `5042` (`0x13b2`)
+- Mainnet Registry: `0x43D76BfCa31eAd660C5d804FEe20d14C0c577337`
+- Mainnet deployment transaction: `0x2ad90b2d3c1343295cffbd770ae584bc6f086c0010aabc985ad1af1f8644789f`
+- Mainnet first controlled proof transaction: `0xc546c684ccc4a04ae2466926972a3c20d53c8b4616022f03240f4319d3de1693`
 
 ### Appendix D — Glossary
 
@@ -475,7 +496,7 @@ The Phase 5F-3 task intentionally does not rerun the full analyzer, benchmark, c
 **Incomplete:** An explicit state indicating that analysis could not justify a complete conclusion.  
 **Oracle corpus:** The maintained labeled benchmark cases used to measure the recorded release result.  
 **Proof envelope:** A verified off-chain structure binding report identity and publication inputs.  
-**Registry V2:** The immutable Arc Testnet report-anchor contract used by the demonstrated publication.  
+**Registry V2:** The immutable, network-specific report-anchor contract used by the historical Arc Testnet milestone and the separately deployed verified Arc Mainnet production profile.
 **SARIF:** Static Analysis Results Interchange Format for code-scanning integrations.  
 
 ### Appendix E — Document references

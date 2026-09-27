@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import { loadVerifiedWebProofPublication, loadWebProofState, saveWebProofState, webProofStorageKey, WEB_PROOF_STORAGE_PREFIX } from '../../../apps/web/v4/proof-persistence.js';
 import { ACCOUNT, TX_HASH, memoryStorage, readyProof } from './helpers.mjs';
 
+const INTENT_ID = `0x${'12'.repeat(32)}`;
+const receiptIdentity = (proof) => ({ chainId: proof.envelope.chainId, networkKey: proof.envelope.networkKey, registryAddress: proof.envelope.registryAddress, registryContractVersion: proof.envelope.registryContractVersion, transactionHash: TX_HASH, blockNumber: 42, publisher: ACCOUNT, projectId: proof.preflight.payload.projectId, sourceHash: proof.preflight.payload.sourceHash, reportHash: proof.envelope.reportHash, reportURI: proof.preflight.payload.reportURI, evidenceStatus: 'current-state-verified', status: 'confirmed', explorerUrl: `https://testnet.arcscan.app/tx/${TX_HASH}` });
+
 test('verified proof state round trips in a separate V4 namespace', async () => {
   const storage = memoryStorage(); const proof = await readyProof();
   const saved = await saveWebProofState(storage, { envelope: proof.envelope, preflight: proof.preflight, status: 'ready-to-publish' });
@@ -32,13 +35,13 @@ test('provider signer source AST IR and raw receipt cannot be persisted', async 
 
 test('pending transaction stores validated hash and safe explorer link', async () => {
   const storage = memoryStorage(); const proof = await readyProof();
-  const saved = await saveWebProofState(storage, { envelope: proof.envelope, preflight: proof.preflight, status: 'pending', transactionHash: TX_HASH, transactionSource: 'wallet-submission' });
+  const saved = await saveWebProofState(storage, { envelope: proof.envelope, preflight: proof.preflight, status: 'pending', intentId: INTENT_ID, transactionHash: TX_HASH, transactionSource: 'wallet-submission' });
   assert.equal(saved.explorerUrl, `https://testnet.arcscan.app/tx/${TX_HASH}`); assert.equal('transactionRequest' in saved.preflight, false);
 });
 
 test('confirmed receipt summary excludes raw receipt and remains serializable', async () => {
   const storage = memoryStorage(); const proof = await readyProof();
-  const summary = { chainId: 5_042_002, networkKey: proof.envelope.networkKey, registryAddress: proof.envelope.registryAddress, registryContractVersion: proof.envelope.registryContractVersion, transactionHash: TX_HASH, blockNumber: 42, publisher: ACCOUNT, reportHash: proof.envelope.reportHash, status: 'confirmed', explorerUrl: `https://testnet.arcscan.app/tx/${TX_HASH}` };
+  const summary = receiptIdentity(proof);
   const saved = await saveWebProofState(storage, { envelope: proof.envelope, status: 'confirmed', transactionHash: TX_HASH, transactionSource: 'provider-verified', receiptSummary: summary });
   assert.doesNotThrow(() => JSON.stringify(saved)); assert.doesNotMatch(JSON.stringify(saved), /"(?:logs|data|provider|rawReceipt)":/u);
   assert.deepEqual(await loadVerifiedWebProofPublication(storage, proof.envelope, ACCOUNT), saved);
@@ -53,7 +56,7 @@ test('mock or unverified transaction identity cannot become confirmed persistenc
 
 test('provider-verified already-published identity survives refresh and history reopen', async () => {
   const storage = memoryStorage(); const proof = await readyProof();
-  const identity = { chainId: proof.envelope.chainId, networkKey: proof.envelope.networkKey, registryAddress: proof.envelope.registryAddress, registryContractVersion: proof.envelope.registryContractVersion, transactionHash: TX_HASH, blockNumber: 42, publisher: ACCOUNT, reportHash: proof.envelope.reportHash, status: 'confirmed', explorerUrl: `https://testnet.arcscan.app/tx/${TX_HASH}` };
+  const identity = receiptIdentity(proof);
   await saveWebProofState(storage, { envelope: proof.envelope, status: 'already-published', transactionHash: TX_HASH, transactionSource: 'provider-verified', receiptSummary: identity });
   const reopened = await loadVerifiedWebProofPublication(storage, proof.envelope, ACCOUNT);
   assert.equal(reopened.status, 'already-published'); assert.deepEqual(reopened.receiptSummary, identity);

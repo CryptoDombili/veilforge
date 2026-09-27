@@ -69,7 +69,9 @@ test('release browser policy executes the real supported matrix on V4 tags', () 
   assert.match(workflow, /push:[\s\S]*?branches:[\s\S]*?- main/u);
 
   assert.match(workflow, /npm run build:grant-release/u);
-  assert.match(workflow, /node scripts\/smoke-web-v4-cross-browser\.mjs --browser=\$\{\{ matrix\.browser \}\}/u);
+  assert.match(workflow, /npm run build:arc-mainnet-production/u);
+  assert.match(workflow, /npm run verify:arc-mainnet-production/u);
+  assert.match(workflow, /node scripts\/smoke-web-v4-cross-browser\.mjs --artifact=dist-mainnet-production --browser=\$\{\{ matrix\.browser \}\}/u);
   assert.match(workflow, /edge:[\s\S]*?runs-on: windows-latest/u);
   assert.match(workflow, /npm run verify:grant-release-artifact/u);
   assert.match(workflow, /npm run smoke:grant-release-app/u);

@@ -1,16 +1,31 @@
-import { resolveProofNetwork } from '../../../packages/proof/v4/network.js';
+import { DEFAULT_PROOF_NETWORK, resolveProofNetwork } from '../../../packages/proof/v4/network.js';
 import { deepFreeze } from './canonical.js';
 
 const esc = (value) => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
 const short = (value) => value ? `${value.slice(0, 8)}…${value.slice(-6)}` : '—';
 
-export function deriveProofWalletUiState(wallet = {}, expectedChainId = null, { connecting = false, error = null } = {}) {
+export function proofNetworkDisplayName(profile) {
+  const networkKey = typeof profile === 'string' ? profile : profile?.networkKey;
+  if (networkKey === 'arc-mainnet') return 'Arc Mainnet';
+  if (networkKey === 'arc-testnet') return 'Arc Testnet';
+  return 'Arc network';
+}
+
+export function deriveProofWalletUiState(wallet = {}, expectedChainId = null, { connecting = false, error = null, networkKey = DEFAULT_PROOF_NETWORK } = {}) {
+  const network = resolveProofNetwork(networkKey);
+  const trustedChainId = expectedChainId ?? network.chainId;
+  if (network.enabled !== true || network.registryAddress === null || network.publishEnabled !== true) {
+    const registry = network.registryAddress ?? 'Not deployed / unavailable';
+    const registryStatus = network.deploymentStatus === 'verified' ? 'Verified' : 'Unavailable';
+    const readStatus = network.proofReadEnabled === true ? 'Enabled' : 'Disabled';
+    return deepFreeze({ state: 'network-unavailable', label: `${network.chainName} publishing disabled`, description: `${network.chainName} · Chain ${network.chainId} · Registry: ${registry} · Registry status: ${registryStatus} · Read: ${readStatus} · Publishing: Disabled`, disabled: true });
+  }
   if (connecting) return deepFreeze({ state: 'connecting', label: 'Connecting…', description: 'Waiting for the explicit wallet connection request.', disabled: true });
   if (error) return deepFreeze({ state: 'error', label: 'Retry wallet connection', description: String(error), disabled: wallet.providerAvailable !== true });
   if (wallet.providerAvailable !== true) return deepFreeze({ state: 'disconnected', label: 'Wallet unavailable', description: 'No injected EVM wallet provider is available.', disabled: true });
   if (wallet.connected !== true || !wallet.account) return deepFreeze({ state: 'disconnected', label: 'Connect Wallet', description: 'Connect a previously authorized wallet with an explicit click.', disabled: false });
-  if (wallet.chainId !== expectedChainId) return deepFreeze({ state: 'wrong-network', label: 'Wrong network · switch in wallet', description: `Connected account ${wallet.account}; switch manually to Arc Testnet chain ${expectedChainId}.`, disabled: true });
-  return deepFreeze({ state: 'connected', label: `Connected · ${short(wallet.account)}`, description: `Connected to Arc Testnet chain ${expectedChainId} as ${wallet.account}.`, disabled: true });
+  if (wallet.chainId !== trustedChainId) return deepFreeze({ state: 'wrong-network', label: 'Wrong network · switch in wallet', description: `Connected account ${wallet.account}; switch manually to ${network.chainName} chain ${trustedChainId}.`, disabled: true });
+  return deepFreeze({ state: 'connected', label: `Connected · ${short(wallet.account)}`, description: `Connected to ${network.chainName} chain ${trustedChainId} as ${wallet.account}.`, disabled: true });
 }
 
 export function proofSectionTemplate() {
@@ -48,6 +63,11 @@ export function createProofSummary(envelope) {
     chainId: network.chainId,
     registryAddress: network.registryAddress,
     registryContractVersion: network.registryContractVersion,
+    networkEnabled: network.enabled === true,
+    proofReadEnabled: network.proofReadEnabled === true,
+    publishEnabled: network.publishEnabled === true,
+    deploymentStatus: network.deploymentStatus,
+    explorerContractUrl: network.explorerBaseUrl && network.registryAddress ? `${network.explorerBaseUrl}/address/${network.registryAddress}` : null,
     envelopeVersion: envelope.envelopeVersion,
     canonicalPayloadDigest: envelope.canonicalPayloadDigest,
   });
@@ -56,7 +76,12 @@ export function createProofSummary(envelope) {
 export function renderProofSummary(envelope) {
   const summary = createProofSummary(envelope);
   const reasons = summary.incompleteReasonCodes.length ? `<div class="v4-warning"><b>Incomplete analysis</b><ul>${summary.incompleteReasonCodes.map((reason) => `<li>${esc(reason)}</li>`).join('')}</ul><p>Proof anchors analysis evidence; it does not certify confidentiality.</p></div>` : '';
-  return `<div class="v4-proof-ready"><span aria-hidden="true">✓</span><div><b>Verified report ready</b><small>${esc(summary.network)} · ${esc(summary.findingCount)} findings · ${summary.complete ? 'complete analysis' : 'incomplete analysis'}</small></div></div><dl class="v4-proof-grid v4-proof-primary"><div><dt>Report hash</dt><dd><code>${esc(summary.reportHash)}</code></dd></div><div><dt>Registry</dt><dd title="${esc(summary.registryAddress)}"><code>${esc(short(summary.registryAddress))}</code></dd></div></dl><details class="v4-proof-technical"><summary>Verification details</summary><dl class="v4-proof-grid"><div><dt>Schema / hash payload</dt><dd>${esc(summary.schemaVersion)} / ${esc(summary.hashPayloadVersion)}</dd></div><div><dt>Integrity</dt><dd>${esc(summary.integrity)}</dd></div><div><dt>Analysis</dt><dd>${summary.complete ? 'complete' : 'incomplete'}</dd></div><div><dt>Findings / policy</dt><dd>${esc(summary.findingCount)} / ${esc(summary.policyStatus)}</dd></div><div><dt>Compiler</dt><dd>${esc(summary.compilerVersion)}</dd></div><div><dt>Network / chain</dt><dd>${esc(summary.network)} / ${esc(summary.chainId)}</dd></div><div><dt>Registry V${esc(summary.registryContractVersion)}</dt><dd><code>${esc(short(summary.registryAddress))}</code></dd></div><div><dt>Envelope</dt><dd>${esc(summary.envelopeVersion)}</dd></div><div><dt>Canonical digest</dt><dd><code>${esc(summary.canonicalPayloadDigest)}</code></dd></div></dl></details>${reasons}`;
+  const registry = summary.registryAddress ?? 'Not deployed / unavailable';
+  const publishing = summary.publishEnabled ? 'Enabled' : 'Disabled';
+  const reading = summary.proofReadEnabled ? 'Enabled' : 'Disabled';
+  const registryStatus = summary.deploymentStatus === 'verified' ? 'Verified' : summary.deploymentStatus;
+  const explorer = summary.explorerContractUrl ? `<a href="${esc(summary.explorerContractUrl)}" target="_blank" rel="noopener noreferrer">View Registry contract</a>` : 'Unavailable';
+  return `<div class="v4-proof-ready"><span aria-hidden="true">✓</span><div><b>Verified report ready</b><small>${esc(summary.network)} · ${esc(summary.findingCount)} findings · ${summary.complete ? 'complete analysis' : 'incomplete analysis'}</small></div></div><dl class="v4-proof-grid v4-proof-primary"><div><dt>Report hash</dt><dd><code>${esc(summary.reportHash)}</code></dd></div><div><dt>Registry</dt><dd title="${esc(summary.registryAddress)}"><code>${esc(registry)}</code></dd></div></dl><details class="v4-proof-technical"><summary>Verification details</summary><dl class="v4-proof-grid"><div><dt>Schema / hash payload</dt><dd>${esc(summary.schemaVersion)} / ${esc(summary.hashPayloadVersion)}</dd></div><div><dt>Integrity</dt><dd>${esc(summary.integrity)}</dd></div><div><dt>Analysis</dt><dd>${summary.complete ? 'complete' : 'incomplete'}</dd></div><div><dt>Findings / policy</dt><dd>${esc(summary.findingCount)} / ${esc(summary.policyStatus)}</dd></div><div><dt>Compiler</dt><dd>${esc(summary.compilerVersion)}</dd></div><div><dt>Network / chain</dt><dd>${esc(summary.network)} / ${esc(summary.chainId)}</dd></div><div><dt>Registry V${esc(summary.registryContractVersion)}</dt><dd><code>${esc(registry)}</code></dd></div><div><dt>Registry status</dt><dd>${esc(registryStatus)}</dd></div><div><dt>Read</dt><dd>${esc(reading)}</dd></div><div><dt>Publishing</dt><dd>${esc(publishing)}</dd></div><div><dt>Explorer</dt><dd>${explorer}</dd></div><div><dt>Envelope</dt><dd>${esc(summary.envelopeVersion)}</dd></div><div><dt>Canonical digest</dt><dd><code>${esc(summary.canonicalPayloadDigest)}</code></dd></div></dl></details>${reasons}`;
 }
 
 export function renderPreflightChecks(preflight) {
@@ -72,22 +97,24 @@ export function renderPreflightChecks(preflight) {
 export function renderTransactionSummary(summary) {
   if (!summary) return '';
   const incompleteReasons = summary.complete === false ? ` · ${esc((summary.incompleteReasonCodes ?? []).join(', ') || 'reason unavailable')}` : '';
-  return `<dl class="v4-proof-grid v4-transaction-primary"><div><dt>Network</dt><dd>${esc(summary.networkName ?? 'Arc Testnet')}</dd></div><div><dt>From</dt><dd><code>${esc(short(summary.from))}</code></dd></div><div><dt>Trusted registry</dt><dd><code>${esc(short(summary.to))}</code></dd></div><div><dt>Report hash</dt><dd><code>${esc(short(summary.reportHash))}</code></dd></div><div><dt>Value</dt><dd>${esc(summary.value)}</dd></div><div><dt>Gas estimate</dt><dd>${esc(summary.gasEstimateStatus)}${summary.gasEstimate ? ` · ${esc(summary.gasEstimate)}` : ''}</dd></div><div><dt>Duplicate check</dt><dd>${summary.duplicate ? 'publisher record present' : 'not found'}</dd></div><div><dt>Method</dt><dd>${esc(summary.registryMethod)}</dd></div></dl><details class="v4-proof-technical"><summary>Advanced transaction details</summary><dl class="v4-proof-grid"><div><dt>Registry contract</dt><dd>V${esc(summary.registryContractVersion ?? '—')}</dd></div><div><dt>Chain ID</dt><dd>${esc(summary.chainId)}</dd></div><div><dt>Envelope / schema</dt><dd>${esc(summary.envelopeVersion ?? '—')} / ${esc(summary.schemaVersion ?? '—')}</dd></div><div><dt>Hash payload</dt><dd>${esc(summary.hashPayloadVersion ?? '—')}</dd></div><div><dt>Analysis</dt><dd>${summary.complete === false ? 'incomplete (acknowledged)' : 'complete'}${incompleteReasons}</dd></div><div><dt>Calldata</dt><dd><code>${esc(summary.calldataPreview ?? 'unavailable')}</code> · ${esc(summary.calldataBytes)} bytes</dd></div><div><dt>Calldata digest</dt><dd><code>${esc(short(summary.calldataDigest))}</code></dd></div><div><dt>Duplicate policy</dt><dd>${esc(summary.duplicatePolicy)}</dd></div><div><dt>Explorer destination</dt><dd>${esc(summary.explorerExpectation ?? 'available after a validated transaction hash')}</dd></div></dl></details>`;
+  return `<dl class="v4-proof-grid v4-transaction-primary"><div><dt>Network</dt><dd>${esc(summary.networkName ?? 'Arc network')}</dd></div><div><dt>From</dt><dd><code>${esc(short(summary.from))}</code></dd></div><div><dt>Trusted registry</dt><dd><code>${esc(short(summary.to))}</code></dd></div><div><dt>Project ID</dt><dd><code>${esc(short(summary.projectId))}</code></dd></div><div><dt>Report hash</dt><dd><code>${esc(short(summary.reportHash))}</code></dd></div><div><dt>Value</dt><dd>${esc(summary.value)}</dd></div><div><dt>Gas estimate</dt><dd>${esc(summary.gasEstimateStatus)}${summary.gasEstimate ? ` · ${esc(summary.gasEstimate)}` : ''}</dd></div><div><dt>Estimated fee</dt><dd>${esc(summary.estimatedFee ?? 'unavailable')}</dd></div><div><dt>Duplicate check</dt><dd>${summary.duplicate ? 'publisher record present' : 'not found'}</dd></div><div><dt>Method</dt><dd>${esc(summary.registryMethod)}</dd></div></dl><details class="v4-proof-technical"><summary>Advanced transaction details</summary><dl class="v4-proof-grid"><div><dt>Registry contract</dt><dd>V${esc(summary.registryContractVersion ?? '—')}</dd></div><div><dt>Chain ID</dt><dd>${esc(summary.chainId)}</dd></div><div><dt>Envelope / schema</dt><dd>${esc(summary.envelopeVersion ?? '—')} / ${esc(summary.schemaVersion ?? '—')}</dd></div><div><dt>Hash payload</dt><dd>${esc(summary.hashPayloadVersion ?? '—')}</dd></div><div><dt>Analysis</dt><dd>${summary.complete === false ? 'incomplete (acknowledged)' : 'complete'}${incompleteReasons}</dd></div><div><dt>Calldata</dt><dd><code>${esc(summary.calldataPreview ?? 'unavailable')}</code> · ${esc(summary.calldataBytes)} bytes</dd></div><div><dt>Calldata digest</dt><dd><code>${esc(short(summary.calldataDigest))}</code></dd></div><div><dt>Gas price</dt><dd>${esc(summary.gasPrice ?? 'unavailable')}</dd></div><div><dt>Estimated fee base units</dt><dd>${esc(summary.estimatedFeeBaseUnits ?? 'unavailable')}</dd></div><div><dt>Duplicate policy</dt><dd>${esc(summary.duplicatePolicy)}</dd></div><div><dt>Explorer destination</dt><dd>${esc(summary.explorerExpectation ?? 'available after a validated transaction hash')}</dd></div></dl></details>`;
 }
 
 export function renderProofExplorerLink(identity) {
   if (!identity?.explorerUrl || !identity?.transactionHash) return '';
   const transactionHash = String(identity.transactionHash).toLowerCase();
-  if (!/^0x[0-9a-f]{64}$/u.test(transactionHash) || identity.explorerUrl !== `https://testnet.arcscan.app/tx/${transactionHash}`) return '';
+  const network = resolveProofNetwork(identity.networkKey ?? DEFAULT_PROOF_NETWORK);
+  if (!network.explorerBaseUrl || !/^0x[0-9a-f]{64}$/u.test(transactionHash) || identity.explorerUrl !== `${network.explorerBaseUrl}/tx/${transactionHash}`) return '';
   return `<p class="v4-proof-explorer"><a href="${esc(identity.explorerUrl)}" target="_blank" rel="noopener noreferrer">View transaction ${esc(short(identity.transactionHash))}</a></p>`;
 }
 
-export function renderExistingTransactionVerification(result = {}) {
+export function renderExistingTransactionVerification(result = {}, networkKey = result.identity?.networkKey ?? DEFAULT_PROOF_NETWORK) {
+  const networkName = proofNetworkDisplayName(networkKey);
   if (!result.status || result.status === 'idle') return '';
-  if (result.status === 'verifying') return '<p><b>Verifying existing Arc Testnet transaction…</b></p>';
+  if (result.status === 'verifying') return `<p><b>Verifying existing ${esc(networkName)} transaction…</b></p>`;
   if (result.status === 'invalid-input' || result.status === 'error') return `<div class="v4-proof-reconcile-error"><b>${result.status === 'invalid-input' ? 'Invalid transaction hash' : 'Verification failed'}</b><p>${esc(result.message)}</p></div>`;
   const identity = result.identity;
-  if (result.status === 'report-hash-mismatch' && identity) return `<div class="v4-proof-reconcile-mismatch"><b>REPORT HASH MISMATCH</b><p>Existing Arc Testnet transaction verified, but its report hash does not match the currently open report.</p><dl class="v4-proof-grid"><div><dt>Transaction</dt><dd><code>${esc(short(identity.transactionHash))}</code></dd></div><div><dt>Block</dt><dd>${esc(identity.blockNumber)}</dd></div><div><dt>Publisher</dt><dd><code>${esc(short(identity.publisher))}</code></dd></div><div><dt>Registry</dt><dd><code>${esc(short(identity.registryAddress))}</code></dd></div><div><dt>Transaction report hash</dt><dd><code>${esc(short(identity.transactionReportHash))}</code></dd></div><div><dt>Current report hash</dt><dd><code>${esc(short(identity.currentReportHash))}</code></dd></div></dl>${renderProofExplorerLink(identity)}</div>`;
+  if (result.status === 'report-hash-mismatch' && identity) return `<div class="v4-proof-reconcile-mismatch"><b>REPORT HASH MISMATCH</b><p>Existing ${esc(networkName)} transaction verified, but its report hash does not match the currently open report.</p><dl class="v4-proof-grid"><div><dt>Transaction</dt><dd><code>${esc(short(identity.transactionHash))}</code></dd></div><div><dt>Block</dt><dd>${esc(identity.blockNumber)}</dd></div><div><dt>Publisher</dt><dd><code>${esc(short(identity.publisher))}</code></dd></div><div><dt>Registry</dt><dd><code>${esc(short(identity.registryAddress))}</code></dd></div><div><dt>Transaction report hash</dt><dd><code>${esc(short(identity.transactionReportHash))}</code></dd></div><div><dt>Current report hash</dt><dd><code>${esc(short(identity.currentReportHash))}</code></dd></div></dl>${renderProofExplorerLink(identity)}</div>`;
   if (result.status === 'verified' && identity) return `<div class="v4-proof-reconcile-success"><b>Existing transaction verified</b><p>The receipt, Registry V2 event and current report identity match. No new transaction is required.</p>${renderProofExplorerLink(identity)}</div>`;
   return '';
 }

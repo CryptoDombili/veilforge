@@ -1,0 +1,43 @@
+{
+  "manifestVersion": "veilforge.registry.candidate.v1",
+  "networkKey": "arc-mainnet",
+  "chainId": 5042,
+  "contractName": "VeilForgeReportRegistry",
+  "contractVersion": "2.0.0",
+  "compilerVersion": "0.8.24",
+  "compilerSettings": {
+    "optimizer": {
+      "enabled": false,
+      "runs": 200
+    },
+    "evmVersion": "shanghai",
+    "metadata": {
+      "bytecodeHash": "none",
+      "appendCBOR": false
+    },
+    "outputSelection": {
+      "*": {
+        "*": [
+          "abi",
+          "evm.bytecode.object",
+          "evm.deployedBytecode.object",
+          "evm.methodIdentifiers"
+        ]
+      }
+    }
+  },
+  "constructorArgs": [],
+  "transactionValue": "0x0",
+  "sourceDigest": "sha256:34f7fce947346237f3f651aa3d79a38e4b8b52f5cecaa5d4eb44794ffd5fa6f5",
+  "abiDigest": "sha256:ab6b794e1e18429bacc19c4b4ac130333995f83b9e0e9ebeadb59aa7c6b3ee17",
+  "creationBytecodeDigest": "sha256:85b7f7e9411d2e481b37cec7ec5af2062da46f979bbcd7e7179aaed8c76ae583",
+  "runtimeBytecodeDigest": "sha256:183a480c37821dbdf8212a0454313c45f0ea49569448e712b0524bbfafab145d",
+  "expectedEventTopics": {
+    "ReportPublished(bytes32,bytes32,bytes32,uint16,string,string,address)": "0x795d395ffb3e77bfca2c9f7b22a91924b5e2c5135a55b3c4b34395c7e677c7a9"
+  },
+  "sourceGitCommit": "bab87c891dde1f441e782cb884b54542b11fb002",
+  "registryAddress": null,
+  "transactionHash": null,
+  "blockNumber": null,
+  "deploymentStatus": "unresolved"
+}

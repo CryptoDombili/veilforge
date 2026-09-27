@@ -86,3 +86,12 @@ test('existing proof and connected wallet UI are provider-backed and stale state
   assert.match(source, /Already published/u);
   assert.match(source, /No new transaction required/u);
 });
+
+test('durable publication recovery is explicit and never presented as an automatic resend', () => {
+  const source = fs.readFileSync(new URL('../../../apps/web/v4/ui.js', import.meta.url), 'utf8');
+  assert.match(source, /coordinator\.recoverAfterReload\(attempt\.intentId\)/u);
+  assert.match(source, /recovery\.action === 'reconcile-known-transaction'/u);
+  assert.match(source, /recovery\.action === 'reconciliation-required'/u);
+  assert.match(source, /Do not retry; reconcile the wallet or transaction hash first\./u);
+  assert.doesNotMatch(source, /proof\.status === 'pending'/u);
+});
