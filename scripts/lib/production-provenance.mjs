@@ -3,6 +3,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
 
 const SOURCE_ROOTS = Object.freeze([
   '.github', 'action', 'apps', 'contracts', 'deployment', 'docs', 'examples',
@@ -77,7 +78,7 @@ function parseJsonBytes(bytes) {
   }
 }
 
-function vercelJsonMutationDiagnostic(root) {
+function analyzeVercelJsonMutation(root) {
   const committed = execFileSync('git', ['show', 'HEAD:vercel.json'], { cwd: root, encoding: 'buffer' });
   const workingPath = path.join(root, 'vercel.json');
   const working = fs.statSync(workingPath, { throwIfNoEntry: false })?.isFile()
@@ -86,22 +87,52 @@ function vercelJsonMutationDiagnostic(root) {
   const committedJson = parseJsonBytes(committed);
   const workingJson = parseJsonBytes(working);
   const semanticEquivalent = committedJson.parsed && workingJson.parsed
-    && JSON.stringify(normalizeJson(committedJson.value)) === JSON.stringify(normalizeJson(workingJson.value));
+    && isDeepStrictEqual(normalizeJson(committedJson.value), normalizeJson(workingJson.value));
   const sameBytes = committed.equals(working);
   const changedKeys = committedJson.parsed && workingJson.parsed
     ? collectJsonChanges(committedJson.value, workingJson.value)
     : [`$: ${committedJson.parsed ? 'valid-json' : 'invalid-json'} -> ${workingJson.parsed ? 'valid-json' : 'invalid-json'}`];
+  return Object.freeze({
+    committed,
+    working,
+    committedJson,
+    workingJson,
+    semanticEquivalent,
+    sameBytes,
+    changedKeys: Object.freeze(changedKeys),
+    formatOnly: semanticEquivalent && !sameBytes && changedKeys.length === 0,
+  });
+}
+
+function vercelJsonMutationDiagnostic(root) {
+  const mutation = analyzeVercelJsonMutation(root);
   return [
     'VERCEL_JSON_MUTATION:',
-    `committedSha256: ${sha256(committed)}`,
-    `workingSha256: ${sha256(working)}`,
-    `committedSize: ${committed.length}`,
-    `workingSize: ${working.length}`,
-    `semanticEquivalent: ${semanticEquivalent}`,
-    `formatOnly: ${semanticEquivalent && !sameBytes}`,
+    `committedSha256: ${sha256(mutation.committed)}`,
+    `workingSha256: ${sha256(mutation.working)}`,
+    `committedSize: ${mutation.committed.length}`,
+    `workingSize: ${mutation.working.length}`,
+    `semanticEquivalent: ${mutation.semanticEquivalent}`,
+    `formatOnly: ${mutation.formatOnly}`,
     'changedKeys:',
-    ...(changedKeys.length > 0 ? changedKeys.map((change) => `- ${change}`) : ['- none']),
+    ...(mutation.changedKeys.length > 0 ? mutation.changedKeys.map((change) => `- ${change}`) : ['- none']),
   ].join('\n');
+}
+
+function isAllowedVercelFormatOnlyMutation(root, { status, unstaged, staged, untracked }) {
+  const statusLines = String(status ?? '').split('\n').map((line) => line.trimEnd()).filter(Boolean);
+  const unstagedPaths = String(unstaged ?? '').split('\n').map((line) => line.trim()).filter(Boolean);
+  if (statusLines.length !== 1 || statusLines[0] !== ' M vercel.json'
+    || unstagedPaths.length !== 1 || unstagedPaths[0] !== 'vercel.json'
+    || String(staged ?? '').trim() || String(untracked ?? '').trim()) {
+    return false;
+  }
+  const mutation = analyzeVercelJsonMutation(root);
+  return mutation.committedJson.parsed
+    && mutation.workingJson.parsed
+    && mutation.semanticEquivalent
+    && mutation.changedKeys.length === 0
+    && mutation.formatOnly;
 }
 
 function dirtyCheckoutMessage(root, { status, unstaged, staged, untracked }) {
@@ -183,7 +214,10 @@ export function assertProductionCheckout(root, environment = process.env) {
   const unstaged = git(root, ['diff', '--name-only']).trimEnd();
   const staged = git(root, ['diff', '--cached', '--name-only']).trimEnd();
   const untracked = git(root, ['ls-files', '--others', '--exclude-standard']).trimEnd();
-  if (dirty) throw new Error(dirtyCheckoutMessage(root, { status: dirty, unstaged, staged, untracked }));
+  const dirtyState = { status: dirty, unstaged, staged, untracked };
+  if (dirty && !isAllowedVercelFormatOnlyMutation(root, dirtyState)) {
+    throw new Error(dirtyCheckoutMessage(root, dirtyState));
+  }
 
   const ignored = git(root, ['ls-files', '--others', '--ignored', '--exclude-standard', '--', ...SOURCE_ROOTS])
     .split('\n').map((item) => item.trim()).filter(Boolean);

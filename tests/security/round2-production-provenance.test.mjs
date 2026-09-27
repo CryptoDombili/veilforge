@@ -15,14 +15,20 @@ function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'veilforge-provenance-test-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.mkdirSync(path.join(root, 'apps', 'web'), { recursive: true });
+  fs.mkdirSync(path.join(root, 'scripts'), { recursive: true });
   fs.writeFileSync(path.join(root, '.gitignore'), 'node_modules/\n.vercel/\ndist-mainnet-production/\n*.ignored.js\n');
   fs.writeFileSync(path.join(root, 'apps', 'web', 'app.js'), 'export const trusted = true;\n');
+  fs.writeFileSync(path.join(root, 'scripts', 'trusted.mjs'), 'export const trusted = true;\n');
   fs.writeFileSync(path.join(root, 'package-lock.json'), '{"lockfileVersion":3}\n');
   fs.writeFileSync(path.join(root, 'RELEASE_MANIFEST.sha256'), 'trusted  apps/web/app.js\n');
   fs.writeFileSync(path.join(root, 'vercel.json'), `${JSON.stringify({
     installCommand: 'npm ci --ignore-scripts',
     buildCommand: 'npm run build:arc-mainnet-production',
     outputDirectory: 'dist-mainnet-production',
+    headers: [{
+      source: '/(.*)',
+      headers: [{ key: 'Content-Security-Policy', value: "default-src 'self'" }],
+    }],
   }, null, 2)}\n`);
   git(root, ['init', '--initial-branch=main']);
   git(root, ['config', 'user.email', 'security-test@example.invalid']);
@@ -77,6 +83,10 @@ test('AUDIT-ROUND2-HIGH-PROVENANCE-01 rejects dirty tracked and untracked produc
         && !error.message.includes('diagnostic-must-not-print-file-content'),
     );
   });
+  await t.test('dirty tracked scripts source', (child) => {
+    const root = fixture(child); fs.appendFileSync(path.join(root, 'scripts', 'trusted.mjs'), '// rejected\n');
+    assert.throws(() => assertProductionCheckout(root), /Production checkout dirty:\n M scripts\/trusted\.mjs/u);
+  });
   await t.test('untracked override', (child) => {
     const root = fixture(child); fs.writeFileSync(path.join(root, 'apps', 'web', 'override.js'), 'throw new Error();\n');
     assert.throws(() => assertProductionCheckout(root), /Production checkout dirty:\n\?\? apps\/web\/override\.js/u);
@@ -111,37 +121,103 @@ test('AUDIT-ROUND2-HIGH-PROVENANCE-01 rejects dirty tracked and untracked produc
   });
 });
 
-test('AUDIT-ROUND5-PROVENANCE-DIAGNOSTICS reports only safe vercel.json mutation metadata', async (t) => {
-  await t.test('format-only mutation reports hashes, sizes and semantic equivalence without full content', (child) => {
+test('AUDIT-ROUND5-PROVENANCE-DIAGNOSTICS safely tolerates only format-only vercel.json normalization', async (t) => {
+  await t.test('clean vercel.json passes', (child) => {
+    const root = fixture(child);
+    assert.doesNotThrow(() => assertProductionCheckout(root));
+  });
+
+  await t.test('same JSON with whitespace changed passes', (child) => {
     const root = fixture(child);
     const committed = fs.readFileSync(path.join(root, 'vercel.json'), 'utf8');
     const formatted = `${JSON.stringify(JSON.parse(committed), null, 4)}\r\n`;
     fs.writeFileSync(path.join(root, 'vercel.json'), formatted);
-    assert.throws(
-      () => assertProductionCheckout(root),
-      (error) => /VERCEL_JSON_MUTATION:/u.test(error.message)
-        && /committedSha256: sha256:[0-9a-f]{64}/u.test(error.message)
-        && /workingSha256: sha256:[0-9a-f]{64}/u.test(error.message)
-        && /committedSize: \d+/u.test(error.message)
-        && /workingSize: \d+/u.test(error.message)
-        && /semanticEquivalent: true/u.test(error.message)
-        && /formatOnly: true/u.test(error.message)
-        && /changedKeys:\n- none/u.test(error.message)
-        && !error.message.includes(committed.trim()),
-    );
+    assert.notEqual(formatted, committed);
+    assert.doesNotThrow(() => assertProductionCheckout(root));
   });
 
-  await t.test('scalar mutation reports only changed key path and non-secret old/new values', (child) => {
+  await t.test('same JSON with property ordering changed passes', (child) => {
     const root = fixture(child);
     const config = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'));
-    config.installCommand = 'npm install';
+    const reordered = {
+      headers: config.headers,
+      outputDirectory: config.outputDirectory,
+      buildCommand: config.buildCommand,
+      installCommand: config.installCommand,
+    };
+    fs.writeFileSync(path.join(root, 'vercel.json'), `${JSON.stringify(reordered)}\n`);
+    assert.doesNotThrow(() => assertProductionCheckout(root));
+  });
+
+  for (const [label, key, value] of [
+    ['buildCommand changed', 'buildCommand', 'npm run build'],
+    ['installCommand changed', 'installCommand', 'npm install'],
+    ['outputDirectory changed', 'outputDirectory', 'dist'],
+  ]) {
+    await t.test(`${label} fails`, (child) => {
+      const root = fixture(child);
+      const config = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'));
+      config[key] = value;
+      fs.writeFileSync(path.join(root, 'vercel.json'), `${JSON.stringify(config, null, 2)}\n`);
+      assert.throws(
+        () => assertProductionCheckout(root),
+        (error) => /semanticEquivalent: false/u.test(error.message)
+          && /formatOnly: false/u.test(error.message)
+          && error.message.includes(`- ${key}:`),
+      );
+    });
+  }
+
+  await t.test('CSP header changed fails', (child) => {
+    const root = fixture(child);
+    const config = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'));
+    config.headers[0].headers[0].value = "default-src 'none'";
     fs.writeFileSync(path.join(root, 'vercel.json'), `${JSON.stringify(config, null, 2)}\n`);
     assert.throws(
       () => assertProductionCheckout(root),
       (error) => /semanticEquivalent: false/u.test(error.message)
         && /formatOnly: false/u.test(error.message)
-        && error.message.includes('- installCommand: "npm ci --ignore-scripts" -> "npm install"'),
+        && error.message.includes('- headers[0].headers[0].value:'),
     );
+  });
+
+  await t.test('arbitrary new JSON key fails', (child) => {
+    const root = fixture(child);
+    const config = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'));
+    config.untrustedOverride = true;
+    fs.writeFileSync(path.join(root, 'vercel.json'), `${JSON.stringify(config, null, 2)}\n`);
+    assert.throws(
+      () => assertProductionCheckout(root),
+      (error) => /semanticEquivalent: false/u.test(error.message)
+        && error.message.includes('- untrustedOverride: [missing] -> true'),
+    );
+  });
+
+  await t.test('invalid working vercel.json fails', (child) => {
+    const root = fixture(child);
+    fs.writeFileSync(path.join(root, 'vercel.json'), '{ invalid json\n');
+    assert.throws(
+      () => assertProductionCheckout(root),
+      (error) => /semanticEquivalent: false/u.test(error.message)
+        && /formatOnly: false/u.test(error.message)
+        && /\$: valid-json -> invalid-json/u.test(error.message),
+    );
+  });
+
+  await t.test('format-only vercel.json plus another dirty source file fails', (child) => {
+    const root = fixture(child);
+    const config = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'));
+    fs.writeFileSync(path.join(root, 'vercel.json'), `${JSON.stringify(config, null, 4)}\r\n`);
+    fs.appendFileSync(path.join(root, 'apps', 'web', 'app.js'), '// still rejected\n');
+    assert.throws(() => assertProductionCheckout(root), / M apps\/web\/app\.js/u);
+  });
+
+  await t.test('staged format-only vercel.json fails', (child) => {
+    const root = fixture(child);
+    const config = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'));
+    fs.writeFileSync(path.join(root, 'vercel.json'), `${JSON.stringify(config, null, 4)}\r\n`);
+    git(root, ['add', 'vercel.json']);
+    assert.throws(() => assertProductionCheckout(root), /Production checkout dirty/u);
   });
 
   await t.test('secret-like scalar mutation is redacted', (child) => {
