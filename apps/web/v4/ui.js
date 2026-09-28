@@ -1,6 +1,6 @@
 import { createV4WebExport, verifyV4WebExport } from './export-adapter.js';
 import { browserFilesToScanInput, canonicalSourcePath } from './input-adapter.js';
-import { bindV4DropZone, mergeSupportedBrowserFiles } from './folder-drop.js';
+import { bindV4DropZone, selectSupportedBrowserFiles } from './folder-drop.js';
 import { clearV4Reports, listV4Reports, readV3Storage, removeV4Report, saveV4Report } from './persistence.js';
 import { verifyV4Report } from './report-adapter.js';
 import { createWorkerClient } from './runtime/worker-client.js';
@@ -44,11 +44,6 @@ const locationText = (location) => location ? `${location.sourcePath}:${location
 const slug = (value) => String(value || 'veilforge-project').toLowerCase().replace(/[^a-z0-9]+/gu, '-').replace(/^-|-$/gu, '') || 'veilforge-project';
 
 export function v4SourceDisplayPath(file) {
-  const normalizedPath = String(file?.path || '').trim();
-  if (normalizedPath) {
-    try { return canonicalSourcePath(normalizedPath); }
-    catch { return normalizedPath; }
-  }
   const browserRelativePath = String(file?.webkitRelativePath || file?.relativePath || '').trim();
   if (!browserRelativePath) return String(file?.name ?? '');
   try {
@@ -809,19 +804,19 @@ export async function initV4Ui(options = {}) {
     renderProof(); updateWorkflow(); setBusy(false);
   };
   const acceptFiles = (files) => {
-    try {
-      const merged = mergeSupportedBrowserFiles(state.files, files);
-      state.files = [...merged];
-      state.bytes = state.files.reduce((total, file) => total + file.size, 0);
-      state.inputError = null;
-      invalidateCurrentReportForFileChange();
-      renderFiles();
-      setStatus('Project files updated', `${state.files.length} safe project file${state.files.length === 1 ? '' : 's'} selected. Run a new scan to verify this source set.`);
-    } catch (error) {
-      state.inputError = null;
-      renderFiles();
-      setStatus('Input rejected', uiErrorMessage(error), 'error');
-    }
+    const selected = selectSupportedBrowserFiles(files);
+    const bytes = selected.reduce((total, file) => total + Number(file?.size ?? 0), 0);
+    const paths = selected.map((file) => file.webkitRelativePath || file.relativePath || file.name);
+    const folded = new Set();
+    const collision = paths.some((path) => { const key = String(path).toLowerCase(); if (folded.has(key)) return true; folded.add(key); return false; });
+    const inputError = !selected.length ? 'Choose at least one supported Solidity source.' : collision ? 'Duplicate or case-folding-colliding source paths are not accepted.' : selected.length > WEB_V4_LIMITS.maxFileCount || bytes > WEB_V4_LIMITS.maxProjectBytes || selected.some((file) => file.size > WEB_V4_LIMITS.maxPerFileBytes) ? 'The selected files exceed the browser safety limit.' : null;
+    if (inputError) { setStatus('Input rejected', inputError, 'error'); return; }
+    state.files = selected;
+    state.bytes = bytes;
+    state.inputError = null;
+    invalidateCurrentReportForFileChange();
+    renderFiles();
+    setStatus('Project files updated', `${state.files.length} safe project file${state.files.length === 1 ? '' : 's'} selected. Run a new scan to verify this source set.`);
   };
   const runScan = async () => {
     if (!state.files.length) { setStatus('Solidity sources required', 'Choose one or more .sol files before scanning.', 'error'); return; }

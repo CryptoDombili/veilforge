@@ -4,7 +4,6 @@ import { normalizeWebV4Limits } from './runtime/limits.js';
 import { parseRemappingsText, resolveVirtualProject } from '../../../packages/analyzer/src/v4/frontend/project-resolver.js';
 
 const encoder = new TextEncoder();
-const normalizedBrowserSourcePaths = new WeakMap();
 
 export function canonicalSourcePath(value) {
   const path = String(value ?? '').replaceAll('\\', '/');
@@ -12,37 +11,6 @@ export function canonicalSourcePath(value) {
   const parts = path.split('/');
   if (parts.some((part) => !part || part === '.' || part === '..')) throw webV4Error('WEB_V4_INPUT_INVALID', 'Source path traversal is not allowed.');
   return parts.join('/');
-}
-
-export function sourcePathForBrowserFile(file) {
-  const rememberedPath = file && typeof file === 'object' ? normalizedBrowserSourcePaths.get(file) : null;
-  const webkitRelativePath = String(file?.webkitRelativePath ?? '').trim();
-  const relativePath = String(file?.relativePath ?? '').trim();
-  const name = String(file?.name ?? '').trim();
-  try {
-    return canonicalSourcePath(rememberedPath ?? (webkitRelativePath || relativePath || name));
-  } catch {
-    throw webV4Error('WEB_V4_INPUT_INVALID', 'Source path must be a safe project-relative path.', { reasonCode: 'INVALID_PATH' });
-  }
-}
-
-export function normalizedBrowserFile(file, path) {
-  const safePath = canonicalSourcePath(path);
-  const declaredSize = Number(file?.size ?? 0);
-  const value = {
-    name: safePath.split('/').at(-1),
-    path: safePath,
-    size: Number.isFinite(declaredSize) && declaredSize >= 0 ? declaredSize : 0,
-    type: String(file?.type ?? ''),
-    lastModified: Number(file?.lastModified ?? 0),
-  };
-  if (file?.isSymbolicLink === true) value.isSymbolicLink = true;
-  if (file?.symlink === true) value.symlink = true;
-  if (typeof file?.arrayBuffer === 'function') value.arrayBuffer = () => file.arrayBuffer();
-  else if (typeof file?.text === 'function') value.text = () => file.text();
-  else if (typeof file?.content === 'string') value.content = file.content;
-  normalizedBrowserSourcePaths.set(value, safePath);
-  return Object.freeze(value);
 }
 
 async function fileBytes(file) {
@@ -67,16 +35,15 @@ function plainClone(value) {
 }
 
 export async function browserFilesToScanInput(files, options = {}) {
-  if (!Array.isArray(files) || !files.length) throw webV4Error('WEB_V4_INPUT_INVALID', 'At least one browser file is required.', { reasonCode: 'UNSUPPORTED_FILE' });
+  if (!Array.isArray(files) || !files.length) throw webV4Error('WEB_V4_INPUT_INVALID', 'At least one browser file is required.');
   const limits = normalizeWebV4Limits(options.limits);
-  if (files.length > limits.maxFileCount) throw webV4Error('WEB_V4_INPUT_LIMIT', 'Browser file count exceeds the safe limit.', { reasonCode: 'FILE_COUNT_LIMIT', limit: limits.maxFileCount });
-  const declaredPaths = files.map((file) => String(file?.webkitRelativePath || file?.relativePath || '').trim());
-  const folderInputs = declaredPaths.map((value) => value && sourcePathForBrowserFile({ name: value })).filter((value) => value?.includes('/'));
-  if (folderInputs.length && folderInputs.length !== files.length) throw webV4Error('WEB_V4_INPUT_INVALID', 'Folder input cannot be mixed with files from another source root.', { reasonCode: 'INVALID_PATH' });
+  if (files.length > limits.maxFileCount) throw webV4Error('WEB_V4_INPUT_LIMIT', 'Browser file count exceeds the safe limit.', { limit: limits.maxFileCount });
+  const folderInputs = files.map((file) => String(file?.webkitRelativePath || file?.relativePath || '').trim()).filter(Boolean);
+  if (folderInputs.length && folderInputs.length !== files.length) throw webV4Error('WEB_V4_INPUT_INVALID', 'Folder input cannot be mixed with files from another source root.');
   let selectedRoot = null;
   if (folderInputs.length) {
-    const roots = new Set(folderInputs.map((value) => value.split('/')[0]));
-    if (roots.size !== 1) throw webV4Error('WEB_V4_INPUT_INVALID', 'Folder input must have one consistent selected root.', { reasonCode: 'INVALID_PATH' });
+    const roots = new Set(folderInputs.map((value) => canonicalSourcePath(value).split('/')[0]));
+    if (roots.size !== 1 || folderInputs.some((value) => canonicalSourcePath(value).split('/').length < 2)) throw webV4Error('WEB_V4_INPUT_INVALID', 'Folder input must have one consistent selected root.');
     selectedRoot = [...roots][0];
   }
   const entries = [];
@@ -84,17 +51,17 @@ export async function browserFilesToScanInput(files, options = {}) {
   const folded = new Map();
   let projectBytes = 0;
   for (const file of files) {
-    const suppliedPath = sourcePathForBrowserFile(file);
+    const suppliedPath = canonicalSourcePath(file.webkitRelativePath || file.relativePath || file.name);
     const path = selectedRoot ? canonicalSourcePath(suppliedPath.slice(selectedRoot.length + 1)) : suppliedPath;
     const key = path.toLowerCase();
-    if (folded.has(key)) throw webV4Error('WEB_V4_INPUT_INVALID', folded.get(key) === path ? 'Duplicate source path.' : 'Case-folding source path collision.', { reasonCode: 'PATH_COLLISION' });
+    if (folded.has(key)) throw webV4Error('WEB_V4_INPUT_INVALID', folded.get(key) === path ? 'Duplicate source path.' : 'Case-folding source path collision.');
     if (typeof file?.size === 'number' && Number.isFinite(file.size) && file.size >= 0 && file.size > limits.maxPerFileBytes) {
-      throw webV4Error('WEB_V4_INPUT_LIMIT', 'A source file exceeds the safe byte limit.', { reasonCode: 'FILE_TOO_LARGE', limit: limits.maxPerFileBytes });
+      throw webV4Error('WEB_V4_INPUT_LIMIT', 'A source file exceeds the safe byte limit.', { path, limit: limits.maxPerFileBytes });
     }
     const bytes = await fileBytes(file);
-    if (bytes.byteLength > limits.maxPerFileBytes) throw webV4Error('WEB_V4_INPUT_LIMIT', 'A source file exceeds the safe byte limit.', { reasonCode: 'FILE_TOO_LARGE', limit: limits.maxPerFileBytes });
+    if (bytes.byteLength > limits.maxPerFileBytes) throw webV4Error('WEB_V4_INPUT_LIMIT', 'A source file exceeds the safe byte limit.', { path, limit: limits.maxPerFileBytes });
     projectBytes += bytes.byteLength;
-    if (projectBytes > limits.maxProjectBytes) throw webV4Error('WEB_V4_INPUT_LIMIT', 'Project sources exceed the safe byte limit.', { reasonCode: 'PROJECT_TOO_LARGE', limit: limits.maxProjectBytes });
+    if (projectBytes > limits.maxProjectBytes) throw webV4Error('WEB_V4_INPUT_LIMIT', 'Project sources exceed the safe byte limit.', { limit: limits.maxProjectBytes });
     folded.set(key, path);
     const content = decodeSource(bytes);
     if (path.toLowerCase().endsWith('/remappings.txt') || path.toLowerCase() === 'remappings.txt') remappingFiles.push({ path, content });

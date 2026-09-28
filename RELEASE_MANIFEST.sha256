@@ -46,9 +46,9 @@ ed3992a67ffe8299d21cb23043aad78496d919dfbc4f83f1832f821efba6286f  apps/web/lib/u
 b15d8b6fd34f1c89cd7431789245499afbf51df0a38a87af8156217069a823a6  apps/web/v4/errors.js
 2f3ec606823e4f83637efc091145d0c9d2fc69fc3bff7236f3278f931fc43feb  apps/web/v4/export-adapter.js
 67f5a86489a68fd4db84841850994724b6d004bb8d8a1e22baec4a597b30293a  apps/web/v4/feature-flags.js
-f8d44021878b91a4917f3ccd5e4d09a3924787f6de4fec5617ba2b6d1c5159de  apps/web/v4/folder-drop.js
+1a69546832893d192008b6179ffd795888415af96017bed096ed591776609a93  apps/web/v4/folder-drop.js
 e96bae954b56638565d8b328b2ed1e2357bd9e34d764346a617aa438835faa91  apps/web/v4/index.js
-39a9a9fe1add3d1f662986adb18b35154887c0ad28f9c62ff94fa294b6847936  apps/web/v4/input-adapter.js
+267053817b40a3ae7fa1f121fb5acc2d5522827d3d41b0b46a7a8d2abd19f2f8  apps/web/v4/input-adapter.js
 6e23d0b4dddd6ae9097dc16fd2794a39d1562a6a424c0d75775266c5ce64f91e  apps/web/v4/persistence.js
 a3372f75fcc5e93716d2639d149c85cdda77d753aaebfdd0c41a2c9143109bb4  apps/web/v4/proof-adapter.js
 c9748e5b102beb3e4a5d640fcffe95fa10fd5c6d9b3077c1bbaeb6531b24d1e9  apps/web/v4/proof-connect-boundary.js
@@ -77,7 +77,7 @@ eacd09cfe24e9b99a51fab6324ffe2eca15531c18eb362084a50f41d4c16bbb1  apps/web/v4/ru
 6bc8034acae72ca532282af49bacac63a9c4db19977172341bb34ab1cb47d6d5  apps/web/v4/runtime/worker-client.js
 257646a4b67b128dc85ceba25b178fea2dcbe6aef02aa3281115e4ba33e8050b  apps/web/v4/runtime/worker-entry.js
 d3b46f4f5318609f084c4810c27189395bf00681218f98eab51cc858c0a4d689  apps/web/v4/runtime/worker-runtime.js
-bec913031df4ecc77dddefe0bb7dd2b63400dd3eec6b906df860e6bdd24592bf  apps/web/v4/ui.js
+b2b3b530bad084ad69c878971a8099097a045cac486db87b50d8a558c7d3746d  apps/web/v4/ui.js
 f3a11207d7c1b78935119d22a5885f0f0237d6456f7cb07c41e4cd97040e1ff4  apps/web/v4/version.js
 ff6619f89c2cd268a788627290604b83c32c140830a89f4e6293e229fff84ae3  apps/web/v4/view-models.js
 99598c9e3c1dff108a5498f351b8c2e0b23257364d88e2fb9da0e650ccb6f120  apps/web/v4/wallet-provider-discovery.js
@@ -881,7 +881,7 @@ c9f382db4147b12dcc91f72aef0d88f2e4282ca34fd85f8f5dd79c23b4744a20  tests/security
 fcffab7d5ba6fcace64134eed573148b79c336cb0031376250d4a8fe4f6d1538  tests/spec/identity-vectors.test.mjs
 18420395f52cd8144e4ea3f7ccee54d70a52b25269738869d078d2ad34f07afd  tests/spec/product-claims.test.mjs
 f29d2f12b4c141082b8007fe2d139111add40b291c360848e777ef426bed7378  tests/spec/report-hash-vectors.test.mjs
-b03f0659b0a092dd990246b85867a76bc91e457ee7be7ef124d9a8368af769a9  tests/v4-additive-input.test.mjs
+752fc11bcf3bdd410706d3e524742c936048b0343ff794bbd380c33aaa5a6a9c  tests/v4-additive-input.test.mjs
 b1b300507a7d362070645ec48fbd403b841f0da3f56c3f4a537d143359096d26  tests/v4-post-scan-boundary.test.mjs
 25d1bb9d73822a22a6c6d34939d0092b93b4dd6efd8e9f19d82dd35d49dbe496  tests/v4-worker-csp.test.mjs
 642810c52a3fc4a1091e670d0ebde6b2ed06a144f62124db94d9c1018b26cfba  tests/v4/action/action.test.mjs
