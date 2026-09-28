@@ -11,6 +11,47 @@ export function selectSupportedBrowserFiles(files) {
   return [...(files ?? [])].filter((file) => supportedName(file?.name));
 }
 
+export function mergeSupportedBrowserFiles(existing, incoming) {
+  const selected = [...(incoming ?? [])];
+  if (!selected.length || selectSupportedBrowserFiles(selected).length !== selected.length) throw webV4Error('WEB_V4_INPUT_INVALID', 'Only Solidity files and remappings.txt can be dropped.');
+  if (existing.some((file) => file.webkitRelativePath || file.relativePath) || selected.some((file) => file.webkitRelativePath || file.relativePath)) throw webV4Error('WEB_V4_INPUT_INVALID', 'Folder sources cannot be mixed with dropped files.');
+  const merged = [...existing];
+  const paths = new Map(merged.map((file, index) => {
+    const path = canonicalSourcePath(file.name);
+    return [path.toLowerCase(), { path, index }];
+  }));
+  for (const file of selected) {
+    const path = canonicalSourcePath(file.name);
+    if (path.includes('/')) throw webV4Error('WEB_V4_INPUT_INVALID', 'Dropped files must have top-level names.');
+    const key = path.toLowerCase();
+    const previous = paths.get(key);
+    if (previous && previous.path !== path) throw webV4Error('WEB_V4_INPUT_INVALID', 'Case-folding source path collision.');
+    if (previous) merged[previous.index] = file;
+    else { paths.set(key, { path, index: merged.length }); merged.push(file); }
+  }
+  return merged;
+}
+
+export async function collectOrdinaryDroppedBrowserFiles(dataTransfer) {
+  const items = [...(dataTransfer?.items ?? [])];
+  for (const item of items) {
+    if (item.kind !== 'file') throw webV4Error('WEB_V4_INPUT_INVALID', 'Only local Solidity files can be dropped.');
+    const entry = typeof item.webkitGetAsEntry === 'function' ? item.webkitGetAsEntry() : null;
+    if (entry?.isDirectory) throw webV4Error('WEB_V4_DIRECTORY_DROP_UNSUPPORTED', 'Folder drag-and-drop is not supported. Use the Folder button.');
+    if (!entry && typeof item.getAsFileSystemHandle === 'function') {
+      const handle = await item.getAsFileSystemHandle();
+      if (handle?.kind === 'directory') throw webV4Error('WEB_V4_DIRECTORY_DROP_UNSUPPORTED', 'Folder drag-and-drop is not supported. Use the Folder button.');
+    }
+    if (!entry && typeof item.getAsFile === 'function' && !item.getAsFile()) throw webV4Error('WEB_V4_DIRECTORY_DROP_UNSUPPORTED', 'Folder drag-and-drop is not supported. Use the Folder button.');
+  }
+  const files = [...(dataTransfer?.files ?? [])];
+  if (!files.length) throw webV4Error('WEB_V4_INPUT_INVALID', 'The drop did not contain local Solidity files.');
+  if (files.some((file) => file.isSymbolicLink === true || file.symlink === true || file.type === 'inode/symlink')) throw webV4Error('WEB_V4_INPUT_INVALID', 'File aliases and symbolic links are not accepted.');
+  if (files.some((file) => file.webkitRelativePath || file.relativePath)) throw webV4Error('WEB_V4_DIRECTORY_DROP_UNSUPPORTED', 'Folder drag-and-drop is not supported. Use the Folder button.');
+  if (selectSupportedBrowserFiles(files).length !== files.length) throw webV4Error('WEB_V4_INPUT_INVALID', 'Only Solidity files and remappings.txt can be dropped.');
+  return files;
+}
+
 function droppedFile(file, relativePath) {
   const path = canonicalSourcePath(relativePath);
   return Object.freeze({
@@ -116,12 +157,12 @@ export async function collectDroppedBrowserFiles(dataTransfer, { limits = WEB_V4
   return output;
 }
 
-export function bindV4DropZone(dropZone, { onFiles, onError, limits = WEB_V4_LIMITS }) {
+export function bindV4DropZone(dropZone, { onFiles, onError }) {
   const activate = (event) => { event.preventDefault(); dropZone.classList.add('dragging'); if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy'; };
   const leave = (event) => { event.preventDefault(); if (!event.relatedTarget || !dropZone.contains(event.relatedTarget)) dropZone.classList.remove('dragging'); };
   const drop = async (event) => {
     event.preventDefault(); dropZone.classList.remove('dragging');
-    try { await onFiles(await collectDroppedBrowserFiles(event.dataTransfer, { limits })); }
+    try { await onFiles(await collectOrdinaryDroppedBrowserFiles(event.dataTransfer)); }
     catch (error) { await onError(error); }
     finally { dropZone.classList.remove('dragging'); }
   };

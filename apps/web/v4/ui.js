@@ -1,6 +1,6 @@
 import { createV4WebExport, verifyV4WebExport } from './export-adapter.js';
 import { browserFilesToScanInput, canonicalSourcePath } from './input-adapter.js';
-import { selectSupportedBrowserFiles } from './folder-drop.js';
+import { bindV4DropZone, mergeSupportedBrowserFiles, selectSupportedBrowserFiles } from './folder-drop.js';
 import { clearV4Reports, listV4Reports, readV3Storage, removeV4Report, saveV4Report } from './persistence.js';
 import { verifyV4Report } from './report-adapter.js';
 import { createWorkerClient } from './runtime/worker-client.js';
@@ -126,7 +126,7 @@ export function v4ErrorMessage(error, profile = { networkKey: DEFAULT_WEB_NETWOR
   const messages = {
     WEB_V4_INPUT_INVALID: 'Choose valid UTF-8 Solidity files with safe project-relative paths.',
     WEB_V4_INPUT_LIMIT: 'The selected project exceeds the browser safety limit (100 files, 512 KiB per file, 1 MiB total).',
-    WEB_V4_DIRECTORY_DROP_UNSUPPORTED: 'This browser cannot read a dropped folder safely. Use the Folder picker instead.',
+    WEB_V4_DIRECTORY_DROP_UNSUPPORTED: 'Folder drag-and-drop is not supported. Use the Folder button.',
     WEB_V4_COMPILE_FAILED: 'Solidity compilation failed under exact solc 0.8.24. Fix the source diagnostics and retry.',
     WEB_V4_PROTOCOL_INVALID: 'The scanner returned an invalid worker message.',
     WEB_V4_PROTOCOL_MISMATCH: 'This page and its scanner worker are incompatible. Refresh after rebuilding the site.',
@@ -294,7 +294,7 @@ export function v4UiTemplate() {
           <label id="v4-policy-label" for="v4-policy" hidden>Policy JSON</label><textarea id="v4-policy" rows="7" spellcheck="false" hidden>{}</textarea>
           <div class="v4-compiler"><span>Exact compiler</span><code>solc 0.8.24</code></div>
           <div id="v4-drop-zone" class="drop-zone" tabindex="0" role="button" aria-label="Choose Solidity source files">
-            <strong>Choose Solidity files or a project folder</strong><div class="drop-actions"><label class="file-button">Files<input id="v4-file-input" type="file" accept=".sol,.txt" multiple hidden></label><label class="file-button">Folder<input id="v4-folder-input" type="file" accept=".sol,.txt" webkitdirectory directory multiple hidden></label></div>
+            <strong>Drop Solidity files here, or choose Files / Folder</strong><div class="drop-actions"><label class="file-button">Files<input id="v4-file-input" type="file" accept=".sol,.txt" multiple hidden></label><label class="file-button">Folder<input id="v4-folder-input" type="file" accept=".sol,.txt" webkitdirectory directory multiple hidden></label></div>
           </div>
           <div class="file-heading"><span>LOCAL SOURCES</span><button id="v4-clear" class="text-button" type="button">Clear</button></div>
           <div id="v4-files" class="v4-files" aria-live="polite"><p>No Solidity files selected.</p></div>
@@ -803,8 +803,8 @@ export async function initV4Ui(options = {}) {
     byId('v4-progress-label').textContent = 'Project files changed. Run a new scan.';
     renderProof(); updateWorkflow(); setBusy(false);
   };
-  const acceptFiles = (files) => {
-    const selected = selectSupportedBrowserFiles(files);
+  const acceptFiles = (files, { merge = false } = {}) => {
+    const selected = merge ? mergeSupportedBrowserFiles(state.files, files) : selectSupportedBrowserFiles(files);
     const bytes = selected.reduce((total, file) => total + Number(file?.size ?? 0), 0);
     const paths = selected.map((file) => file.webkitRelativePath || file.relativePath || file.name);
     const folded = new Set();
@@ -934,6 +934,10 @@ export async function initV4Ui(options = {}) {
   byId('v4-clear').addEventListener('click', () => resetCurrentSession({ clearFiles: true }));
   byId('v4-drop-zone').addEventListener('click', (event) => { if (!event.target.closest('label')) byId('v4-file-input').click(); });
   byId('v4-drop-zone').addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); byId('v4-file-input').click(); } });
+  bindV4DropZone(byId('v4-drop-zone'), {
+    onFiles(files) { acceptFiles(files, { merge: true }); },
+    onError(error) { setStatus('Input rejected', uiErrorMessage(error), 'error'); },
+  });
   const configurationChanged = () => { state.restoredReport = false; state.sessionReset = false; renderWorkflow(); };
   byId('v4-project-name').addEventListener('input', configurationChanged);
   for (const domain of root.querySelectorAll('[name="v4-domain"]')) domain.addEventListener('change', configurationChanged);

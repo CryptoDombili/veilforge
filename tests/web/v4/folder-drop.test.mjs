@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { bindV4DropZone, collectDroppedBrowserFiles, selectSupportedBrowserFiles } from '../../../apps/web/v4/folder-drop.js';
+import { bindV4DropZone, collectDroppedBrowserFiles, collectOrdinaryDroppedBrowserFiles, mergeSupportedBrowserFiles, selectSupportedBrowserFiles } from '../../../apps/web/v4/folder-drop.js';
 import { browserFilesToScanInput } from '../../../apps/web/v4/input-adapter.js';
 
 const encode = (value) => new TextEncoder().encode(value);
@@ -22,6 +22,35 @@ const directoryEntry = (name, children) => ({
 });
 const transfer = (...entries) => ({ items: entries.map((entry) => ({ kind: 'file', webkitGetAsEntry() { return entry; }, getAsFile() { return null; } })), files: [] });
 const options = { projectId: 'folder-parity', projectName: 'Folder parity', domains: ['arc-payments'], compilerVersion: '0.8.24' };
+
+test('ordinary Explorer files drop singly, together, and sequentially without replacing earlier sources', async () => {
+  const a = source('A.sol').file; const b = source('B.sol').file;
+  assert.deepEqual(await collectOrdinaryDroppedBrowserFiles({ files: [a] }), [a]);
+  assert.deepEqual((await collectOrdinaryDroppedBrowserFiles({ files: [a, b] })).map((file) => file.name), ['A.sol', 'B.sol']);
+  const first = mergeSupportedBrowserFiles([], await collectOrdinaryDroppedBrowserFiles({ files: [a] }));
+  const second = mergeSupportedBrowserFiles(first, await collectOrdinaryDroppedBrowserFiles({ files: [b] }));
+  assert.deepEqual(second.map((file) => file.name), ['A.sol', 'B.sol']);
+  assert.deepEqual(mergeSupportedBrowserFiles([a], [b]).map((file) => file.name), ['A.sol', 'B.sol']);
+  assert.deepEqual(Object.keys((await browserFilesToScanInput(second, options)).sources), ['A.sol', 'B.sol']);
+});
+
+test('invalid drops preserve existing files and duplicate paths replace one deterministic entry', async () => {
+  const a = source('A.sol').file; const updated = source('A.sol', 'pragma solidity 0.8.24; contract Updated {}').file;
+  const existing = [a];
+  await assert.rejects(collectOrdinaryDroppedBrowserFiles({ files: [source('README.md').file] }), { code: 'WEB_V4_INPUT_INVALID' });
+  await assert.rejects(collectOrdinaryDroppedBrowserFiles({ files: [source('Alias.sol', undefined, { isSymbolicLink: true }).file] }), { code: 'WEB_V4_INPUT_INVALID' });
+  assert.throws(() => mergeSupportedBrowserFiles(existing, [source('a.sol').file]), { code: 'WEB_V4_INPUT_INVALID' });
+  assert.throws(() => mergeSupportedBrowserFiles(existing, [source('../B.sol').file]), { code: 'WEB_V4_INPUT_INVALID' });
+  assert.deepEqual(existing, [a]);
+  assert.deepEqual(mergeSupportedBrowserFiles(existing, [updated]), [updated]);
+});
+
+test('directory drops are rejected with Folder button guidance while folder picker input remains valid', async () => {
+  const file = source('Case.sol').file;
+  await assert.rejects(collectOrdinaryDroppedBrowserFiles({ items: [{ kind: 'file', webkitGetAsEntry() { return directoryEntry('project', [fileEntry(file)]); } }], files: [] }), { code: 'WEB_V4_DIRECTORY_DROP_UNSUPPORTED', message: 'Folder drag-and-drop is not supported. Use the Folder button.' });
+  const picker = source('Case.sol', undefined, { webkitRelativePath: 'project/Case.sol' }).file;
+  assert.deepEqual(Object.keys((await browserFilesToScanInput([picker], options)).sources), ['Case.sol']);
+});
 
 test('single and multiple Solidity files are accepted from file drag/drop', async () => {
   const a = source('A.sol').file; const b = source('B.sol').file;
@@ -95,7 +124,8 @@ test('drag active, leave/error cleanup, default navigation prevention, and repea
   const over = dragEvent('dragover', { items: [], files: [], dropEffect: 'none' });
   zone.dispatchEvent(over); assert.equal(over.defaultPrevented, true); assert.equal(zone.classList.contains('dragging'), true);
   const leave = dragEvent('dragleave'); zone.dispatchEvent(leave); assert.equal(zone.classList.contains('dragging'), false);
-  const valid = transfer(fileEntry(source('Case.sol').file));
+  const file = source('Case.sol').file;
+  const valid = { items: [{ kind: 'file', webkitGetAsEntry() { return fileEntry(file); } }], files: [file] };
   for (let index = 0; index < 2; index += 1) {
     const dropped = dragEvent('drop', valid); zone.dispatchEvent(dropped); assert.equal(dropped.defaultPrevented, true);
     await new Promise((resolve) => setTimeout(resolve, 0));

@@ -39,13 +39,14 @@ test('one picker action retains both raw top-level Solidity files', async () => 
   assert.deepEqual(Object.keys(input.sources), ['PrivacyLeakDemo.sol', 'TreasuryDisclosureDemo.sol']);
 });
 
-test('UI replaces selection from one picker action without additive merge metadata', () => {
+test('UI picker selection remains unchanged while file drops use the validated merge path', () => {
   const source = fs.readFileSync(new URL('../apps/web/v4/ui.js', import.meta.url), 'utf8');
   const intake = source.slice(source.indexOf('const acceptFiles'), source.indexOf('const runScan'));
-  assert.match(source, /import \{ selectSupportedBrowserFiles \} from '\.\/folder-drop\.js';/u);
-  assert.match(intake, /const selected = selectSupportedBrowserFiles\(files\)/u);
+  assert.match(source, /bindV4DropZone, mergeSupportedBrowserFiles, selectSupportedBrowserFiles/u);
+  assert.match(intake, /merge \? mergeSupportedBrowserFiles\(state\.files, files\) : selectSupportedBrowserFiles\(files\)/u);
   assert.match(intake, /state\.files = selected/u);
-  assert.doesNotMatch(intake, /mergeSupportedBrowserFiles|state\.files, files/u);
+  assert.match(source, /const acceptPickerFiles = \(event\) => \{ acceptFiles\(event\.target\.files\)/u);
+  assert.match(source, /onFiles\(files\) \{ acceptFiles\(files, \{ merge: true \}\); \}/u);
 });
 
 const fixtureRoot = new URL('./fixtures/v4-multi-file-project/', import.meta.url);
@@ -120,13 +121,11 @@ test('changing files invalidates only the current verified result and leaves his
   assert.doesNotMatch(source.slice(source.indexOf('const invalidateCurrentReportForFileChange'), source.indexOf('const acceptFiles')), /clearV4Reports|removeV4Report/u);
 });
 
-test('upload surface advertises explicit pickers and has no active drag and drop binding', () => {
+test('upload surface advertises file drops and retains explicit Files and Folder pickers', () => {
   const source = fs.readFileSync(new URL('../apps/web/v4/ui.js', import.meta.url), 'utf8');
-  assert.match(source, /Choose Solidity files or a project folder/u);
-  assert.doesNotMatch(source, /Drop Solidity files or a project folder/u);
+  assert.match(source, /Drop Solidity files here, or choose Files \/ Folder/u);
   assert.match(source, /id="v4-file-input" type="file" accept="\.sol,\.txt" multiple hidden/u);
   assert.match(source, /id="v4-folder-input" type="file" accept="\.sol,\.txt" webkitdirectory directory multiple hidden/u);
-  assert.doesNotMatch(source, /bindV4DropZone/u);
-  assert.doesNotMatch(source, /addEventListener\(['"](?:dragenter|dragover|dragleave|drop)['"]/u);
-  assert.doesNotMatch(source, /on(?:dragenter|dragover|dragleave|drop)=/u);
+  assert.match(source, /bindV4DropZone\(byId\('v4-drop-zone'\)/u);
+  assert.match(source, /Folder drag-and-drop is not supported\. Use the Folder button\./u);
 });

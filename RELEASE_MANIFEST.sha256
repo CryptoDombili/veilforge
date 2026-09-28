@@ -46,7 +46,7 @@ ed3992a67ffe8299d21cb23043aad78496d919dfbc4f83f1832f821efba6286f  apps/web/lib/u
 b15d8b6fd34f1c89cd7431789245499afbf51df0a38a87af8156217069a823a6  apps/web/v4/errors.js
 2f3ec606823e4f83637efc091145d0c9d2fc69fc3bff7236f3278f931fc43feb  apps/web/v4/export-adapter.js
 67f5a86489a68fd4db84841850994724b6d004bb8d8a1e22baec4a597b30293a  apps/web/v4/feature-flags.js
-1a69546832893d192008b6179ffd795888415af96017bed096ed591776609a93  apps/web/v4/folder-drop.js
+f6d1541cac0874937cb890492d43f52017a81ecd0f9c1a3fa4095e44647c6591  apps/web/v4/folder-drop.js
 e96bae954b56638565d8b328b2ed1e2357bd9e34d764346a617aa438835faa91  apps/web/v4/index.js
 267053817b40a3ae7fa1f121fb5acc2d5522827d3d41b0b46a7a8d2abd19f2f8  apps/web/v4/input-adapter.js
 6e23d0b4dddd6ae9097dc16fd2794a39d1562a6a424c0d75775266c5ce64f91e  apps/web/v4/persistence.js
@@ -77,7 +77,7 @@ eacd09cfe24e9b99a51fab6324ffe2eca15531c18eb362084a50f41d4c16bbb1  apps/web/v4/ru
 6bc8034acae72ca532282af49bacac63a9c4db19977172341bb34ab1cb47d6d5  apps/web/v4/runtime/worker-client.js
 257646a4b67b128dc85ceba25b178fea2dcbe6aef02aa3281115e4ba33e8050b  apps/web/v4/runtime/worker-entry.js
 d3b46f4f5318609f084c4810c27189395bf00681218f98eab51cc858c0a4d689  apps/web/v4/runtime/worker-runtime.js
-2f20788454ca044199ce478b93842d97e2b0298eeb55b654f38ffc66b5889479  apps/web/v4/ui.js
+1ee4367657c6929d3fe1ebacfdfc26ed68f2f18bd91cea3348c9070f87278327  apps/web/v4/ui.js
 f3a11207d7c1b78935119d22a5885f0f0237d6456f7cb07c41e4cd97040e1ff4  apps/web/v4/version.js
 ff6619f89c2cd268a788627290604b83c32c140830a89f4e6293e229fff84ae3  apps/web/v4/view-models.js
 99598c9e3c1dff108a5498f351b8c2e0b23257364d88e2fb9da0e650ccb6f120  apps/web/v4/wallet-provider-discovery.js
@@ -881,7 +881,7 @@ c9f382db4147b12dcc91f72aef0d88f2e4282ca34fd85f8f5dd79c23b4744a20  tests/security
 fcffab7d5ba6fcace64134eed573148b79c336cb0031376250d4a8fe4f6d1538  tests/spec/identity-vectors.test.mjs
 18420395f52cd8144e4ea3f7ccee54d70a52b25269738869d078d2ad34f07afd  tests/spec/product-claims.test.mjs
 f29d2f12b4c141082b8007fe2d139111add40b291c360848e777ef426bed7378  tests/spec/report-hash-vectors.test.mjs
-83a36c6f7b67eccdccd2f25c11c7b663a2effc8e549a714cad27a570e97586ac  tests/v4-additive-input.test.mjs
+3eef47d792ec92544cd3441be60c9f9f14bc9deea54e4569546506b2f2f12a40  tests/v4-additive-input.test.mjs
 b1b300507a7d362070645ec48fbd403b841f0da3f56c3f4a537d143359096d26  tests/v4-post-scan-boundary.test.mjs
 25d1bb9d73822a22a6c6d34939d0092b93b4dd6efd8e9f19d82dd35d49dbe496  tests/v4-worker-csp.test.mjs
 642810c52a3fc4a1091e670d0ebde6b2ed06a144f62124db94d9c1018b26cfba  tests/v4/action/action.test.mjs
@@ -1187,12 +1187,12 @@ f392a577f24b5c1b310b1fbcef95cae3de2a610b3b6f95ba042340d2feda52c1  tests/web/v4-u
 e3be3c063edd51a7e35bbcda28a30fd4962e44efbbc1b123d7f7a160f252a33e  tests/web/v4-ui/export.test.mjs
 5ff8dc46fb9f4f07084942f3fc151b8c2c60b9a82f8efb1b780dd1ea9a298760  tests/web/v4-ui/history.test.mjs
 33c06b25a3f3aecf0baa44139d1e62b368b974c8554b381ba25c9650a67ba696  tests/web/v4-ui/product-polish.test.mjs
-8c0f1a16402ef5590155727bb4d4dec40ef8ae934c66b96b46d593e64eddbe2c  tests/web/v4-ui/ui.test.mjs
+8282ca3a6fc8910c4856d1bf0aa8855435431e537709e2214e39b302d146668b  tests/web/v4-ui/ui.test.mjs
 4c7a0f2b7979f844ec7fc8f14e1a3464ddb95847b36d0f24af51fb122b5694fc  tests/web/v4-ui/workflow.test.mjs
 68edbf4ebc57538cef49028e288809216da06ab276451851cc030744a53981f7  tests/web/v4/determinism.test.mjs
 f14fd44921a48f11d377655abdbd1ecca727eb5374cd062607c989d6f47f2aec  tests/web/v4/export-adapter.test.mjs
 406b3de0a0031e26349ad3377e8e11c08ea6781078383fb627418bdc2aa02a9f  tests/web/v4/feature-flag.test.mjs
-561a66827f40c14a1ccaaa34f6f8bfabe07ce153c57017b6aaf37ff7e711c64e  tests/web/v4/folder-drop.test.mjs
+f17bfd18466d74fb02fe156442393f78b078f266a56288728a8e8999f4937e7c  tests/web/v4/folder-drop.test.mjs
 0825eab62314a345953b88dd20d77c0a6f1791d244ef955e0fd0df054b4c72d1  tests/web/v4/helpers.mjs
 f00ee3a83866e1d6a237f08ed346de0390e00456f28cadc4633befe50161145c  tests/web/v4/input-adapter.test.mjs
 6c65712286ef8b2822a4910a08f053003e3535e8b61ac8f7c9178ad2382fc49f  tests/web/v4/persistence.test.mjs
