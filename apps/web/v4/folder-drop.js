@@ -33,6 +33,8 @@ export function mergeSupportedBrowserFiles(existing, incoming) {
 }
 
 export async function collectOrdinaryDroppedBrowserFiles(dataTransfer) {
+  const files = [...(dataTransfer?.files ?? [])];
+  if (files.length && files.every((file) => supportedName(file?.name) && !file.webkitRelativePath && !file.relativePath && file.isSymbolicLink !== true && file.symlink !== true && file.type !== 'inode/symlink')) return files;
   const items = [...(dataTransfer?.items ?? [])];
   for (const item of items) {
     if (item.kind !== 'file') throw webV4Error('WEB_V4_INPUT_INVALID', 'Only local Solidity files can be dropped.');
@@ -44,7 +46,6 @@ export async function collectOrdinaryDroppedBrowserFiles(dataTransfer) {
     }
     if (!entry && typeof item.getAsFile === 'function' && !item.getAsFile()) throw webV4Error('WEB_V4_DIRECTORY_DROP_UNSUPPORTED', 'Folder drag-and-drop is not supported. Use the Folder button.');
   }
-  const files = [...(dataTransfer?.files ?? [])];
   if (!files.length) throw webV4Error('WEB_V4_INPUT_INVALID', 'The drop did not contain local Solidity files.');
   if (files.some((file) => file.isSymbolicLink === true || file.symlink === true || file.type === 'inode/symlink')) throw webV4Error('WEB_V4_INPUT_INVALID', 'File aliases and symbolic links are not accepted.');
   if (files.some((file) => file.webkitRelativePath || file.relativePath)) throw webV4Error('WEB_V4_DIRECTORY_DROP_UNSUPPORTED', 'Folder drag-and-drop is not supported. Use the Folder button.');
@@ -162,19 +163,37 @@ export function bindV4DropZone(dropZone, { onFiles, onError }) {
   const leave = (event) => { event.preventDefault(); if (!event.relatedTarget || !dropZone.contains(event.relatedTarget)) dropZone.classList.remove('dragging'); };
   const drop = async (event) => {
     event.preventDefault(); dropZone.classList.remove('dragging');
-    try { await onFiles(await collectOrdinaryDroppedBrowserFiles(event.dataTransfer)); }
-    catch (error) { await onError(error); }
+    const transfer = event.dataTransfer;
+    const localDiagnostic = ['localhost', '127.0.0.1'].includes(globalThis.location?.hostname);
+    const diagnostic = localDiagnostic ? {
+      filesLength: transfer?.files?.length ?? 0,
+      itemsLength: transfer?.items?.length ?? 0,
+      eventPath: (transfer?.files?.length ?? 0) > 0 ? 'FILES' : (transfer?.items?.length ?? 0) > 0 ? 'ITEMS' : 'OTHER',
+      items: [...(transfer?.items ?? [])].map((item) => ({
+        kind: item.kind === 'file' || item.kind === 'string' ? item.kind : 'other',
+        type: /^[A-Za-z0-9.+-]+\/[A-Za-z0-9.+-]+$/u.test(item.type ?? '') ? item.type : '',
+      })),
+    } : null;
+    if (diagnostic) console.info('V4_DROP_EVENT', diagnostic);
+    let files;
+    try { files = await collectOrdinaryDroppedBrowserFiles(transfer); }
+    catch (error) { if (diagnostic) console.info('V4_DROP_FAILURE_STAGE', 'COLLECT_FILES', error?.code ?? 'UNKNOWN'); await onError(error); return; }
+    try {
+      const accepted = await onFiles(files);
+      if (diagnostic && accepted === false) console.info('V4_DROP_FAILURE_STAGE', 'VALIDATE_FILES');
+    }
+    catch (error) { if (diagnostic) console.info('V4_DROP_FAILURE_STAGE', 'MERGE_FILES', error?.code ?? 'UNKNOWN'); await onError(error); }
     finally { dropZone.classList.remove('dragging'); }
   };
-  dropZone.addEventListener('dragenter', activate);
-  dropZone.addEventListener('dragover', activate);
-  dropZone.addEventListener('dragleave', leave);
-  dropZone.addEventListener('drop', drop);
+  dropZone.addEventListener('dragenter', activate, true);
+  dropZone.addEventListener('dragover', activate, true);
+  dropZone.addEventListener('dragleave', leave, true);
+  dropZone.addEventListener('drop', drop, true);
   return () => {
-    dropZone.removeEventListener('dragenter', activate);
-    dropZone.removeEventListener('dragover', activate);
-    dropZone.removeEventListener('dragleave', leave);
-    dropZone.removeEventListener('drop', drop);
+    dropZone.removeEventListener('dragenter', activate, true);
+    dropZone.removeEventListener('dragover', activate, true);
+    dropZone.removeEventListener('dragleave', leave, true);
+    dropZone.removeEventListener('drop', drop, true);
     dropZone.classList.remove('dragging');
   };
 }

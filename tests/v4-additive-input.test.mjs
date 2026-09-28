@@ -46,7 +46,7 @@ test('UI picker selection remains unchanged while file drops use the validated m
   assert.match(intake, /merge \? mergeSupportedBrowserFiles\(state\.files, files\) : selectSupportedBrowserFiles\(files\)/u);
   assert.match(intake, /state\.files = selected/u);
   assert.match(source, /const acceptPickerFiles = \(event\) => \{ acceptFiles\(event\.target\.files\)/u);
-  assert.match(source, /onFiles\(files\) \{ acceptFiles\(files, \{ merge: true \}\); \}/u);
+  assert.match(source, /onFiles\(files\) \{ return acceptFiles\(files, \{ merge: true \}\); \}/u);
 });
 
 const fixtureRoot = new URL('./fixtures/v4-multi-file-project/', import.meta.url);

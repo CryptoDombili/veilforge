@@ -34,6 +34,14 @@ test('ordinary Explorer files drop singly, together, and sequentially without re
   assert.deepEqual(Object.keys((await browserFilesToScanInput(second, options)).sources), ['A.sol', 'B.sol']);
 });
 
+test('native-style files take priority over populated items without entry or handle traversal', async () => {
+  const file = source('A.sol').file;
+  let traversalCalls = 0;
+  const item = { kind: 'file', type: '', webkitGetAsEntry() { traversalCalls += 1; throw new Error('not needed'); }, async getAsFileSystemHandle() { traversalCalls += 1; throw new Error('not needed'); } };
+  assert.deepEqual(await collectOrdinaryDroppedBrowserFiles({ files: [file], items: [item] }), [file]);
+  assert.equal(traversalCalls, 0);
+});
+
 test('invalid drops preserve existing files and duplicate paths replace one deterministic entry', async () => {
   const a = source('A.sol').file; const updated = source('A.sol', 'pragma solidity 0.8.24; contract Updated {}').file;
   const existing = [a];
@@ -48,6 +56,7 @@ test('invalid drops preserve existing files and duplicate paths replace one dete
 test('directory drops are rejected with Folder button guidance while folder picker input remains valid', async () => {
   const file = source('Case.sol').file;
   await assert.rejects(collectOrdinaryDroppedBrowserFiles({ items: [{ kind: 'file', webkitGetAsEntry() { return directoryEntry('project', [fileEntry(file)]); } }], files: [] }), { code: 'WEB_V4_DIRECTORY_DROP_UNSUPPORTED', message: 'Folder drag-and-drop is not supported. Use the Folder button.' });
+  await assert.rejects(collectOrdinaryDroppedBrowserFiles({ items: [{ kind: 'file', webkitGetAsEntry() { return directoryEntry('project', [fileEntry(file)]); } }], files: [source('project').file] }), { code: 'WEB_V4_DIRECTORY_DROP_UNSUPPORTED' });
   const picker = source('Case.sol', undefined, { webkitRelativePath: 'project/Case.sol' }).file;
   assert.deepEqual(Object.keys((await browserFilesToScanInput([picker], options)).sources), ['Case.sol']);
 });

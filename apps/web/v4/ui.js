@@ -810,13 +810,14 @@ export async function initV4Ui(options = {}) {
     const folded = new Set();
     const collision = paths.some((path) => { const key = String(path).toLowerCase(); if (folded.has(key)) return true; folded.add(key); return false; });
     const inputError = !selected.length ? 'Choose at least one supported Solidity source.' : collision ? 'Duplicate or case-folding-colliding source paths are not accepted.' : selected.length > WEB_V4_LIMITS.maxFileCount || bytes > WEB_V4_LIMITS.maxProjectBytes || selected.some((file) => file.size > WEB_V4_LIMITS.maxPerFileBytes) ? 'The selected files exceed the browser safety limit.' : null;
-    if (inputError) { setStatus('Input rejected', inputError, 'error'); return; }
+    if (inputError) { setStatus('Input rejected', inputError, 'error'); return false; }
     state.files = selected;
     state.bytes = bytes;
     state.inputError = null;
     invalidateCurrentReportForFileChange();
     renderFiles();
     setStatus('Project files updated', `${state.files.length} safe project file${state.files.length === 1 ? '' : 's'} selected. Run a new scan to verify this source set.`);
+    return true;
   };
   const runScan = async () => {
     if (!state.files.length) { setStatus('Solidity sources required', 'Choose one or more .sol files before scanning.', 'error'); return; }
@@ -935,7 +936,7 @@ export async function initV4Ui(options = {}) {
   byId('v4-drop-zone').addEventListener('click', (event) => { if (!event.target.closest('label')) byId('v4-file-input').click(); });
   byId('v4-drop-zone').addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); byId('v4-file-input').click(); } });
   bindV4DropZone(byId('v4-drop-zone'), {
-    onFiles(files) { acceptFiles(files, { merge: true }); },
+    onFiles(files) { return acceptFiles(files, { merge: true }); },
     onError(error) { setStatus('Input rejected', uiErrorMessage(error), 'error'); },
   });
   const configurationChanged = () => { state.restoredReport = false; state.sessionReset = false; renderWorkflow(); };
