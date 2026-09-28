@@ -24,6 +24,10 @@ test('finding controls filter and deterministically sort canonical V4 findings',
 test('UI exposes V4 scan configuration, verified findings, details, history and exports', () => {
   const html = v4UiTemplate();
   for (const id of ['v4-project-name', 'v4-file-input', 'v4-folder-input', 'v4-policy-mode', 'v4-scan', 'v4-cancel', 'v4-progress', 'v4-summary', 'v4-findings', 'v4-detail', 'v4-history', 'v3-history', 'v4-export']) assert.match(html, new RegExp(`id="${id}"`, 'u'));
+  assert.match(html, /Choose Solidity files or a project folder/u);
+  assert.doesNotMatch(html, /Drop Solidity files or a project folder/u);
+  assert.match(html, /id="v4-file-input"[^>]*multiple/u);
+  assert.match(html, /id="v4-folder-input"[^>]*webkitdirectory[^>]*multiple/u);
   assert.match(html, /solc 0\.8\.24/u); assert.match(html, /1 MiB MAX/u);
   const source = fs.readFileSync(new URL('../../../apps/web/v4/ui.js', import.meta.url), 'utf8');
   assert.match(source, /Evaluate in CLI\/CI/u);

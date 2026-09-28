@@ -1,6 +1,6 @@
 import { createV4WebExport, verifyV4WebExport } from './export-adapter.js';
 import { browserFilesToScanInput, canonicalSourcePath } from './input-adapter.js';
-import { bindV4DropZone, selectSupportedBrowserFiles } from './folder-drop.js';
+import { selectSupportedBrowserFiles } from './folder-drop.js';
 import { clearV4Reports, listV4Reports, readV3Storage, removeV4Report, saveV4Report } from './persistence.js';
 import { verifyV4Report } from './report-adapter.js';
 import { createWorkerClient } from './runtime/worker-client.js';
@@ -294,7 +294,7 @@ export function v4UiTemplate() {
           <label id="v4-policy-label" for="v4-policy" hidden>Policy JSON</label><textarea id="v4-policy" rows="7" spellcheck="false" hidden>{}</textarea>
           <div class="v4-compiler"><span>Exact compiler</span><code>solc 0.8.24</code></div>
           <div id="v4-drop-zone" class="drop-zone" tabindex="0" role="button" aria-label="Choose Solidity source files">
-            <strong>Drop Solidity files or a project folder</strong><div class="drop-actions"><label class="file-button">Files<input id="v4-file-input" type="file" accept=".sol,.txt" multiple hidden></label><label class="file-button">Folder<input id="v4-folder-input" type="file" accept=".sol,.txt" webkitdirectory directory multiple hidden></label></div>
+            <strong>Choose Solidity files or a project folder</strong><div class="drop-actions"><label class="file-button">Files<input id="v4-file-input" type="file" accept=".sol,.txt" multiple hidden></label><label class="file-button">Folder<input id="v4-folder-input" type="file" accept=".sol,.txt" webkitdirectory directory multiple hidden></label></div>
           </div>
           <div class="file-heading"><span>LOCAL SOURCES</span><button id="v4-clear" class="text-button" type="button">Clear</button></div>
           <div id="v4-files" class="v4-files" aria-live="polite"><p>No Solidity files selected.</p></div>
@@ -934,10 +934,6 @@ export async function initV4Ui(options = {}) {
   byId('v4-clear').addEventListener('click', () => resetCurrentSession({ clearFiles: true }));
   byId('v4-drop-zone').addEventListener('click', (event) => { if (!event.target.closest('label')) byId('v4-file-input').click(); });
   byId('v4-drop-zone').addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); byId('v4-file-input').click(); } });
-  bindV4DropZone(byId('v4-drop-zone'), {
-    onFiles: acceptFiles,
-    onError(error) { setStatus('File input blocked', uiErrorMessage(error), 'error'); },
-  });
   const configurationChanged = () => { state.restoredReport = false; state.sessionReset = false; renderWorkflow(); };
   byId('v4-project-name').addEventListener('input', configurationChanged);
   for (const domain of root.querySelectorAll('[name="v4-domain"]')) domain.addEventListener('change', configurationChanged);

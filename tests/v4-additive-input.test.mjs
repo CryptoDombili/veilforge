@@ -42,7 +42,7 @@ test('one picker action retains both raw top-level Solidity files', async () => 
 test('UI replaces selection from one picker action without additive merge metadata', () => {
   const source = fs.readFileSync(new URL('../apps/web/v4/ui.js', import.meta.url), 'utf8');
   const intake = source.slice(source.indexOf('const acceptFiles'), source.indexOf('const runScan'));
-  assert.match(source, /import \{ bindV4DropZone, selectSupportedBrowserFiles \} from '\.\/folder-drop\.js';/u);
+  assert.match(source, /import \{ selectSupportedBrowserFiles \} from '\.\/folder-drop\.js';/u);
   assert.match(intake, /const selected = selectSupportedBrowserFiles\(files\)/u);
   assert.match(intake, /state\.files = selected/u);
   assert.doesNotMatch(intake, /mergeSupportedBrowserFiles|state\.files, files/u);
@@ -120,8 +120,13 @@ test('changing files invalidates only the current verified result and leaves his
   assert.doesNotMatch(source.slice(source.indexOf('const invalidateCurrentReportForFileChange'), source.indexOf('const acceptFiles')), /clearV4Reports|removeV4Report/u);
 });
 
-test('drag and drop failures use a neutral file-input title', () => {
+test('upload surface advertises explicit pickers and has no active drag and drop binding', () => {
   const source = fs.readFileSync(new URL('../apps/web/v4/ui.js', import.meta.url), 'utf8');
-  assert.match(source, /setStatus\('File input blocked'/u);
-  assert.doesNotMatch(source, /setStatus\('Folder drop blocked'/u);
+  assert.match(source, /Choose Solidity files or a project folder/u);
+  assert.doesNotMatch(source, /Drop Solidity files or a project folder/u);
+  assert.match(source, /id="v4-file-input" type="file" accept="\.sol,\.txt" multiple hidden/u);
+  assert.match(source, /id="v4-folder-input" type="file" accept="\.sol,\.txt" webkitdirectory directory multiple hidden/u);
+  assert.doesNotMatch(source, /bindV4DropZone/u);
+  assert.doesNotMatch(source, /addEventListener\(['"](?:dragenter|dragover|dragleave|drop)['"]/u);
+  assert.doesNotMatch(source, /on(?:dragenter|dragover|dragleave|drop)=/u);
 });
