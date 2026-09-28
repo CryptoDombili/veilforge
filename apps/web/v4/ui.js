@@ -245,6 +245,22 @@ export function transitionV4Lifecycle(state, event, payload = {}) {
     state.historyFailure = payload.failure;
     return state;
   }
+  if (event === 'files-changed') {
+    state.verification = null;
+    state.viewModel = null;
+    state.exportBundle = null;
+    state.scanStatus = 'idle';
+    state.sessionReset = false;
+    state.restoredReport = false;
+    state.reviewReady = false;
+    state.verifyReady = false;
+    state.reviewedFinding = false;
+    state.exported = false;
+    state.historyFailure = null;
+    state.analysis = payload.analysis;
+    state.proof = createEmptyProofState();
+    return state;
+  }
   throw new TypeError(`Unsupported V4 lifecycle event: ${event}`);
 }
 
@@ -774,24 +790,38 @@ export async function initV4Ui(options = {}) {
     const legacy = readV3Storage(storage);
     byId('v3-history').innerHTML = Array.isArray(legacy) && legacy.length ? `<p>${legacy.length} read-only V3 entr${legacy.length === 1 ? 'y' : 'ies'} retained. They are not converted to V4.</p>` : '<p>No V3 history found.</p>';
   };
+  const clearRenderedReport = () => {
+    byId('v4-summary').hidden = true; byId('v4-summary').replaceChildren();
+    byId('v4-controls').hidden = true; byId('v4-findings').replaceChildren();
+    byId('v4-export').hidden = true;
+  };
+  const invalidateCurrentReportForFileChange = () => {
+    state.runId += 1;
+    const client = state.client;
+    if (client) { client.abort(); if (!client.disposed) client.dispose(); }
+    state.client = null;
+    if (state.proof.provider) disposeProviderListeners(state.proof.provider);
+    transitionV4Lifecycle(state, 'files-changed', { analysis: { state: 'ready', phase: null, message: 'Project files changed. Run a new local scan.' } });
+    clearRenderedReport();
+    if (byId('v4-detail').open) byId('v4-detail').close();
+    byId('v4-progress').value = 0;
+    byId('v4-progress-label').textContent = 'Project files changed. Run a new scan.';
+    renderProof(); updateWorkflow(); setBusy(false);
+  };
   const acceptFiles = (files) => {
     try {
       const merged = mergeSupportedBrowserFiles(state.files, files);
-      state.restoredReport = false; state.sessionReset = false;
       state.files = [...merged];
       state.bytes = state.files.reduce((total, file) => total + file.size, 0);
       state.inputError = null;
+      invalidateCurrentReportForFileChange();
       renderFiles();
+      setStatus('Project files updated', `${state.files.length} safe project file${state.files.length === 1 ? '' : 's'} selected. Run a new scan to verify this source set.`);
     } catch (error) {
       state.inputError = null;
       renderFiles();
       setStatus('Input rejected', uiErrorMessage(error), 'error');
     }
-  };
-  const clearRenderedReport = () => {
-    byId('v4-summary').hidden = true; byId('v4-summary').replaceChildren();
-    byId('v4-controls').hidden = true; byId('v4-findings').replaceChildren();
-    byId('v4-export').hidden = true;
   };
   const runScan = async () => {
     if (!state.files.length) { setStatus('Solidity sources required', 'Choose one or more .sol files before scanning.', 'error'); return; }
@@ -911,7 +941,7 @@ export async function initV4Ui(options = {}) {
   byId('v4-drop-zone').addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); byId('v4-file-input').click(); } });
   bindV4DropZone(byId('v4-drop-zone'), {
     onFiles: acceptFiles,
-    onError(error) { setStatus('Folder drop blocked', uiErrorMessage(error), 'error'); },
+    onError(error) { setStatus('File input blocked', uiErrorMessage(error), 'error'); },
   });
   const configurationChanged = () => { state.restoredReport = false; state.sessionReset = false; renderWorkflow(); };
   byId('v4-project-name').addEventListener('input', configurationChanged);

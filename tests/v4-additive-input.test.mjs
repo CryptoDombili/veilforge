@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { collectDroppedBrowserFiles, mergeSupportedBrowserFiles } from '../apps/web/v4/folder-drop.js';
 import { browserFilesToScanInput } from '../apps/web/v4/input-adapter.js';
+import { transitionV4Lifecycle } from '../apps/web/v4/ui.js';
 import { compileProject } from '../packages/analyzer/src/v4/frontend/index.js';
 import { VeilForgeV4BrowserRuntime } from './web/v4-runtime/helpers.mjs';
 
@@ -84,20 +85,21 @@ test('unsupported and over-limit additions do not mutate an existing valid selec
   assert.deepEqual(selected.map((file) => file.path), ['A.sol']);
 });
 
-const helperSource = 'pragma solidity 0.8.24; library Helper { function normalize(uint256 value) internal pure returns (uint256) { return value; } }';
-const mainSource = 'pragma solidity 0.8.24; import {Helper} from "./lib/Helper.sol"; contract Main { uint256 public paymentAmount; function store(uint256 value) external { paymentAmount = Helper.normalize(value); } }';
+const fixtureRoot = new URL('./fixtures/v4-multi-file-project/', import.meta.url);
+const helperSource = fs.readFileSync(new URL('contracts/Helper.sol', fixtureRoot), 'utf8');
+const mainSource = fs.readFileSync(new URL('contracts/Main.sol', fixtureRoot), 'utf8');
 
 async function twoFileInput() {
   const files = mergeSupportedBrowserFiles([], [
     browserFile('project/contracts/Main.sol', mainSource),
-    browserFile('project/contracts/lib/Helper.sol', helperSource),
+    browserFile('project/contracts/Helper.sol', helperSource),
   ]);
   return browserFilesToScanInput(files, { projectId: 'two-file-project', projectName: 'Two file project', domains: ['arc-payments'], compilerVersion: '0.8.24' });
 }
 
 test('normalized multi-file relative imports compile locally', async () => {
   const input = await twoFileInput();
-  assert.deepEqual(Object.keys(input.sources), ['contracts/Main.sol', 'contracts/lib/Helper.sol']);
+  assert.deepEqual(Object.keys(input.sources), ['contracts/Helper.sol', 'contracts/Main.sol']);
   assert.equal(compileProject({ sources: input.sources, settings: input.settings, resolverSources: input.resolverSources }).result.status, 'compiled');
 });
 
@@ -107,4 +109,43 @@ test('two-file Solidity project produces a cryptographically verified V4 report'
   assert.equal(result.verification.verified, true);
   assert.equal(result.report.integrity.verified, true);
   assert.match(result.report.integrity.reportHash, /^sha256:[a-f0-9]{64}$/u);
+});
+
+test('changing files invalidates only the current verified result and leaves history state untouched', () => {
+  const historySentinel = Object.freeze([{ reportHash: `sha256:${'b'.repeat(64)}` }]);
+  const state = {
+    verification: { verified: true },
+    viewModel: { reportHash: `sha256:${'a'.repeat(64)}` },
+    exportBundle: {},
+    scanStatus: 'verified',
+    sessionReset: false,
+    restoredReport: true,
+    reviewReady: true,
+    verifyReady: true,
+    reviewedFinding: true,
+    exported: true,
+    historyFailure: { code: 'old' },
+    historyEntries: historySentinel,
+    analysis: { state: 'verified' },
+    proof: { envelope: {}, provider: null, status: 'ready' },
+  };
+  transitionV4Lifecycle(state, 'files-changed', { analysis: { state: 'ready', phase: null, message: 'Project files changed.' } });
+  assert.equal(state.verification, null);
+  assert.equal(state.viewModel, null);
+  assert.equal(state.exportBundle, null);
+  assert.equal(state.scanStatus, 'idle');
+  assert.equal(state.reviewReady, false);
+  assert.equal(state.verifyReady, false);
+  assert.equal(state.proof.envelope, null);
+  assert.equal(state.historyEntries, historySentinel);
+  const source = fs.readFileSync(new URL('../apps/web/v4/ui.js', import.meta.url), 'utf8');
+  assert.match(source, /transitionV4Lifecycle\(state, 'files-changed'/u);
+  assert.match(source, /clearRenderedReport\(\)/u);
+  assert.doesNotMatch(source.slice(source.indexOf('const invalidateCurrentReportForFileChange'), source.indexOf('const acceptFiles')), /clearV4Reports|removeV4Report/u);
+});
+
+test('drag and drop failures use a neutral file-input title', () => {
+  const source = fs.readFileSync(new URL('../apps/web/v4/ui.js', import.meta.url), 'utf8');
+  assert.match(source, /setStatus\('File input blocked'/u);
+  assert.doesNotMatch(source, /setStatus\('Folder drop blocked'/u);
 });
