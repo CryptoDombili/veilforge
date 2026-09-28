@@ -1,6 +1,6 @@
 import { createV4WebExport, verifyV4WebExport } from './export-adapter.js';
 import { browserFilesToScanInput, canonicalSourcePath } from './input-adapter.js';
-import { bindV4DropZone, selectSupportedBrowserFiles } from './folder-drop.js';
+import { bindV4DropZone, mergeSupportedBrowserFiles } from './folder-drop.js';
 import { clearV4Reports, listV4Reports, readV3Storage, removeV4Report, saveV4Report } from './persistence.js';
 import { verifyV4Report } from './report-adapter.js';
 import { createWorkerClient } from './runtime/worker-client.js';
@@ -44,6 +44,11 @@ const locationText = (location) => location ? `${location.sourcePath}:${location
 const slug = (value) => String(value || 'veilforge-project').toLowerCase().replace(/[^a-z0-9]+/gu, '-').replace(/^-|-$/gu, '') || 'veilforge-project';
 
 export function v4SourceDisplayPath(file) {
+  const normalizedPath = String(file?.path || '').trim();
+  if (normalizedPath) {
+    try { return canonicalSourcePath(normalizedPath); }
+    catch { return normalizedPath; }
+  }
   const browserRelativePath = String(file?.webkitRelativePath || file?.relativePath || '').trim();
   if (!browserRelativePath) return String(file?.name ?? '');
   try {
@@ -770,14 +775,18 @@ export async function initV4Ui(options = {}) {
     byId('v3-history').innerHTML = Array.isArray(legacy) && legacy.length ? `<p>${legacy.length} read-only V3 entr${legacy.length === 1 ? 'y' : 'ies'} retained. They are not converted to V4.</p>` : '<p>No V3 history found.</p>';
   };
   const acceptFiles = (files) => {
-    state.restoredReport = false; state.sessionReset = false;
-    state.files = selectSupportedBrowserFiles(files);
-    state.bytes = state.files.reduce((total, file) => total + file.size, 0);
-    const paths = state.files.map((file) => file.webkitRelativePath || file.relativePath || file.name);
-    const folded = new Set(); const collision = paths.some((path) => { const key = path.toLowerCase(); if (folded.has(key)) return true; folded.add(key); return false; });
-    state.inputError = collision ? 'Duplicate or case-folding-colliding source paths are not accepted.' : state.files.length > WEB_V4_LIMITS.maxFileCount || state.bytes > WEB_V4_LIMITS.maxProjectBytes || state.files.some((file) => file.size > WEB_V4_LIMITS.maxPerFileBytes) ? 'The selected files exceed the browser safety limit.' : null;
-    renderFiles();
-    if (state.inputError) setStatus('Input rejected', state.inputError, 'error');
+    try {
+      const merged = mergeSupportedBrowserFiles(state.files, files);
+      state.restoredReport = false; state.sessionReset = false;
+      state.files = [...merged];
+      state.bytes = state.files.reduce((total, file) => total + file.size, 0);
+      state.inputError = null;
+      renderFiles();
+    } catch (error) {
+      state.inputError = null;
+      renderFiles();
+      setStatus('Input rejected', uiErrorMessage(error), 'error');
+    }
   };
   const clearRenderedReport = () => {
     byId('v4-summary').hidden = true; byId('v4-summary').replaceChildren();
@@ -894,8 +903,9 @@ export async function initV4Ui(options = {}) {
     setStatus(cancelled ? 'Scan cancelled' : 'Ready for local analysis', cancelled ? 'The active scan was stopped and no partial result was applied.' : clearFiles ? 'Choose Solidity files to start a new local session.' : 'The current result was cleared. Selected Solidity files were preserved.');
   };
 
-  byId('v4-file-input').addEventListener('change', (event) => acceptFiles(event.target.files));
-  byId('v4-folder-input').addEventListener('change', (event) => acceptFiles(event.target.files));
+  const acceptPickerFiles = (event) => { acceptFiles(event.target.files); event.target.value = ''; };
+  byId('v4-file-input').addEventListener('change', acceptPickerFiles);
+  byId('v4-folder-input').addEventListener('change', acceptPickerFiles);
   byId('v4-clear').addEventListener('click', () => resetCurrentSession({ clearFiles: true }));
   byId('v4-drop-zone').addEventListener('click', (event) => { if (!event.target.closest('label')) byId('v4-file-input').click(); });
   byId('v4-drop-zone').addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); byId('v4-file-input').click(); } });

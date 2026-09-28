@@ -1,6 +1,6 @@
 import { webV4Error } from './errors.js';
 import { canonicalSourcePath } from './input-adapter.js';
-import { WEB_V4_LIMITS } from './runtime/limits.js';
+import { normalizeWebV4Limits, WEB_V4_LIMITS } from './runtime/limits.js';
 
 const supportedName = (name) => {
   const value = String(name ?? '').toLowerCase();
@@ -9,6 +9,71 @@ const supportedName = (name) => {
 
 export function selectSupportedBrowserFiles(files) {
   return [...(files ?? [])].filter((file) => supportedName(file?.name));
+}
+
+function normalizedSelection(files) {
+  const selected = selectSupportedBrowserFiles(files);
+  if (!selected.length) throw webV4Error('WEB_V4_INPUT_INVALID', 'The selection contains no supported Solidity sources.');
+  const folderPaths = selected.map((file) => String(file?.webkitRelativePath || file?.relativePath || '').trim());
+  const hasFolderPaths = folderPaths.some(Boolean);
+  if (hasFolderPaths && folderPaths.some((path) => !path)) {
+    throw webV4Error('WEB_V4_INPUT_INVALID', 'Folder input cannot be mixed with files from another source root.');
+  }
+  let selectedRoot = null;
+  if (hasFolderPaths) {
+    const safePaths = folderPaths.map(canonicalSourcePath);
+    const roots = new Set(safePaths.map((path) => path.split('/')[0]));
+    if (roots.size !== 1 || safePaths.some((path) => path.split('/').length < 2)) {
+      throw webV4Error('WEB_V4_INPUT_INVALID', 'Folder input must have one consistent selected root.');
+    }
+    selectedRoot = [...roots][0];
+  }
+  return selected.map((file, index) => {
+    const suppliedPath = canonicalSourcePath(hasFolderPaths ? folderPaths[index] : file?.path || file?.name);
+    const path = selectedRoot ? canonicalSourcePath(suppliedPath.slice(selectedRoot.length + 1)) : suppliedPath;
+    return { file, path };
+  });
+}
+
+function normalizedBrowserFile(file, path) {
+  const declaredSize = Number(file?.size ?? 0);
+  const value = {
+    name: path.split('/').at(-1),
+    path,
+    size: Number.isFinite(declaredSize) && declaredSize >= 0 ? declaredSize : 0,
+    type: String(file?.type ?? ''),
+    lastModified: Number(file?.lastModified ?? 0),
+  };
+  if (file?.isSymbolicLink === true) value.isSymbolicLink = true;
+  if (file?.symlink === true) value.symlink = true;
+  if (typeof file?.arrayBuffer === 'function') value.arrayBuffer = () => file.arrayBuffer();
+  else if (typeof file?.text === 'function') value.text = () => file.text();
+  else if (typeof file?.content === 'string') value.content = file.content;
+  return Object.freeze(value);
+}
+
+export function mergeSupportedBrowserFiles(existingFiles, incomingFiles, { limits: limitOverrides = {} } = {}) {
+  const limits = normalizeWebV4Limits(limitOverrides);
+  const existing = existingFiles?.length ? normalizedSelection(existingFiles) : [];
+  const incoming = normalizedSelection(incomingFiles);
+  const merged = new Map();
+  const folded = new Map();
+  for (const { file, path } of [...existing, ...incoming]) {
+    const key = path.toLowerCase();
+    const priorPath = folded.get(key);
+    if (priorPath && priorPath !== path) throw webV4Error('WEB_V4_INPUT_INVALID', 'Case-folding source path collision.');
+    const declaredSize = Number(file?.size ?? 0);
+    if (Number.isFinite(declaredSize) && declaredSize >= 0 && declaredSize > limits.maxPerFileBytes) {
+      throw webV4Error('WEB_V4_INPUT_LIMIT', 'A source file exceeds the safe byte limit.', { path, limit: limits.maxPerFileBytes });
+    }
+    folded.set(key, path);
+    merged.set(path, normalizedBrowserFile(file, path));
+  }
+  const result = [...merged.entries()].sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0).map(([, file]) => file);
+  if (result.length > limits.maxFileCount) throw webV4Error('WEB_V4_INPUT_LIMIT', 'Browser file count exceeds the safe limit.', { limit: limits.maxFileCount });
+  const projectBytes = result.reduce((total, file) => total + (Number.isFinite(file.size) && file.size >= 0 ? file.size : 0), 0);
+  if (projectBytes > limits.maxProjectBytes) throw webV4Error('WEB_V4_INPUT_LIMIT', 'Project sources exceed the safe byte limit.', { limit: limits.maxProjectBytes });
+  return Object.freeze(result);
 }
 
 function droppedFile(file, relativePath) {
