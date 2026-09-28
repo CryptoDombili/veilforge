@@ -46,9 +46,9 @@ ed3992a67ffe8299d21cb23043aad78496d919dfbc4f83f1832f821efba6286f  apps/web/lib/u
 b15d8b6fd34f1c89cd7431789245499afbf51df0a38a87af8156217069a823a6  apps/web/v4/errors.js
 2f3ec606823e4f83637efc091145d0c9d2fc69fc3bff7236f3278f931fc43feb  apps/web/v4/export-adapter.js
 67f5a86489a68fd4db84841850994724b6d004bb8d8a1e22baec4a597b30293a  apps/web/v4/feature-flags.js
-4c8780b41b387ad5549110c945920a4e6b404f831c02d951905a42969c35c662  apps/web/v4/folder-drop.js
+f8d44021878b91a4917f3ccd5e4d09a3924787f6de4fec5617ba2b6d1c5159de  apps/web/v4/folder-drop.js
 e96bae954b56638565d8b328b2ed1e2357bd9e34d764346a617aa438835faa91  apps/web/v4/index.js
-19a1eddfd879ddfdc6295386ee8e5638e44c15ef68940ac62f7843b4c576337f  apps/web/v4/input-adapter.js
+39a9a9fe1add3d1f662986adb18b35154887c0ad28f9c62ff94fa294b6847936  apps/web/v4/input-adapter.js
 6e23d0b4dddd6ae9097dc16fd2794a39d1562a6a424c0d75775266c5ce64f91e  apps/web/v4/persistence.js
 a3372f75fcc5e93716d2639d149c85cdda77d753aaebfdd0c41a2c9143109bb4  apps/web/v4/proof-adapter.js
 c9748e5b102beb3e4a5d640fcffe95fa10fd5c6d9b3077c1bbaeb6531b24d1e9  apps/web/v4/proof-connect-boundary.js
@@ -881,7 +881,7 @@ c9f382db4147b12dcc91f72aef0d88f2e4282ca34fd85f8f5dd79c23b4744a20  tests/security
 fcffab7d5ba6fcace64134eed573148b79c336cb0031376250d4a8fe4f6d1538  tests/spec/identity-vectors.test.mjs
 18420395f52cd8144e4ea3f7ccee54d70a52b25269738869d078d2ad34f07afd  tests/spec/product-claims.test.mjs
 f29d2f12b4c141082b8007fe2d139111add40b291c360848e777ef426bed7378  tests/spec/report-hash-vectors.test.mjs
-b429f9e84935dfc9191328f343451bbce04ddd1b5a6dcbc1d0462a4c8cda19b8  tests/v4-additive-input.test.mjs
+b03f0659b0a092dd990246b85867a76bc91e457ee7be7ef124d9a8368af769a9  tests/v4-additive-input.test.mjs
 b1b300507a7d362070645ec48fbd403b841f0da3f56c3f4a537d143359096d26  tests/v4-post-scan-boundary.test.mjs
 25d1bb9d73822a22a6c6d34939d0092b93b4dd6efd8e9f19d82dd35d49dbe496  tests/v4-worker-csp.test.mjs
 642810c52a3fc4a1091e670d0ebde6b2ed06a144f62124db94d9c1018b26cfba  tests/v4/action/action.test.mjs
@@ -1194,7 +1194,7 @@ f14fd44921a48f11d377655abdbd1ecca727eb5374cd062607c989d6f47f2aec  tests/web/v4/e
 406b3de0a0031e26349ad3377e8e11c08ea6781078383fb627418bdc2aa02a9f  tests/web/v4/feature-flag.test.mjs
 561a66827f40c14a1ccaaa34f6f8bfabe07ce153c57017b6aaf37ff7e711c64e  tests/web/v4/folder-drop.test.mjs
 0825eab62314a345953b88dd20d77c0a6f1791d244ef955e0fd0df054b4c72d1  tests/web/v4/helpers.mjs
-1e89a22611529cf8f0afa983f4e9fbc236b706b5c4701dc087766db4c4b6d339  tests/web/v4/input-adapter.test.mjs
+f00ee3a83866e1d6a237f08ed346de0390e00456f28cadc4633befe50161145c  tests/web/v4/input-adapter.test.mjs
 6c65712286ef8b2822a4910a08f053003e3535e8b61ac8f7c9178ad2382fc49f  tests/web/v4/persistence.test.mjs
 1ee5a2317fc054198c7571c7ea5cc92f085fc73d221742782b0b10e03209f02b  tests/web/v4/privacy.test.mjs
 22e950fccecd016810d7dcf8fda53669d95d48e1f5867c51e018b31dcd6da73a  tests/web/v4/protocol.test.mjs
