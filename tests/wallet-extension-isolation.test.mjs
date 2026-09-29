@@ -244,7 +244,9 @@ test('duplicate announcements collapse and hostile wallet metadata is escaped', 
   assert.equal(choices.length, 2);
   const html = walletChoicesTemplate(choices);
   assert.match(html, /Other EVM wallet/u);
-  assert.doesNotMatch(html, /<img/u);
+  assert.doesNotMatch(html, /<img\s+src=x|onerror=/u);
+  assert.equal((html.match(/<img\b/gu) ?? []).length, 1);
+  assert.match(html, /src="\/assets\/wallets\/rabby\.svg"/u);
   assert.doesNotMatch(html, /onerror/u);
   assert.doesNotMatch(html, /\[object Object\]/u);
   assert.deepEqual(wallet.calls, []);
@@ -299,13 +301,38 @@ test('wallet cards render only discovered choices with safe data icons and fallb
   ]);
   assert.equal((html.match(/data-v4-wallet-choice=/gu) ?? []).length, 4);
   assert.equal((html.match(/Ready to connect/gu) ?? []).length, 4);
-  assert.equal((html.match(/data-v4-wallet-icon/gu) ?? []).length, 1); // SVG falls back when no browser DOMParser is available.
-  assert.match(html, /data-v4-wallet-choice="0"[^>]*>[\s\S]*?<span>M<\/span><img/u);
-  assert.match(html, /data-v4-wallet-choice="1"[^>]*>[\s\S]*?<span>R<\/span>/u);
+  assert.equal((html.match(/data-v4-wallet-icon/gu) ?? []).length, 2); // Phantom SVG still falls back without browser DOMParser.
+  assert.match(html, /src="\/assets\/wallets\/metamask\.svg"/u);
+  assert.match(html, /src="\/assets\/wallets\/rabby\.svg"/u);
+  assert.doesNotMatch(html, /<span>[MR]<\/span>/u);
   assert.match(html, /<span>P<\/span>/u);
   assert.match(html, /<span>K<\/span>/u);
   assert.doesNotMatch(html, /https:\/\/wallet\.example|Wallet [0-9]/u);
   assert.equal(walletChoicesTemplate([]), '');
+});
+
+test('MetaMask and Rabby use bundled logos without changing other wallet icons or card markup', () => {
+  const choices = [
+    { info: { name: 'MetaMask', rdns: 'io.metamask' } },
+    { info: { name: 'Rabby', rdns: 'io.rabby' } },
+    { info: { name: 'Phantom', rdns: 'app.phantom' } },
+    { info: { name: 'Keplr', rdns: 'app.keplr' } },
+  ];
+  const html = walletChoicesTemplate(choices);
+  assert.equal((html.match(/Ready to connect/gu) ?? []).length, 4);
+  assert.equal((html.match(/class="v4-wallet-card-chevron" aria-hidden="true">›/gu) ?? []).length, 4);
+  assert.match(html, /<span>P<\/span>/u);
+  assert.match(html, /<span>K<\/span>/u);
+  for (const wallet of ['metamask', 'rabby']) {
+    const svg = fs.readFileSync(new URL(`../apps/web/assets/wallets/${wallet}.svg`, import.meta.url), 'utf8');
+    assert.match(svg, /<svg\b/u);
+    assert.doesNotMatch(svg, /<script|<foreignObject|\bon\w+=|\bhref=/iu);
+  }
+  const safeIcon = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/eXcAAAAASUVORK5CYII=';
+  const otherHtml = walletChoicesTemplate(choices.slice(2).map(choice => ({ ...choice, info: { ...choice.info, icon: safeIcon } })));
+  assert.equal((otherHtml.match(/data-v4-wallet-icon/gu) ?? []).length, 2);
+  assert.equal((otherHtml.match(/src="data:image\/png;base64,/gu) ?? []).length, 2);
+  assert.doesNotMatch(otherHtml, /assets\/wallets/u);
 });
 
 test('wallet chooser deduplicates EIP/legacy identities without auto-selecting a provider', () => {

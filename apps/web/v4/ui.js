@@ -149,9 +149,11 @@ export function walletChoicesTemplate(choices) {
   const multipleUnknown = choices.filter((choice) => !walletKnownName(choice)).length > 1;
   return choices.map((choice, index) => {
     const label = walletChoiceLabel(choice, { multipleUnknown });
-    const initial = walletKnownName(choice)?.slice(0, 1) ?? 'O';
-    const icon = safeWalletIconDataUri(choice?.info?.icon);
-    return `<button type="button" class="v4-wallet-card" data-v4-wallet-choice="${index}"><span class="v4-wallet-card-icon" aria-hidden="true"><span>${esc(initial)}</span>${icon ? `<img data-v4-wallet-icon src="${esc(icon)}" alt="">` : ''}</span><span class="v4-wallet-card-copy"><b>${esc(label)}</b><small data-v4-wallet-state>Ready to connect</small></span><span class="v4-wallet-card-chevron" aria-hidden="true">›</span></button>`;
+    const knownName = walletKnownName(choice);
+    const initial = knownName?.slice(0, 1) ?? 'O';
+    const localIcon = ({ MetaMask: '/assets/wallets/metamask.svg', Rabby: '/assets/wallets/rabby.svg' })[knownName] ?? null;
+    const icon = localIcon ?? safeWalletIconDataUri(choice?.info?.icon);
+    return `<button type="button" class="v4-wallet-card" data-v4-wallet-choice="${index}"><span class="v4-wallet-card-icon" aria-hidden="true">${localIcon ? '' : `<span>${esc(initial)}</span>`}${icon ? `<img data-v4-wallet-icon src="${esc(icon)}" alt="">` : ''}</span><span class="v4-wallet-card-copy"><b>${esc(label)}</b><small data-v4-wallet-state>Ready to connect</small></span><span class="v4-wallet-card-chevron" aria-hidden="true">›</span></button>`;
   }).join('');
 }
 
