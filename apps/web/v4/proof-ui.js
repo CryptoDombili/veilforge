@@ -35,6 +35,7 @@ export function proofSectionTemplate() {
     <div id="v4-proof-summary" hidden></div>
     <details id="v4-proof-workflow" class="v4-proof-workflow" hidden><summary>Open proof workflow</summary><div class="v4-proof-workflow-body">
       <div id="v4-proof-wallet" hidden></div>
+      <div id="v4-proof-wallet-choices" class="v4-proof-wallet-choices" role="group" aria-label="Choose wallet" hidden></div>
       <div id="v4-proof-disclosure" class="v4-proof-disclosure" hidden><label for="v4-proof-ack"><input id="v4-proof-ack" type="checkbox"> I understand this proof anchors analysis evidence; it does not certify confidentiality.</label></div>
       <div id="v4-proof-checks" hidden></div>
       <div class="v4-button-row"><button id="v4-proof-inspect-wallet" type="button" disabled>Connect Wallet</button><button id="v4-proof-preflight" type="button" disabled>Review &amp; Publish Proof</button></div>

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { createWorkerMessage } from '../apps/web/v4/runtime/protocol.js';
 import { createWorkerClient } from '../apps/web/v4/runtime/worker-client.js';
 import { discoverWalletProviders } from '../apps/web/v4/wallet-provider-discovery.js';
-import { connectProofWalletFromUserClick } from '../apps/web/v4/ui.js';
+import { connectProofWalletChoiceFromUserClick, discoverProofWalletChoices, walletChoicesTemplate } from '../apps/web/v4/ui.js';
 import { deriveProofWalletUiState, proofSectionTemplate } from '../apps/web/v4/proof-ui.js';
 
 const ACCOUNT = '0x1111111111111111111111111111111111111111';
@@ -100,11 +100,12 @@ test('local V4 scanner is independent from absent, single, multiple, throwing an
   });
 });
 
-test('wallet discovery is deferred and prefers multiple EIP-6963 announcements', async () => {
+test('wallet discovery is deferred and combines EIP-6963 announcements with legacy providers', async () => {
   const metamask = provider('metamask');
   const rabby = provider('rabby');
+  const legacy = provider('legacy-conflict');
   const environment = walletScope({
-    legacyProvider: provider('legacy-conflict'),
+    legacyProvider: legacy,
     announcements: [
       { info: { name: 'Rabby Wallet', rdns: 'io.rabby', uuid: 'two' }, provider: rabby },
       { info: { name: 'MetaMask', rdns: 'io.metamask', uuid: 'one' }, provider: metamask },
@@ -112,8 +113,8 @@ test('wallet discovery is deferred and prefers multiple EIP-6963 announcements',
   });
   assert.deepEqual(environment.snapshot(), { ethereumReads: 0, listenersAdded: 0, requests: 0 });
   const discovered = await discoverWalletProviders({ scope: environment.scope, waitMs: 0 });
-  assert.deepEqual(discovered.map((item) => item.provider), [metamask, rabby]);
-  assert.deepEqual(environment.snapshot(), { ethereumReads: 0, listenersAdded: 1, requests: 1 });
+  assert.deepEqual(discovered.map((item) => item.provider), [metamask, rabby, legacy]);
+  assert.deepEqual(environment.snapshot(), { ethereumReads: 1, listenersAdded: 1, requests: 1 });
 });
 
 test('wallet discovery tolerates a throwing provider getter and a provider injected later', async () => {
@@ -138,7 +139,9 @@ test('proof render and local scan never request an account; click discovers a la
   assert.deepEqual(environment.snapshot(), { ethereumReads: 0, listenersAdded: 0, requests: 0 });
   environment.setLegacyProvider(injected);
   let savedProvider = null;
-  const connected = await connectProofWalletFromUserClick(CLICK, { scope: environment.scope, waitMs: 0, onProvider(value) { savedProvider = value; } });
+  const choices = await discoverProofWalletChoices({ scope: environment.scope, waitMs: 0 });
+  assert.equal(choices.length, 1);
+  const connected = await connectProofWalletChoiceFromUserClick(CLICK, choices[0], { onProvider(value) { savedProvider = value; } });
   assert.equal(savedProvider, injected);
   assert.equal(connected.provider, injected);
   assert.equal(connected.connection.account, ACCOUNT);
@@ -152,36 +155,104 @@ test('explicit click safely falls back to a legacy provider injected during disc
   const injected = connectableProvider();
   let reads = 0;
   const scope = { get ethereum() { reads += 1; return reads > 1 ? injected : null; } };
-  const connected = await connectProofWalletFromUserClick(CLICK, { scope, waitMs: 0 });
+  const choices = await discoverProofWalletChoices({ scope, waitMs: 0 });
+  const connected = await connectProofWalletChoiceFromUserClick(CLICK, choices[0]);
   assert.equal(connected.provider, injected);
   assert.ok(reads >= 2);
   assert.deepEqual(injected.calls, ['eth_requestAccounts']);
 });
 
-test('trusted click retains EIP-6963 deterministic selection and never selects the conflicting legacy wallet', async () => {
+test('multiple wallets present an explicit chooser and never auto-connect the first sorted provider', async () => {
   const metamask = connectableProvider();
   const rabby = connectableProvider();
-  const legacy = connectableProvider();
-  const environment = walletScope({ legacyProvider: legacy, announcements: [
+  const keplr = connectableProvider();
+  const environment = walletScope({ announcements: [
     { info: { name: 'Rabby Wallet', rdns: 'io.rabby', uuid: 'two' }, provider: rabby },
     { info: { name: 'MetaMask', rdns: 'io.metamask', uuid: 'one' }, provider: metamask },
   ] });
-  const connected = await connectProofWalletFromUserClick(CLICK, { scope: environment.scope, waitMs: 0 });
+  environment.scope.keplr = { ethereum: keplr };
+  const choices = await discoverProofWalletChoices({ scope: environment.scope, waitMs: 0 });
+  assert.deepEqual(choices.map((item) => item.info.name), ['MetaMask', 'Rabby Wallet', 'Keplr EVM']);
+  assert.match(walletChoicesTemplate(choices), /Choose wallet/u);
+  assert.match(walletChoicesTemplate(choices), /MetaMask/u);
+  assert.match(walletChoicesTemplate(choices), /Rabby Wallet/u);
+  assert.match(walletChoicesTemplate(choices), /Keplr EVM/u);
+  assert.deepEqual(metamask.calls, []);
+  assert.deepEqual(rabby.calls, []);
+  assert.deepEqual(keplr.calls, []);
+  const connected = await connectProofWalletChoiceFromUserClick(CLICK, choices.find((item) => item.provider === metamask));
   assert.equal(connected.provider, metamask);
   assert.deepEqual(metamask.calls, ['eth_requestAccounts']);
   assert.deepEqual(rabby.calls, []);
-  assert.deepEqual(legacy.calls, []);
+  assert.deepEqual(keplr.calls, []);
+  await connectProofWalletChoiceFromUserClick(CLICK, choices.find((item) => item.provider === rabby));
+  assert.deepEqual(rabby.calls, ['eth_requestAccounts']);
+  assert.deepEqual(keplr.calls, []);
+  await connectProofWalletChoiceFromUserClick(CLICK, choices.find((item) => item.provider === keplr));
+  assert.deepEqual(keplr.calls, ['eth_requestAccounts']);
+});
+
+test('each single EVM wallet connects after one explicit click, including Keplr and Rabby', async () => {
+  for (const [name, environmentFactory] of [
+    ['MetaMask', (wallet) => walletScope({ announcements: [{ info: { name: 'MetaMask', rdns: 'io.metamask', uuid: 'one' }, provider: wallet }] })],
+    ['Rabby', (wallet) => walletScope({ announcements: [{ info: { name: 'Rabby', rdns: 'io.rabby', uuid: 'two' }, provider: wallet }] })],
+    ['Keplr EVM', (wallet) => { const environment = walletScope(); environment.scope.keplr = { ethereum: wallet }; return environment; }],
+  ]) {
+    const wallet = connectableProvider();
+    const environment = environmentFactory(wallet);
+    const choices = await discoverProofWalletChoices({ scope: environment.scope, waitMs: 0 });
+    assert.equal(choices.length, 1, name);
+    assert.equal(choices[0].info.name, name);
+    assert.deepEqual(wallet.calls, []);
+    await connectProofWalletChoiceFromUserClick(CLICK, choices[0]);
+    assert.deepEqual(wallet.calls, ['eth_requestAccounts']);
+  }
+});
+
+test('legacy window.ethereum.providers and Phantom EVM remain discoverable alongside Keplr', async () => {
+  const first = connectableProvider();
+  const second = connectableProvider();
+  const keplr = connectableProvider();
+  const phantom = connectableProvider();
+  const environment = walletScope({ legacyProvider: { providers: [first, second] } });
+  environment.scope.keplr = { ethereum: keplr };
+  environment.scope.phantom = { ethereum: phantom };
+  const choices = await discoverProofWalletChoices({ scope: environment.scope, waitMs: 0 });
+  assert.deepEqual(new Set(choices.map((item) => item.provider)), new Set([first, second, keplr, phantom]));
+  assert.match(walletChoicesTemplate(choices), /Keplr EVM/u);
+  assert.match(walletChoicesTemplate(choices), /Phantom/u);
+  for (const wallet of [first, second, keplr, phantom]) assert.deepEqual(wallet.calls, []);
+});
+
+test('duplicate announcements collapse and hostile wallet metadata is escaped', async () => {
+  const wallet = connectableProvider();
+  const another = connectableProvider();
+  const environment = walletScope({ announcements: [
+    { info: { name: '<img src=x onerror=alert(1)>', rdns: 'io.example', uuid: 'one' }, provider: wallet },
+    { info: { name: '<img src=x onerror=alert(1)>', rdns: 'io.example', uuid: 'one' }, provider: wallet },
+    { info: { name: 'Rabby', rdns: 'io.rabby', uuid: 'two' }, provider: another },
+  ] });
+  const choices = await discoverProofWalletChoices({ scope: environment.scope, waitMs: 0 });
+  assert.equal(choices.length, 2);
+  const html = walletChoicesTemplate(choices);
+  assert.match(html, /&lt;img src=x onerror=alert\(1\)&gt;/u);
+  assert.doesNotMatch(html, /<img/u);
+  assert.doesNotMatch(html, /\[object Object\]/u);
+  assert.deepEqual(wallet.calls, []);
+  assert.deepEqual(another.calls, []);
 });
 
 test('no wallet gives a safe retry; an untrusted event never opens a wallet; wrong chain remains blocked', async () => {
   const empty = walletScope();
-  await assert.rejects(() => connectProofWalletFromUserClick(CLICK, { scope: empty.scope, waitMs: 0 }), (error) => error.code === 'WEB_V4_PROVIDER_UNAVAILABLE');
+  const emptyChoices = await discoverProofWalletChoices({ scope: empty.scope, waitMs: 0 });
+  await assert.rejects(() => connectProofWalletChoiceFromUserClick(CLICK, emptyChoices[0]), (error) => error.code === 'WEB_V4_PROVIDER_UNAVAILABLE');
   const retry = deriveProofWalletUiState({}, 5_042, { error: 'No injected EVM wallet was found. Install or enable MetaMask/Rabby and retry.', networkKey: 'arc-mainnet' });
   assert.equal(retry.label, 'Retry wallet connection');
   assert.equal(retry.disabled, false);
   const injected = connectableProvider();
   const present = walletScope({ legacyProvider: injected });
-  await assert.rejects(() => connectProofWalletFromUserClick({ type: 'click', isTrusted: false }, { scope: present.scope, waitMs: 0 }), (error) => error.code === 'WEB_V4_USER_GESTURE_REQUIRED');
+  const presentChoices = await discoverProofWalletChoices({ scope: present.scope, waitMs: 0 });
+  await assert.rejects(() => connectProofWalletChoiceFromUserClick({ type: 'click', isTrusted: false }, presentChoices[0]), (error) => error.code === 'WEB_V4_USER_GESTURE_REQUIRED');
   assert.deepEqual(injected.calls, []);
   const wrong = deriveProofWalletUiState({ providerAvailable: true, connected: true, account: ACCOUNT, chainId: 1 }, 5_042, { networkKey: 'arc-mainnet' });
   assert.equal(wrong.label, 'Wrong network · switch in wallet');

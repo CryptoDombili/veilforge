@@ -16,7 +16,7 @@ import { invalidateNetworkPreflight, preflightProofNetworkProvider } from './pro
 import { createUserGatedProofReview } from './proof-send-boundary.js';
 import { createBrowserProofSendCoordinator, PROOF_SEND_STATES } from './proof-send-coordinator.js';
 import { inspectExistingProofTransaction, isValidProofTransactionHash, reconcileVerifiedProofPublication, submitUserApprovedProofTransaction } from './proof-transaction-acceptance.js';
-import { discoverWalletProvider } from './wallet-provider-discovery.js';
+import { discoverWalletProviders } from './wallet-provider-discovery.js';
 import { webV4Error } from './errors.js';
 import { DEFAULT_WEB_NETWORK_KEY, resolveWebNetworkConfig } from '../config.js';
 
@@ -36,7 +36,7 @@ const WORKFLOW_STEPS = Object.freeze([
 ]);
 const ANALYSIS_PHASES = Object.freeze(['Compiler', 'AST', 'CFG', 'Dataflow', 'Detectors', 'Report']);
 const DEFAULT_FILTERS = Object.freeze({ query: '', severity: 'all', domain: 'all', disposition: 'all', confidence: 'all', completeness: 'all', detector: '', sort: 'severity' });
-const createEmptyProofState = () => ({ envelope: null, wallet: buildWalletState(), walletConnecting: false, walletError: null, preflight: null, networkPreflight: null, review: null, status: 'unavailable', failure: null, receipt: null, sendAttempt: null, provider: null, identityVerified: false, completionState: null, verificationRequestId: 0, existingVerification: { status: 'idle', message: '', identity: null } });
+const createEmptyProofState = () => ({ envelope: null, wallet: buildWalletState(), walletConnecting: false, walletChoices: [], walletError: null, preflight: null, networkPreflight: null, review: null, status: 'unavailable', failure: null, receipt: null, sendAttempt: null, provider: null, identityVerified: false, completionState: null, verificationRequestId: 0, existingVerification: { status: 'idle', message: '', identity: null } });
 
 const esc = (value) => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
 const formatBytes = (bytes) => bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(bytes < 10240 ? 1 : 0)} KiB`;
@@ -44,17 +44,28 @@ const shortAddress = (value) => value ? `${value.slice(0, 6)}…${value.slice(-4
 const locationText = (location) => location ? `${location.sourcePath}:${location.startLine ?? '?'}:${location.startColumn ?? '?'}` : 'No safe source location';
 const slug = (value) => String(value || 'veilforge-project').toLowerCase().replace(/[^a-z0-9]+/gu, '-').replace(/^-|-$/gu, '') || 'veilforge-project';
 
-export async function connectProofWalletFromUserClick(event, { scope = globalThis, waitMs = 80, fallbackProvider = null, onProvider = () => {} } = {}) {
-  const userGesture = event?.type === 'click' && event.isTrusted === true;
-  if (!userGesture) throw webV4Error('WEB_V4_USER_GESTURE_REQUIRED', 'Wallet connection requires a trusted user click.');
-  let provider = await discoverWalletProvider({ scope, waitMs });
-  if (!provider) {
-    try {
-      const legacy = scope?.ethereum;
-      if (typeof legacy?.request === 'function') provider = legacy;
-    } catch { /* A hostile or unavailable extension getter cannot block retry. */ }
-  }
-  provider ??= fallbackProvider;
+export async function discoverProofWalletChoices({ scope = globalThis, waitMs = 80, fallbackProvider = null } = {}) {
+  const discovered = await discoverWalletProviders({ scope, waitMs });
+  if (discovered.length) return discovered;
+  let legacy = null;
+  try {
+    const injected = scope?.ethereum;
+    if (typeof injected?.request === 'function') legacy = injected;
+  } catch { /* A hostile or unavailable extension getter cannot block retry. */ }
+  const provider = legacy ?? fallbackProvider;
+  return provider && typeof provider.request === 'function'
+    ? Object.freeze([Object.freeze({ provider, source: 'legacy', info: Object.freeze({ name: 'Injected EVM wallet', rdns: '', uuid: '' }) })])
+    : Object.freeze([]);
+}
+
+export function walletChoicesTemplate(choices) {
+  if (!Array.isArray(choices) || choices.length < 2) return '';
+  return `<p><b>Choose wallet</b> · Select the EVM wallet to connect. No account request has been made.</p><div>${choices.map((choice, index) => `<button type="button" data-v4-wallet-choice="${index}">${esc(choice.info?.name || choice.info?.rdns || `Wallet ${index + 1}`)}</button>`).join('')}</div>`;
+}
+
+export async function connectProofWalletChoiceFromUserClick(event, choice, { onProvider = () => {} } = {}) {
+  if (event?.type !== 'click' || event.isTrusted !== true) throw webV4Error('WEB_V4_USER_GESTURE_REQUIRED', 'Wallet connection requires a trusted user click.');
+  const provider = choice?.provider ?? null;
   if (provider) onProvider(provider);
   const connection = await connectWalletOnUserGesture(provider, { userGesture: event.type === 'click' && event.isTrusted === true });
   return Object.freeze({ provider, connection });
@@ -487,7 +498,7 @@ export async function initV4Ui(options = {}) {
       byId('v4-proof-status').innerHTML = failure
         ? `<p>Arc proof preparation unavailable. <small>Diagnostic: ${esc(failure.code)} · stage: ${esc(failure.stage)}</small></p>`
         : '<p>Run and verify a V4 scan to prepare a proof envelope.</p>';
-      byId('v4-proof-summary').hidden = true; byId('v4-proof-wallet').hidden = true; byId('v4-proof-checks').hidden = true; byId('v4-proof-transaction').hidden = true;
+      byId('v4-proof-summary').hidden = true; byId('v4-proof-wallet').hidden = true; byId('v4-proof-wallet-choices').hidden = true; byId('v4-proof-checks').hidden = true; byId('v4-proof-transaction').hidden = true;
       byId('v4-proof-inspect-wallet').disabled = true; byId('v4-proof-preflight').disabled = true; byId('v4-proof-disclosure').hidden = true;
       byId('v4-proof-review-acknowledgement').hidden = true; byId('v4-proof-send').disabled = true; byId('v4-proof-reconcile').disabled = true;
       byId('v4-proof-reconcile-status').hidden = true; byId('v4-proof-reconcile-status').replaceChildren();
@@ -502,10 +513,13 @@ export async function initV4Ui(options = {}) {
     const walletUi = deriveProofWalletUiState(wallet, proof.envelope.chainId, { connecting: proof.walletConnecting, error: proof.walletError, networkKey: proof.envelope.networkKey });
     byId('v4-proof-wallet').hidden = false;
     byId('v4-proof-wallet').innerHTML = `<p><b>Wallet boundary:</b> ${esc(walletUi.description)}</p>`;
-    byId('v4-proof-inspect-wallet').textContent = walletUi.label;
+    const choosingWallet = proof.walletChoices.length > 1 && !proof.walletConnecting;
+    byId('v4-proof-wallet-choices').hidden = !choosingWallet;
+    byId('v4-proof-wallet-choices').innerHTML = choosingWallet ? walletChoicesTemplate(proof.walletChoices) : '';
+    byId('v4-proof-inspect-wallet').textContent = choosingWallet ? 'Choose wallet' : walletUi.label;
     byId('v4-proof-inspect-wallet').title = walletUi.description;
     byId('v4-proof-inspect-wallet').dataset.state = walletUi.state;
-    byId('v4-proof-inspect-wallet').disabled = walletUi.disabled;
+    byId('v4-proof-inspect-wallet').disabled = choosingWallet || walletUi.disabled;
     const acknowledged = proof.envelope.complete || byId('v4-proof-ack').checked;
     byId('v4-proof-preflight').disabled = walletUi.state === 'network-unavailable' || !(wallet.connected && acknowledged);
     const proofNetwork = resolveWebNetworkConfig(proof.envelope.networkKey);
@@ -516,7 +530,8 @@ export async function initV4Ui(options = {}) {
       reverted: 'The registry transaction reverted; the proof was not confirmed.',
       'receipt-invalid': 'The receipt failed verification; the proof was not confirmed.',
       'wrong-network': `The connected wallet is not on the trusted ${proofNetworkDisplayName(proofNetwork)} chain.`,
-      'wallet-not-connected': 'No previously authorized wallet account is available.',
+      'wallet-not-connected': 'No wallet account is connected. Use Connect Wallet or Retry wallet connection.',
+      'wallet-choose': 'Choose one discovered wallet below. No account request has been made.',
       'preflight-checking': 'Running deterministic proof preflight checks…',
       'preflight-failed': 'Proof preflight failed closed; no transaction request was released.',
       reconciling: 'Verifying the existing transaction, receipt, event and live duplicate registry state…',
@@ -607,6 +622,7 @@ export async function initV4Ui(options = {}) {
       const envelope = await createProofEnvelope(state.verification, { networkKey: proofNetworkKey });
       if (expectedRunId != null && expectedRunId !== state.runId) return;
       state.proof.envelope = envelope;
+      state.proof.walletChoices = [];
       state.proof.verificationRequestId += 1; state.proof.existingVerification = { status: 'idle', message: '', identity: null };
       state.proof.preflight = null; state.proof.networkPreflight = null; state.proof.review = null; state.proof.receipt = null; state.proof.sendAttempt = null; state.proof.identityVerified = false; state.proof.completionState = null;
       state.proof.status = state.proof.envelope.complete ? 'ready' : 'incomplete-warning';
@@ -621,23 +637,40 @@ export async function initV4Ui(options = {}) {
       return Object.freeze({ ok: false, failure });
     }
   };
-  const inspectProofWallet = async (event = null, expectedRunId = null) => {
+  const inspectProofWallet = async (event = null, expectedRunId = null, selectedChoiceIndex = null) => {
     if (expectedRunId != null && expectedRunId !== state.runId) return state.proof.wallet;
     if (!state.proof.envelope) return state.proof.wallet;
     if (event && state.proof.wallet.connected && state.proof.wallet.chainId === state.proof.envelope.chainId) return state.proof.wallet;
     let provider = state.proof.provider ?? (Object.hasOwn(options, 'proofProvider') ? options.proofProvider : null);
     if (event) {
+      const envelope = state.proof.envelope;
+      const previousChoices = state.proof.walletChoices;
       state.proof.walletConnecting = true; state.proof.walletError = null; renderProof();
       try {
-        const result = await connectProofWalletFromUserClick(event, {
-          scope: options.walletScope ?? globalThis,
-          waitMs: options.walletDiscoveryWaitMs ?? 80,
-          fallbackProvider: Object.hasOwn(options, 'proofProvider') ? options.proofProvider : null,
-          onProvider(discovered) { state.proof.provider = discovered; },
-        });
+        if (event.type !== 'click' || event.isTrusted !== true) throw webV4Error('WEB_V4_USER_GESTURE_REQUIRED', 'Wallet connection requires a trusted user click.');
+        let choice;
+        if (selectedChoiceIndex === null) {
+          const choices = await discoverProofWalletChoices({
+            scope: options.walletScope ?? globalThis,
+            waitMs: options.walletDiscoveryWaitMs ?? 80,
+            fallbackProvider: Object.hasOwn(options, 'proofProvider') ? options.proofProvider : null,
+          });
+          if (state.proof.envelope !== envelope || (expectedRunId != null && expectedRunId !== state.runId)) return state.proof.wallet;
+          if (choices.length > 1) {
+            state.proof.walletChoices = choices; state.proof.walletConnecting = false; state.proof.status = 'wallet-choose'; renderProof();
+            return state.proof.wallet;
+          }
+          choice = choices[0] ?? null;
+        } else {
+          if (!Number.isSafeInteger(selectedChoiceIndex) || selectedChoiceIndex < 0 || selectedChoiceIndex >= previousChoices.length) throw webV4Error('WEB_V4_PROVIDER_UNAVAILABLE', 'The selected wallet is no longer available.');
+          choice = previousChoices[selectedChoiceIndex];
+        }
+        const result = await connectProofWalletChoiceFromUserClick(event, choice, { onProvider(discovered) { state.proof.provider = discovered; } });
+        if (state.proof.envelope !== envelope || (expectedRunId != null && expectedRunId !== state.runId)) return state.proof.wallet;
         provider = result.provider;
+        state.proof.walletChoices = [];
       }
-      catch (error) { state.proof.walletConnecting = false; state.proof.walletError = uiErrorMessage(error); state.proof.status = 'wallet-not-connected'; renderProof(); return state.proof.wallet; }
+      catch (error) { if (state.proof.envelope !== envelope) return state.proof.wallet; state.proof.walletChoices = []; state.proof.walletConnecting = false; state.proof.walletError = uiErrorMessage(error); state.proof.status = 'wallet-not-connected'; renderProof(); return state.proof.wallet; }
     }
     if (expectedRunId != null && expectedRunId !== state.runId) return state.proof.wallet;
     const wallet = await inspectProvider(provider);
@@ -976,6 +1009,11 @@ export async function initV4Ui(options = {}) {
   byId('v4-scan').addEventListener('click', runScan);
   byId('v4-cancel').addEventListener('click', () => resetCurrentSession({ cancelled: state.scanStatus === 'scanning' }));
   byId('v4-proof-inspect-wallet').addEventListener('click', inspectProofWallet);
+  byId('v4-proof-wallet-choices').addEventListener('click', (event) => {
+    const button = event.target.closest('[data-v4-wallet-choice]');
+    if (!button) return;
+    void inspectProofWallet(event, null, Number(button.dataset.v4WalletChoice));
+  });
   byId('v4-proof-preflight').addEventListener('click', runProofPreflight);
   byId('v4-proof-ack').addEventListener('change', renderProof);
   byId('v4-proof-review-ack').addEventListener('change', reviewProofPublication);

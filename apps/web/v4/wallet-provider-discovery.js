@@ -84,9 +84,9 @@ export async function discoverWalletProviders({ scope = globalThis, waitMs = 80 
       try { removeEventListener.call(scope, EIP6963_ANNOUNCE, onAnnouncement); } catch {}
     }
   }
-  const preferred = uniqueCandidates(announced).sort(providerOrder);
-  if (preferred.length > 0) return Object.freeze(preferred);
-  return Object.freeze(uniqueCandidates(legacyCandidates(scope)));
+  const announcedProviders = uniqueCandidates(announced).sort(providerOrder);
+  const legacyProviders = uniqueCandidates(legacyCandidates(scope)).sort(providerOrder);
+  return Object.freeze(uniqueCandidates([...announcedProviders, ...legacyProviders]));
 }
 
 export async function discoverWalletProvider(options = {}) {

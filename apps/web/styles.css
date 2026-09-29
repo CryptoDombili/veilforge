@@ -101,6 +101,9 @@ body.v4-ui-mode .v4-heading > div > p { max-width: 680px; color: var(--muted); }
 .v4-proof-check-list li.passed > span { color: var(--mint); }.v4-proof-check-list li.blocked > span { color: var(--crit); }
 .v4-proof-check-list li.not-required{border-color:rgba(111,213,255,.24);background:rgba(111,213,255,.035)}.v4-proof-check-list li.not-required>span{color:#8bdcff;font-size:9px;font-weight:800}.v4-proof-check-list li.not-required>small{color:#93a9ba}
 .v4-proof-check-list small, .v4-proof-boundary, #v4-proof-wallet { color: var(--muted); }
+.v4-proof-wallet-choices { margin: 12px 0; padding: 12px; border: 1px solid var(--line); border-radius: 10px; }
+.v4-proof-wallet-choices p { margin: 0 0 9px; }
+.v4-proof-wallet-choices > div { display: flex; flex-wrap: wrap; gap: 8px; }
 .v4-proof details { margin-top: 12px; }.v4-proof details > summary { cursor: pointer; }
 .v4-detail { width: min(760px, calc(100vw - 28px)); max-height: 88vh; overflow: auto; border: 1px solid var(--line); border-radius: 16px; background: #090d16; color: #f7f8fb; padding: 25px; }
 .v4-detail::backdrop { background: rgba(0,0,0,.76); backdrop-filter: blur(6px); }
