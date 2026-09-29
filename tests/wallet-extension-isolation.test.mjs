@@ -175,10 +175,11 @@ test('multiple wallets present an explicit chooser and never auto-connect the fi
   assert.deepEqual(choices.map((item) => item.info.name), ['MetaMask', 'Rabby Wallet', 'Keplr EVM']);
   assert.match(proofSectionTemplate(), /<dialog id="v4-proof-wallet-dialog"[^>]*aria-labelledby="v4-wallet-dialog-title"/u);
   assert.match(proofSectionTemplate(), /id="v4-proof-wallet-dialog"[^>]*aria-modal="true"/u);
-  assert.match(proofSectionTemplate(), /Connect wallet/u);
-  assert.match(proofSectionTemplate(), /Choose a wallet to connect to VeilForge/u);
+  assert.match(proofSectionTemplate(), /Connect your wallet/u);
+  assert.match(proofSectionTemplate(), /Choose an EVM wallet to continue with proof publication/u);
   assert.match(proofSectionTemplate(), /role="dialog"[^>]*aria-modal="true"/u);
-  assert.match(proofSectionTemplate(), /Connection only — no signature or transaction request/u);
+  assert.match(proofSectionTemplate(), /Connecting does not request a signature or transaction/u);
+  assert.match(proofSectionTemplate(), /src="\/assets\/veilforge-mark-v2\.png"/u);
   assert.match(proofSectionTemplate(), /id="v4-wallet-dialog-close"/u);
   assert.match(proofSectionTemplate(), /id="v4-wallet-dialog-cancel"/u);
   assert.match(walletChoicesTemplate(choices), /MetaMask/u);
@@ -337,12 +338,15 @@ test('wallet modal has explicit close, cancel, escape, backdrop, and focus conta
   assert.match(ui, /querySelector\('\[data-v4-wallet-choice\]'\)\?\.focus\(\)/u);
   assert.match(ui, /if \(!walletDialog\.open \|\| state\.proof\.walletConnecting\) return/u);
   assert.match(ui, /walletDialog\.addEventListener\('close'/u);
-  assert.match(ui, /selected \? 'Connecting…' : 'Ready to connect'/u);
-  assert.match(ui, /cancelledInChooser \? 'Connection cancelled\.' : null/u);
+  assert.match(ui, /selected \? 'Waiting for wallet…' : 'Ready to connect'/u);
+  assert.match(ui, /cancelledInChooser \? 'Connection cancelled\. Choose a wallet to retry\.' : null/u);
   assert.match(ui, /cancelledInChooser \? previousChoices : \[\]/u);
+  assert.match(ui, /v4-wallet-connection-heading/u);
+  assert.match(ui, /Switch to \$\{esc\(proofNetworkDisplayName\(proof\.envelope\.networkKey\)\)\} \(\$\{esc\(proof\.envelope\.chainId\)\}\) in your wallet/u);
   const styles = fs.readFileSync(new URL('../apps/web/styles.css', import.meta.url), 'utf8');
-  assert.match(styles, /width: min\(520px, calc\(100vw - 32px\)\)/u);
-  assert.match(styles, /@media \(max-width: 600px\)[^{]*\{[^}]*width: calc\(100vw - 24px\); padding: 18px/u);
+  assert.match(styles, /width: 560px; max-width: calc\(100vw - 32px\)/u);
+  assert.match(styles, /@media \(max-width: 600px\)[^{]*\{[^}]*width: calc\(100vw - 24px\); padding: 20px/u);
+  assert.match(styles, /\.v4-wallet-dialog:open \{ animation: v4-wallet-enter \.17s/u);
   assert.match(styles, /\.v4-wallet-card\.is-connecting \[data-v4-wallet-state\]::before/u);
 });
 

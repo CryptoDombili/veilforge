@@ -45,8 +45,8 @@ export function proofSectionTemplate() {
       <p class="v4-proof-boundary"><b>Publishing always requires a separate explicit click.</b> Wallet connection and transaction publication are isolated user actions. No signature, network switch, or transaction request is made automatically.</p>
     </div></details>
     <dialog id="v4-proof-wallet-dialog" class="v4-wallet-dialog" role="dialog" aria-modal="true" aria-labelledby="v4-wallet-dialog-title" aria-describedby="v4-wallet-dialog-subtitle">
-      <div class="v4-wallet-dialog-head"><div><h3 id="v4-wallet-dialog-title">Connect wallet</h3><p id="v4-wallet-dialog-subtitle">Choose a wallet to connect to VeilForge.</p></div><button id="v4-wallet-dialog-close" type="button" aria-label="Close wallet chooser">×</button></div>
-      <p class="v4-wallet-security-line"><span aria-hidden="true">✓</span>Connection only — no signature or transaction request.</p>
+      <div class="v4-wallet-dialog-head"><div class="v4-wallet-dialog-heading"><img src="/assets/veilforge-mark-v2.png" width="52" height="52" alt="" aria-hidden="true"><div><h3 id="v4-wallet-dialog-title">Connect your wallet</h3><p id="v4-wallet-dialog-subtitle">Choose an EVM wallet to continue with proof publication.</p></div></div><button id="v4-wallet-dialog-close" type="button" aria-label="Close wallet chooser">×</button></div>
+      <p class="v4-wallet-security-line"><span aria-hidden="true">✓</span>Connecting does not request a signature or transaction.</p>
       <div id="v4-proof-wallet-choices" class="v4-proof-wallet-choices" role="group" aria-label="Available EVM wallets"></div>
       <p id="v4-wallet-dialog-status" class="v4-wallet-dialog-status" role="status" aria-live="polite" tabindex="-1" hidden></p>
       <div class="v4-wallet-dialog-footer"><small>VeilForge never requests a signature or transaction simply to connect.</small><button id="v4-wallet-dialog-cancel" type="button">Cancel</button></div>

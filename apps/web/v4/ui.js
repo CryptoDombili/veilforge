@@ -608,7 +608,7 @@ export async function initV4Ui(options = {}) {
     byId('v4-proof-wallet').hidden = false;
     const walletDisplay = byId('v4-proof-wallet');
     walletDisplay.innerHTML = wallet.connected && wallet.account
-      ? `<div class="v4-wallet-connection"><span class="v4-wallet-connection-pill${walletUi.state === 'wrong-network' ? ' is-warning' : ''}">${walletUi.state === 'wrong-network' ? 'Connected' : '✓ Connected'}</span><code>${esc(shortAddress(wallet.account))}</code><span>${esc(walletUi.state === 'wrong-network' ? 'Wrong network' : proofNetworkDisplayName(proof.envelope.networkKey))}</span>${walletUi.state === 'wrong-network' ? `<small>Switch to ${esc(proofNetworkDisplayName(proof.envelope.networkKey))} in your wallet.</small>` : ''}</div>`
+      ? `<div class="v4-wallet-connection${walletUi.state === 'wrong-network' ? ' is-warning' : ''}"><div class="v4-wallet-connection-heading"><span class="v4-wallet-connection-symbol" aria-hidden="true">${walletUi.state === 'wrong-network' ? '!' : '✓'}</span><b>Wallet connected</b></div><code>${esc(shortAddress(wallet.account))}</code>${walletUi.state === 'wrong-network' ? `<span class="v4-wallet-network-warning">⚠ Wrong network</span><small>Switch to ${esc(proofNetworkDisplayName(proof.envelope.networkKey))} (${esc(proof.envelope.chainId)}) in your wallet.</small>` : `<span class="v4-wallet-network-name">${esc(proofNetworkDisplayName(proof.envelope.networkKey))}</span>`}</div>`
       : `<p><b>Wallet boundary:</b> ${esc(walletUi.description)}</p>`;
     const choosingWallet = proof.walletChoices.length > 1;
     if (choosingWallet && !walletDialog.open) {
@@ -622,7 +622,7 @@ export async function initV4Ui(options = {}) {
         const selected = proof.walletConnecting && Number(card.dataset.v4WalletChoice) === proof.walletSelectedIndex;
         card.disabled = Boolean(selected);
         card.classList.toggle('is-connecting', Boolean(selected));
-        card.querySelector('[data-v4-wallet-state]').textContent = selected ? 'Connecting…' : 'Ready to connect';
+        card.querySelector('[data-v4-wallet-state]').textContent = selected ? 'Waiting for wallet…' : 'Ready to connect';
       }
       byId('v4-wallet-dialog-close').disabled = proof.walletConnecting;
       byId('v4-wallet-dialog-cancel').disabled = proof.walletConnecting;
@@ -791,7 +791,7 @@ export async function initV4Ui(options = {}) {
         const cancelledInChooser = selectedChoiceIndex !== null && error?.code === 'WEB_V4_USER_REJECTED';
         state.proof.walletChoices = cancelledInChooser ? previousChoices : [];
         state.proof.walletSelectedIndex = null; state.proof.walletConnecting = false;
-        state.proof.walletNotice = cancelledInChooser ? 'Connection cancelled.' : null;
+        state.proof.walletNotice = cancelledInChooser ? 'Connection cancelled. Choose a wallet to retry.' : null;
         state.proof.walletError = cancelledInChooser ? null : uiErrorMessage(error);
         state.proof.status = cancelledInChooser ? 'wallet-choose' : 'wallet-not-connected';
         renderProof(); return state.proof.wallet;
