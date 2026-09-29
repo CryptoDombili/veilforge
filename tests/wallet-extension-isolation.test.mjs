@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { createWorkerMessage } from '../apps/web/v4/runtime/protocol.js';
 import { createWorkerClient } from '../apps/web/v4/runtime/worker-client.js';
 import { discoverWalletProviders } from '../apps/web/v4/wallet-provider-discovery.js';
-import { connectProofWalletChoiceFromUserClick, discoverProofWalletChoices, walletChoicesTemplate } from '../apps/web/v4/ui.js';
+import { connectProofWalletChoiceFromUserClick, discoverProofWalletChoices, normalizeWalletChoices, walletChoiceLabel, walletChoicesTemplate } from '../apps/web/v4/ui.js';
 import { deriveProofWalletUiState, proofSectionTemplate } from '../apps/web/v4/proof-ui.js';
 
 const ACCOUNT = '0x1111111111111111111111111111111111111111';
@@ -173,10 +173,15 @@ test('multiple wallets present an explicit chooser and never auto-connect the fi
   environment.scope.keplr = { ethereum: keplr };
   const choices = await discoverProofWalletChoices({ scope: environment.scope, waitMs: 0 });
   assert.deepEqual(choices.map((item) => item.info.name), ['MetaMask', 'Rabby Wallet', 'Keplr EVM']);
-  assert.match(walletChoicesTemplate(choices), /Choose wallet/u);
+  assert.match(proofSectionTemplate(), /<dialog id="v4-proof-wallet-dialog"[^>]*aria-labelledby="v4-wallet-dialog-title"/u);
+  assert.match(proofSectionTemplate(), /id="v4-proof-wallet-dialog"[^>]*aria-modal="true"/u);
+  assert.match(proofSectionTemplate(), /Connect wallet/u);
+  assert.match(proofSectionTemplate(), /Choose an EVM wallet to connect to VeilForge/u);
+  assert.match(proofSectionTemplate(), /id="v4-wallet-dialog-close"/u);
+  assert.match(proofSectionTemplate(), /id="v4-wallet-dialog-cancel"/u);
   assert.match(walletChoicesTemplate(choices), /MetaMask/u);
-  assert.match(walletChoicesTemplate(choices), /Rabby Wallet/u);
-  assert.match(walletChoicesTemplate(choices), /Keplr EVM/u);
+  assert.match(walletChoicesTemplate(choices), />Rabby</u);
+  assert.match(walletChoicesTemplate(choices), />Keplr</u);
   assert.deepEqual(metamask.calls, []);
   assert.deepEqual(rabby.calls, []);
   assert.deepEqual(keplr.calls, []);
@@ -219,7 +224,7 @@ test('legacy window.ethereum.providers and Phantom EVM remain discoverable along
   environment.scope.phantom = { ethereum: phantom };
   const choices = await discoverProofWalletChoices({ scope: environment.scope, waitMs: 0 });
   assert.deepEqual(new Set(choices.map((item) => item.provider)), new Set([first, second, keplr, phantom]));
-  assert.match(walletChoicesTemplate(choices), /Keplr EVM/u);
+  assert.match(walletChoicesTemplate(choices), />Keplr</u);
   assert.match(walletChoicesTemplate(choices), /Phantom/u);
   for (const wallet of [first, second, keplr, phantom]) assert.deepEqual(wallet.calls, []);
 });
@@ -235,8 +240,9 @@ test('duplicate announcements collapse and hostile wallet metadata is escaped', 
   const choices = await discoverProofWalletChoices({ scope: environment.scope, waitMs: 0 });
   assert.equal(choices.length, 2);
   const html = walletChoicesTemplate(choices);
-  assert.match(html, /&lt;img src=x onerror=alert\(1\)&gt;/u);
+  assert.match(html, /Other EVM wallet/u);
   assert.doesNotMatch(html, /<img/u);
+  assert.doesNotMatch(html, /onerror/u);
   assert.doesNotMatch(html, /\[object Object\]/u);
   assert.deepEqual(wallet.calls, []);
   assert.deepEqual(another.calls, []);
@@ -255,8 +261,53 @@ test('no wallet gives a safe retry; an untrusted event never opens a wallet; wro
   await assert.rejects(() => connectProofWalletChoiceFromUserClick({ type: 'click', isTrusted: false }, presentChoices[0]), (error) => error.code === 'WEB_V4_USER_GESTURE_REQUIRED');
   assert.deepEqual(injected.calls, []);
   const wrong = deriveProofWalletUiState({ providerAvailable: true, connected: true, account: ACCOUNT, chainId: 1 }, 5_042, { networkKey: 'arc-mainnet' });
-  assert.equal(wrong.label, 'Wrong network · switch in wallet');
+  assert.equal(wrong.label, 'Wrong network · switch to Arc Mainnet in your wallet');
   assert.equal(wrong.disabled, true);
+});
+
+test('wallet names normalize known EIP-6963 identities and never expose generic Wallet N labels', () => {
+  const cases = [
+    ['io.metamask', 'anything', 'MetaMask'],
+    ['io.rabby', 'Rabby Wallet', 'Rabby'],
+    ['com.coinbase.wallet', 'Coinbase', 'Coinbase Wallet'],
+    ['app.phantom', 'Phantom EVM', 'Phantom'],
+    ['app.keplr', 'Keplr EVM', 'Keplr'],
+  ];
+  for (const [rdns, name, label] of cases) assert.equal(walletChoiceLabel({ info: { rdns, name } }), label);
+  const unknown = { info: { rdns: 'example.wallet', name: 'Untrusted <svg onload=alert(1)>' } };
+  assert.equal(walletChoiceLabel(unknown), 'Other EVM wallet');
+  assert.equal(walletChoiceLabel(unknown, { multipleUnknown: true }), 'Other EVM wallet · example.wallet');
+  assert.equal(walletChoiceLabel({ info: { rdns: '<script>', name: '<script>' } }, { multipleUnknown: true }), 'Other EVM wallet');
+  assert.doesNotMatch(walletChoicesTemplate([unknown, { info: { rdns: 'other.wallet' } }]), /Wallet [0-9]|<svg|<script/u);
+});
+
+test('wallet chooser deduplicates EIP/legacy identities without auto-selecting a provider', () => {
+  const metamask = connectableProvider();
+  const legacyMirror = Object.assign(connectableProvider(), { isMetaMask: true });
+  const rabby = connectableProvider();
+  const choices = normalizeWalletChoices([
+    { provider: legacyMirror, source: 'legacy', info: { name: '', rdns: '', uuid: '' } },
+    { provider: metamask, source: 'eip6963', info: { name: 'MetaMask', rdns: 'io.metamask', uuid: 'metamask-uuid' } },
+    { provider: metamask, source: 'legacy', info: { name: '', rdns: '', uuid: '' } },
+    { provider: rabby, source: 'eip6963', info: { name: 'Rabby', rdns: 'io.rabby', uuid: 'rabby-uuid' } },
+  ]);
+  assert.equal(choices.length, 2);
+  assert.deepEqual(choices.map((choice) => walletChoiceLabel(choice)), ['MetaMask', 'Rabby']);
+  assert.equal(choices[0].provider, metamask);
+  assert.deepEqual(metamask.calls, []);
+  assert.deepEqual(legacyMirror.calls, []);
+  assert.deepEqual(rabby.calls, []);
+});
+
+test('wallet modal has explicit close, cancel, escape, backdrop, and focus containment wiring', () => {
+  const ui = fs.readFileSync(new URL('../apps/web/v4/ui.js', import.meta.url), 'utf8');
+  assert.match(ui, /walletDialog\.showModal\(\)/u);
+  assert.match(ui, /walletDialog\.addEventListener\('cancel'/u);
+  assert.match(ui, /v4-wallet-dialog-cancel'\)\.addEventListener\('click'/u);
+  assert.match(ui, /v4-wallet-dialog-close'\)\.addEventListener\('click'/u);
+  assert.match(ui, /walletDialog\.addEventListener\('click'/u);
+  assert.match(ui, /walletDialog\.addEventListener\('keydown'/u);
+  assert.match(ui, /event\.key !== 'Tab'/u);
 });
 
 test('startup and scanner code never redefine or eagerly read window.ethereum', () => {

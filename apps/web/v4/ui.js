@@ -46,7 +46,7 @@ const slug = (value) => String(value || 'veilforge-project').toLowerCase().repla
 
 export async function discoverProofWalletChoices({ scope = globalThis, waitMs = 80, fallbackProvider = null } = {}) {
   const discovered = await discoverWalletProviders({ scope, waitMs });
-  if (discovered.length) return discovered;
+  if (discovered.length) return normalizeWalletChoices(discovered);
   let legacy = null;
   try {
     const injected = scope?.ethereum;
@@ -54,13 +54,70 @@ export async function discoverProofWalletChoices({ scope = globalThis, waitMs = 
   } catch { /* A hostile or unavailable extension getter cannot block retry. */ }
   const provider = legacy ?? fallbackProvider;
   return provider && typeof provider.request === 'function'
-    ? Object.freeze([Object.freeze({ provider, source: 'legacy', info: Object.freeze({ name: 'Injected EVM wallet', rdns: '', uuid: '' }) })])
+    ? normalizeWalletChoices([{ provider, source: 'legacy', info: { name: '', rdns: '', uuid: '' } }])
     : Object.freeze([]);
+}
+
+function walletKnownName(choice) {
+  const rdns = String(choice?.info?.rdns ?? '').trim().toLowerCase();
+  const name = String(choice?.info?.name ?? '').trim().toLowerCase();
+  if (rdns === 'io.metamask' || /^metamask(?: wallet)?$/u.test(name)) return 'MetaMask';
+  if (rdns === 'io.rabby' || /^rabby(?: wallet)?$/u.test(name)) return 'Rabby';
+  if (rdns === 'com.coinbase.wallet' || /^coinbase(?: wallet)?$/u.test(name)) return 'Coinbase Wallet';
+  if (rdns === 'app.phantom' || /^phantom(?: wallet)?$/u.test(name)) return 'Phantom';
+  if (rdns === 'app.keplr' || /^keplr(?: evm| wallet)?$/u.test(name)) return 'Keplr';
+  try {
+    if (choice?.source === 'legacy') {
+      if (choice.provider?.isMetaMask === true) return 'MetaMask';
+      if (choice.provider?.isRabby === true) return 'Rabby';
+      if (choice.provider?.isCoinbaseWallet === true) return 'Coinbase Wallet';
+      if (choice.provider?.isPhantom === true) return 'Phantom';
+      if (choice.provider?.isKeplr === true) return 'Keplr';
+    }
+  } catch { /* Untrusted extension flags are presentation-only. */ }
+  return null;
+}
+
+const WALLET_PRESENTATION_ORDER = Object.freeze(['MetaMask', 'Rabby', 'Coinbase Wallet', 'Phantom', 'Keplr']);
+
+export function normalizeWalletChoices(choices) {
+  const byProvider = new Map();
+  for (const choice of choices ?? []) {
+    const provider = choice?.provider;
+    if (!provider) continue;
+    const previous = byProvider.get(provider);
+    if (!previous || (previous.source !== 'eip6963' && choice.source === 'eip6963')) byProvider.set(provider, choice);
+  }
+  const seenUuids = new Set();
+  const seenKnown = new Set();
+  const unique = [];
+  const candidates = [...byProvider.values()];
+  candidates.sort((left, right) => Number(right?.source === 'eip6963') - Number(left?.source === 'eip6963'));
+  for (const choice of candidates) {
+    const known = walletKnownName(choice);
+    const uuid = choice.source === 'eip6963' ? String(choice.info?.uuid ?? '').trim().toLowerCase() : '';
+    if ((uuid && seenUuids.has(uuid)) || (known && seenKnown.has(known))) continue;
+    if (uuid) seenUuids.add(uuid);
+    if (known) seenKnown.add(known);
+    unique.push(choice);
+  }
+  return Object.freeze(unique.map((choice, index) => ({ choice, index, rank: WALLET_PRESENTATION_ORDER.indexOf(walletKnownName(choice)) }))
+    .sort((left, right) => (left.rank < 0 ? WALLET_PRESENTATION_ORDER.length : left.rank) - (right.rank < 0 ? WALLET_PRESENTATION_ORDER.length : right.rank) || left.index - right.index)
+    .map(({ choice }) => choice));
+}
+
+export function walletChoiceLabel(choice, { multipleUnknown = false } = {}) {
+  const known = walletKnownName(choice);
+  if (known) return known;
+  const rdns = String(choice?.info?.rdns ?? '').trim();
+  return multipleUnknown && rdns.length <= 128 && /^[a-z0-9]+(?:[.-][a-z0-9]+)*$/iu.test(rdns)
+    ? `Other EVM wallet · ${rdns}` : 'Other EVM wallet';
 }
 
 export function walletChoicesTemplate(choices) {
   if (!Array.isArray(choices) || choices.length < 2) return '';
-  return `<p><b>Choose wallet</b> · Select the EVM wallet to connect. No account request has been made.</p><div>${choices.map((choice, index) => `<button type="button" data-v4-wallet-choice="${index}">${esc(choice.info?.name || choice.info?.rdns || `Wallet ${index + 1}`)}</button>`).join('')}</div>`;
+  const multipleUnknown = choices.filter((choice) => !walletKnownName(choice)).length > 1;
+  return choices.map((choice, index) => `<button type="button" data-v4-wallet-choice="${index}">${esc(walletChoiceLabel(choice, { multipleUnknown }))}</button>`).join('');
 }
 
 export async function connectProofWalletChoiceFromUserClick(event, choice, { onProvider = () => {} } = {}) {
@@ -428,6 +485,7 @@ export async function initV4Ui(options = {}) {
     queueScannerAlignment();
   }
   const byId = (id) => root.querySelector(`#${id}`);
+  const walletDialog = byId('v4-proof-wallet-dialog');
   const state = { files: [], bytes: 0, inputError: null, client: null, runId: 0, verification: null, viewModel: null, exportBundle: null, scanStatus: 'idle', sessionReset: true, restoredReport: false, reviewReady: false, verifyReady: false, reviewedFinding: false, exported: false, historyFailure: null, analysis: { state: 'ready', phase: null, message: 'Select Solidity files to begin.' }, proof: createEmptyProofState(), filters: { ...DEFAULT_FILTERS } };
   let detailTrigger = null;
 
@@ -494,11 +552,12 @@ export async function initV4Ui(options = {}) {
     const proof = state.proof;
     byId('v4-proof-state').textContent = proof.status.replaceAll('-', ' ').toUpperCase();
     if (!proof.envelope) {
+      if (walletDialog.open) walletDialog.close();
       const failure = proof.status === 'preparation-error' ? proof.failure : null;
       byId('v4-proof-status').innerHTML = failure
         ? `<p>Arc proof preparation unavailable. <small>Diagnostic: ${esc(failure.code)} · stage: ${esc(failure.stage)}</small></p>`
         : '<p>Run and verify a V4 scan to prepare a proof envelope.</p>';
-      byId('v4-proof-summary').hidden = true; byId('v4-proof-wallet').hidden = true; byId('v4-proof-wallet-choices').hidden = true; byId('v4-proof-checks').hidden = true; byId('v4-proof-transaction').hidden = true;
+      byId('v4-proof-summary').hidden = true; byId('v4-proof-wallet').hidden = true; byId('v4-proof-checks').hidden = true; byId('v4-proof-transaction').hidden = true;
       byId('v4-proof-inspect-wallet').disabled = true; byId('v4-proof-preflight').disabled = true; byId('v4-proof-disclosure').hidden = true;
       byId('v4-proof-review-acknowledgement').hidden = true; byId('v4-proof-send').disabled = true; byId('v4-proof-reconcile').disabled = true;
       byId('v4-proof-reconcile-status').hidden = true; byId('v4-proof-reconcile-status').replaceChildren();
@@ -514,8 +573,11 @@ export async function initV4Ui(options = {}) {
     byId('v4-proof-wallet').hidden = false;
     byId('v4-proof-wallet').innerHTML = `<p><b>Wallet boundary:</b> ${esc(walletUi.description)}</p>`;
     const choosingWallet = proof.walletChoices.length > 1 && !proof.walletConnecting;
-    byId('v4-proof-wallet-choices').hidden = !choosingWallet;
-    byId('v4-proof-wallet-choices').innerHTML = choosingWallet ? walletChoicesTemplate(proof.walletChoices) : '';
+    if (choosingWallet && !walletDialog.open) {
+      byId('v4-proof-wallet-choices').innerHTML = walletChoicesTemplate(proof.walletChoices);
+      walletDialog.showModal();
+      byId('v4-wallet-dialog-close').focus();
+    } else if (!choosingWallet && walletDialog.open) walletDialog.close();
     byId('v4-proof-inspect-wallet').textContent = choosingWallet ? 'Choose wallet' : walletUi.label;
     byId('v4-proof-inspect-wallet').title = walletUi.description;
     byId('v4-proof-inspect-wallet').dataset.state = walletUi.state;
@@ -531,7 +593,7 @@ export async function initV4Ui(options = {}) {
       'receipt-invalid': 'The receipt failed verification; the proof was not confirmed.',
       'wrong-network': `The connected wallet is not on the trusted ${proofNetworkDisplayName(proofNetwork)} chain.`,
       'wallet-not-connected': 'No wallet account is connected. Use Connect Wallet or Retry wallet connection.',
-      'wallet-choose': 'Choose one discovered wallet below. No account request has been made.',
+      'wallet-choose': 'Choose one discovered wallet in the dialog. No account request has been made.',
       'preflight-checking': 'Running deterministic proof preflight checks…',
       'preflight-failed': 'Proof preflight failed closed; no transaction request was released.',
       reconciling: 'Verifying the existing transaction, receipt, event and live duplicate registry state…',
@@ -1009,6 +1071,30 @@ export async function initV4Ui(options = {}) {
   byId('v4-scan').addEventListener('click', runScan);
   byId('v4-cancel').addEventListener('click', () => resetCurrentSession({ cancelled: state.scanStatus === 'scanning' }));
   byId('v4-proof-inspect-wallet').addEventListener('click', inspectProofWallet);
+  const dismissWalletChooser = () => {
+    if (!walletDialog.open) return;
+    state.proof.walletChoices = [];
+    if (state.proof.status === 'wallet-choose') state.proof.status = 'wallet-not-connected';
+    walletDialog.close();
+    renderProof();
+    byId('v4-proof-inspect-wallet').focus();
+  };
+  byId('v4-wallet-dialog-close').addEventListener('click', dismissWalletChooser);
+  byId('v4-wallet-dialog-cancel').addEventListener('click', dismissWalletChooser);
+  walletDialog.addEventListener('cancel', (event) => { event.preventDefault(); dismissWalletChooser(); });
+  walletDialog.addEventListener('click', (event) => {
+    if (event.target !== walletDialog) return;
+    const bounds = walletDialog.getBoundingClientRect();
+    if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) dismissWalletChooser();
+  });
+  walletDialog.addEventListener('keydown', (event) => {
+    if (event.key !== 'Tab') return;
+    const focusable = [...walletDialog.querySelectorAll('button:not([disabled])')];
+    if (!focusable.length) return;
+    const first = focusable[0], last = focusable.at(-1);
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  });
   byId('v4-proof-wallet-choices').addEventListener('click', (event) => {
     const button = event.target.closest('[data-v4-wallet-choice]');
     if (!button) return;
