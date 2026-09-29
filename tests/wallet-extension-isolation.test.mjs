@@ -344,9 +344,10 @@ test('wallet modal has explicit close, cancel, escape, backdrop, and focus conta
   assert.match(ui, /v4-wallet-connection-heading/u);
   assert.match(ui, /Switch to \$\{esc\(proofNetworkDisplayName\(proof\.envelope\.networkKey\)\)\} \(\$\{esc\(proof\.envelope\.chainId\)\}\) in your wallet/u);
   const styles = fs.readFileSync(new URL('../apps/web/styles.css', import.meta.url), 'utf8');
-  assert.match(styles, /width: 560px; max-width: calc\(100vw - 32px\)/u);
-  assert.match(styles, /@media \(max-width: 600px\)[^{]*\{[^}]*width: calc\(100vw - 24px\); padding: 20px/u);
-  assert.match(styles, /\.v4-wallet-dialog:open \{ animation: v4-wallet-enter \.17s/u);
+  assert.match(styles, /width: min\(544px, calc\(100vw - 32px\)\)/u);
+  assert.match(styles, /@media \(max-width: 600px\)[^{]*\{[^}]*width: calc\(100vw - 24px\); max-width: none/u);
+  assert.match(styles, /\.v4-proof-wallet-choices \{[^}]*overflow-y: auto/u);
+  assert.match(styles, /\.v4-wallet-dialog:open \{[^}]*animation: v4-wallet-enter \.17s/u);
   assert.match(styles, /\.v4-wallet-card\.is-connecting \[data-v4-wallet-state\]::before/u);
 });
 
