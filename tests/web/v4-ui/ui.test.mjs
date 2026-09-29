@@ -44,7 +44,7 @@ test('local source rows remove only the browser root and safely expose the full 
   const html = v4SourceRowsTemplate([nested, short, { name: 'unsafe.sol', size: 1, relativePath: 'Root/src/<unsafe>.sol' }]);
   assert.match(html, /title="VeilForgeScannerTestPack\/contracts\/deep\/ArcTreasury\.sol">VeilForgeScannerTestPack\/contracts\/deep\/ArcTreasury\.sol<\/span><small>47 B<\/small>/u);
   assert.match(html, /title="A\.sol">A\.sol<\/span><small>12 B<\/small>/u);
-  assert.match(html, /title="src\/&lt;unsafe&gt;\.sol">src\/&lt;unsafe&gt;\.sol<\/span>/u);
+  assert.match(html, /title="Root\/src\/&lt;unsafe&gt;\.sol">Root\/src\/&lt;unsafe&gt;\.sol<\/span>/u);
   assert.doesNotMatch(html, /title="[^"]*<unsafe>/u);
 });
 

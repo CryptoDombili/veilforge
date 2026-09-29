@@ -54,6 +54,7 @@ export async function collectOrdinaryDroppedBrowserFiles(dataTransfer) {
 }
 
 function droppedFile(file, relativePath) {
+  rejectFileAlias(file);
   const path = canonicalSourcePath(relativePath);
   return Object.freeze({
     name: String(file?.name ?? path.split('/').at(-1)),
@@ -63,6 +64,10 @@ function droppedFile(file, relativePath) {
     relativePath: path,
     async arrayBuffer() { return file.arrayBuffer(); },
   });
+}
+
+function rejectFileAlias(file) {
+  if (file?.isSymbolicLink === true || file?.symlink === true || file?.type === 'inode/symlink') throw webV4Error('WEB_V4_INPUT_INVALID', 'File aliases and symbolic links are not accepted.');
 }
 
 function legacyFile(entry) {
@@ -83,6 +88,13 @@ function legacyDirectoryEntries(entry) {
 
 async function walkLegacyEntry(entry, path, output, limits) {
   const safePath = canonicalSourcePath(path);
+  rejectFileAlias(entry);
+  if (entry.isDirectory === true) {
+    const children = await legacyDirectoryEntries(entry);
+    children.sort((left, right) => String(left.name) < String(right.name) ? -1 : String(left.name) > String(right.name) ? 1 : 0);
+    for (const child of children) await walkLegacyEntry(child, `${safePath}/${child.name}`, output, limits);
+    return;
+  }
   if (entry.isFile === true) {
     const file = await legacyFile(entry);
     if (!supportedName(file.name)) return;
@@ -90,14 +102,12 @@ async function walkLegacyEntry(entry, path, output, limits) {
     if (output.length > limits.maxFileCount) throw webV4Error('WEB_V4_INPUT_LIMIT', 'Browser file count exceeds the safe limit.', { limit: limits.maxFileCount });
     return;
   }
-  if (entry.isDirectory !== true) throw webV4Error('WEB_V4_INPUT_INVALID', 'Unsupported dropped filesystem entry.');
-  const children = await legacyDirectoryEntries(entry);
-  children.sort((left, right) => String(left.name) < String(right.name) ? -1 : String(left.name) > String(right.name) ? 1 : 0);
-  for (const child of children) await walkLegacyEntry(child, `${safePath}/${child.name}`, output, limits);
+  throw webV4Error('WEB_V4_INPUT_INVALID', 'Unsupported dropped filesystem entry.');
 }
 
 async function walkFileSystemHandle(handle, path, output, limits) {
   const safePath = canonicalSourcePath(path);
+  rejectFileAlias(handle);
   if (handle.kind === 'file') {
     const file = await handle.getFile();
     if (!supportedName(file.name)) return;
@@ -132,25 +142,37 @@ export async function collectDroppedBrowserFiles(dataTransfer, { limits = WEB_V4
   if (!items.length) {
     const files = [...(dataTransfer?.files ?? [])];
     if (!files.length) throw webV4Error('WEB_V4_INPUT_INVALID', 'The drop did not contain local files.');
-    return files;
+    if (files.some((file) => file?.isDirectory === true || file?.kind === 'directory' || file?.type === 'inode/directory' || (file?.size === 0 && !file?.type))) throw webV4Error('WEB_V4_DIRECTORY_DROP_UNSUPPORTED', 'A dropped directory needs browser entry support. Use the Folder button.');
+    for (const file of files) rejectFileAlias(file);
+    const selected = selectSupportedBrowserFiles(files);
+    if (!selected.length) throw webV4Error('WEB_V4_INPUT_INVALID', 'The dropped selection contains no supported Solidity sources.');
+    if (selected.length > limits.maxFileCount) throw webV4Error('WEB_V4_INPUT_LIMIT', 'Browser file count exceeds the safe limit.', { limit: limits.maxFileCount });
+    return selected;
   }
   const output = [];
   for (const item of items) {
     const entry = await itemEntry(item);
     if (entry.type === 'file') {
+      rejectFileAlias(entry.value);
       if (supportedName(entry.value.name)) output.push(entry.value);
     } else if (entry.type === 'legacy') {
       const value = entry.value;
-      if (value.isFile === true) {
+      rejectFileAlias(value);
+      if (value.isDirectory === true) await walkLegacyEntry(value, value.name, output, limits);
+      else if (value.isFile === true) {
         const file = await legacyFile(value);
+        rejectFileAlias(file);
         if (supportedName(file.name)) output.push(file);
-      } else await walkLegacyEntry(value, value.name, output, limits);
+      } else throw webV4Error('WEB_V4_INPUT_INVALID', 'Unsupported dropped filesystem entry.');
     } else {
       const value = entry.value;
-      if (value.kind === 'file') {
+      rejectFileAlias(value);
+      if (value.kind === 'directory') await walkFileSystemHandle(value, value.name, output, limits);
+      else if (value.kind === 'file') {
         const file = await value.getFile();
+        rejectFileAlias(file);
         if (supportedName(file.name)) output.push(file);
-      } else await walkFileSystemHandle(value, value.name, output, limits);
+      } else throw webV4Error('WEB_V4_INPUT_INVALID', 'Unsupported dropped filesystem entry.');
     }
     if (output.length > limits.maxFileCount) throw webV4Error('WEB_V4_INPUT_LIMIT', 'Browser file count exceeds the safe limit.', { limit: limits.maxFileCount });
   }
@@ -176,7 +198,7 @@ export function bindV4DropZone(dropZone, { onFiles, onError }) {
     } : null;
     if (diagnostic) console.info('V4_DROP_EVENT', diagnostic);
     let files;
-    try { files = await collectOrdinaryDroppedBrowserFiles(transfer); }
+    try { files = await collectDroppedBrowserFiles(transfer); }
     catch (error) { if (diagnostic) console.info('V4_DROP_FAILURE_STAGE', 'COLLECT_FILES', error?.code ?? 'UNKNOWN'); await onError(error); return; }
     try {
       const accepted = await onFiles(files);

@@ -47,6 +47,7 @@ export function v4SourceDisplayPath(file) {
   const browserRelativePath = String(file?.webkitRelativePath || file?.relativePath || '').trim();
   if (!browserRelativePath) return String(file?.name ?? '');
   try {
+    if (file?.relativePath && !file?.webkitRelativePath) return canonicalSourcePath(browserRelativePath);
     const parts = canonicalSourcePath(browserRelativePath).split('/');
     return parts.length > 1 ? parts.slice(1).join('/') : parts[0];
   } catch {
@@ -126,7 +127,7 @@ export function v4ErrorMessage(error, profile = { networkKey: DEFAULT_WEB_NETWOR
   const messages = {
     WEB_V4_INPUT_INVALID: 'Choose valid UTF-8 Solidity files with safe project-relative paths.',
     WEB_V4_INPUT_LIMIT: 'The selected project exceeds the browser safety limit (100 files, 512 KiB per file, 1 MiB total).',
-    WEB_V4_DIRECTORY_DROP_UNSUPPORTED: 'Folder drag-and-drop is not supported. Use the Folder button.',
+    WEB_V4_DIRECTORY_DROP_UNSUPPORTED: 'This browser cannot read dropped folders safely. Use the Folder button.',
     WEB_V4_COMPILE_FAILED: 'Solidity compilation failed under exact solc 0.8.24. Fix the source diagnostics and retry.',
     WEB_V4_PROTOCOL_INVALID: 'The scanner returned an invalid worker message.',
     WEB_V4_PROTOCOL_MISMATCH: 'This page and its scanner worker are incompatible. Refresh after rebuilding the site.',
@@ -804,12 +805,16 @@ export async function initV4Ui(options = {}) {
     renderProof(); updateWorkflow(); setBusy(false);
   };
   const acceptFiles = (files, { merge = true } = {}) => {
-    const selected = merge ? mergeSupportedBrowserFiles(state.files, files) : selectSupportedBrowserFiles(files);
+    const incoming = [...(files ?? [])];
+    const folderDrop = incoming.some((file) => file?.webkitRelativePath || file?.relativePath);
+    const selected = merge && !folderDrop ? mergeSupportedBrowserFiles(state.files, incoming) : selectSupportedBrowserFiles(incoming);
     const bytes = selected.reduce((total, file) => total + Number(file?.size ?? 0), 0);
-    const paths = selected.map((file) => file.webkitRelativePath || file.relativePath || file.name);
+    const paths = selected.map((file) => canonicalSourcePath(file.webkitRelativePath || file.relativePath || file.name));
+    const folderPaths = selected.filter((file) => file.webkitRelativePath || file.relativePath);
+    const invalidFolderSet = folderPaths.length > 0 && (folderPaths.length !== selected.length || new Set(folderPaths.map((file) => canonicalSourcePath(file.webkitRelativePath || file.relativePath).split('/')[0].toLowerCase())).size !== 1 || paths.some((path) => !path.includes('/')));
     const folded = new Set();
     const collision = paths.some((path) => { const key = String(path).toLowerCase(); if (folded.has(key)) return true; folded.add(key); return false; });
-    const inputError = !selected.length ? 'Choose at least one supported Solidity source.' : collision ? 'Duplicate or case-folding-colliding source paths are not accepted.' : selected.length > WEB_V4_LIMITS.maxFileCount || bytes > WEB_V4_LIMITS.maxProjectBytes || selected.some((file) => file.size > WEB_V4_LIMITS.maxPerFileBytes) ? 'The selected files exceed the browser safety limit.' : null;
+    const inputError = !selected.length ? 'Choose at least one supported Solidity source.' : invalidFolderSet ? 'Folder sources must have one consistent project root.' : collision ? 'Duplicate or case-folding-colliding source paths are not accepted.' : selected.length > WEB_V4_LIMITS.maxFileCount || bytes > WEB_V4_LIMITS.maxProjectBytes || selected.some((file) => file.size > WEB_V4_LIMITS.maxPerFileBytes) ? 'The selected files exceed the browser safety limit.' : null;
     if (inputError) { setStatus('Input rejected', inputError, 'error'); return false; }
     state.files = selected;
     state.bytes = bytes;
