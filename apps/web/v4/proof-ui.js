@@ -21,9 +21,9 @@ export function deriveProofWalletUiState(wallet = {}, expectedChainId = null, { 
     return deepFreeze({ state: 'network-unavailable', label: `${network.chainName} publishing disabled`, description: `${network.chainName} · Chain ${network.chainId} · Registry: ${registry} · Registry status: ${registryStatus} · Read: ${readStatus} · Publishing: Disabled`, disabled: true });
   }
   if (connecting) return deepFreeze({ state: 'connecting', label: 'Connecting…', description: 'Waiting for the explicit wallet connection request.', disabled: true });
-  if (error) return deepFreeze({ state: 'error', label: 'Retry wallet connection', description: String(error), disabled: wallet.providerAvailable !== true });
-  if (wallet.providerAvailable !== true) return deepFreeze({ state: 'disconnected', label: 'Wallet unavailable', description: 'No injected EVM wallet provider is available.', disabled: true });
-  if (wallet.connected !== true || !wallet.account) return deepFreeze({ state: 'disconnected', label: 'Connect Wallet', description: 'Connect a previously authorized wallet with an explicit click.', disabled: false });
+  if (error) return deepFreeze({ state: 'error', label: 'Retry wallet connection', description: String(error), disabled: false });
+  if (wallet.providerAvailable !== true) return deepFreeze({ state: 'disconnected', label: 'Connect Wallet', description: 'No wallet detected yet. Click to discover and connect an injected EVM wallet.', disabled: false });
+  if (wallet.connected !== true || !wallet.account) return deepFreeze({ state: 'disconnected', label: 'Connect Wallet', description: 'Connect an injected EVM wallet with an explicit click.', disabled: false });
   if (wallet.chainId !== trustedChainId) return deepFreeze({ state: 'wrong-network', label: 'Wrong network · switch in wallet', description: `Connected account ${wallet.account}; switch manually to ${network.chainName} chain ${trustedChainId}.`, disabled: true });
   return deepFreeze({ state: 'connected', label: `Connected · ${short(wallet.account)}`, description: `Connected to ${network.chainName} chain ${trustedChainId} as ${wallet.account}.`, disabled: true });
 }

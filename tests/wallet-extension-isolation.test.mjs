@@ -4,6 +4,24 @@ import fs from 'node:fs';
 import { createWorkerMessage } from '../apps/web/v4/runtime/protocol.js';
 import { createWorkerClient } from '../apps/web/v4/runtime/worker-client.js';
 import { discoverWalletProviders } from '../apps/web/v4/wallet-provider-discovery.js';
+import { connectProofWalletFromUserClick } from '../apps/web/v4/ui.js';
+import { deriveProofWalletUiState, proofSectionTemplate } from '../apps/web/v4/proof-ui.js';
+
+const ACCOUNT = '0x1111111111111111111111111111111111111111';
+const CLICK = Object.freeze({ type: 'click', isTrusted: true });
+
+function connectableProvider(chainId = '0x13b2') {
+  const calls = [];
+  return {
+    calls,
+    async request({ method }) {
+      calls.push(method);
+      if (method === 'eth_requestAccounts' || method === 'eth_accounts') return [ACCOUNT];
+      if (method === 'eth_chainId') return chainId;
+      throw new Error('Unexpected wallet method');
+    },
+  };
+}
 
 const provider = (name) => ({ name, async request() { return []; } });
 
@@ -106,6 +124,68 @@ test('wallet discovery tolerates a throwing provider getter and a provider injec
   const injected = provider('late');
   late.setLegacyProvider(injected);
   assert.equal((await discoverWalletProviders({ scope: late.scope, waitMs: 0 }))[0].provider, injected);
+});
+
+test('proof render and local scan never request an account; click discovers a late wallet exactly once', async () => {
+  const injected = connectableProvider();
+  const environment = walletScope();
+  assert.match(proofSectionTemplate(), /id="v4-proof-inspect-wallet"/u);
+  const initial = deriveProofWalletUiState({}, 5_042, { networkKey: 'arc-mainnet' });
+  assert.equal(initial.label, 'Connect Wallet');
+  assert.equal(initial.disabled, false);
+  await localScan(environment);
+  assert.deepEqual(injected.calls, []);
+  assert.deepEqual(environment.snapshot(), { ethereumReads: 0, listenersAdded: 0, requests: 0 });
+  environment.setLegacyProvider(injected);
+  let savedProvider = null;
+  const connected = await connectProofWalletFromUserClick(CLICK, { scope: environment.scope, waitMs: 0, onProvider(value) { savedProvider = value; } });
+  assert.equal(savedProvider, injected);
+  assert.equal(connected.provider, injected);
+  assert.equal(connected.connection.account, ACCOUNT);
+  assert.deepEqual(injected.calls, ['eth_requestAccounts']);
+  const mainnet = deriveProofWalletUiState({ providerAvailable: true, connected: true, account: ACCOUNT, chainId: 5_042 }, 5_042, { networkKey: 'arc-mainnet' });
+  assert.equal(mainnet.state, 'connected');
+  assert.match(mainnet.description, /Arc Mainnet chain 5042/u);
+});
+
+test('explicit click safely falls back to a legacy provider injected during discovery', async () => {
+  const injected = connectableProvider();
+  let reads = 0;
+  const scope = { get ethereum() { reads += 1; return reads > 1 ? injected : null; } };
+  const connected = await connectProofWalletFromUserClick(CLICK, { scope, waitMs: 0 });
+  assert.equal(connected.provider, injected);
+  assert.ok(reads >= 2);
+  assert.deepEqual(injected.calls, ['eth_requestAccounts']);
+});
+
+test('trusted click retains EIP-6963 deterministic selection and never selects the conflicting legacy wallet', async () => {
+  const metamask = connectableProvider();
+  const rabby = connectableProvider();
+  const legacy = connectableProvider();
+  const environment = walletScope({ legacyProvider: legacy, announcements: [
+    { info: { name: 'Rabby Wallet', rdns: 'io.rabby', uuid: 'two' }, provider: rabby },
+    { info: { name: 'MetaMask', rdns: 'io.metamask', uuid: 'one' }, provider: metamask },
+  ] });
+  const connected = await connectProofWalletFromUserClick(CLICK, { scope: environment.scope, waitMs: 0 });
+  assert.equal(connected.provider, metamask);
+  assert.deepEqual(metamask.calls, ['eth_requestAccounts']);
+  assert.deepEqual(rabby.calls, []);
+  assert.deepEqual(legacy.calls, []);
+});
+
+test('no wallet gives a safe retry; an untrusted event never opens a wallet; wrong chain remains blocked', async () => {
+  const empty = walletScope();
+  await assert.rejects(() => connectProofWalletFromUserClick(CLICK, { scope: empty.scope, waitMs: 0 }), (error) => error.code === 'WEB_V4_PROVIDER_UNAVAILABLE');
+  const retry = deriveProofWalletUiState({}, 5_042, { error: 'No injected EVM wallet was found. Install or enable MetaMask/Rabby and retry.', networkKey: 'arc-mainnet' });
+  assert.equal(retry.label, 'Retry wallet connection');
+  assert.equal(retry.disabled, false);
+  const injected = connectableProvider();
+  const present = walletScope({ legacyProvider: injected });
+  await assert.rejects(() => connectProofWalletFromUserClick({ type: 'click', isTrusted: false }, { scope: present.scope, waitMs: 0 }), (error) => error.code === 'WEB_V4_USER_GESTURE_REQUIRED');
+  assert.deepEqual(injected.calls, []);
+  const wrong = deriveProofWalletUiState({ providerAvailable: true, connected: true, account: ACCOUNT, chainId: 1 }, 5_042, { networkKey: 'arc-mainnet' });
+  assert.equal(wrong.label, 'Wrong network · switch in wallet');
+  assert.equal(wrong.disabled, true);
 });
 
 test('startup and scanner code never redefine or eagerly read window.ethereum', () => {

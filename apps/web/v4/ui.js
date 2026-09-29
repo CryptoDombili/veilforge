@@ -17,6 +17,7 @@ import { createUserGatedProofReview } from './proof-send-boundary.js';
 import { createBrowserProofSendCoordinator, PROOF_SEND_STATES } from './proof-send-coordinator.js';
 import { inspectExistingProofTransaction, isValidProofTransactionHash, reconcileVerifiedProofPublication, submitUserApprovedProofTransaction } from './proof-transaction-acceptance.js';
 import { discoverWalletProvider } from './wallet-provider-discovery.js';
+import { webV4Error } from './errors.js';
 import { DEFAULT_WEB_NETWORK_KEY, resolveWebNetworkConfig } from '../config.js';
 
 const DOMAIN_LABELS = Object.freeze({
@@ -42,6 +43,22 @@ const formatBytes = (bytes) => bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).t
 const shortAddress = (value) => value ? `${value.slice(0, 6)}…${value.slice(-4)}` : '—';
 const locationText = (location) => location ? `${location.sourcePath}:${location.startLine ?? '?'}:${location.startColumn ?? '?'}` : 'No safe source location';
 const slug = (value) => String(value || 'veilforge-project').toLowerCase().replace(/[^a-z0-9]+/gu, '-').replace(/^-|-$/gu, '') || 'veilforge-project';
+
+export async function connectProofWalletFromUserClick(event, { scope = globalThis, waitMs = 80, fallbackProvider = null, onProvider = () => {} } = {}) {
+  const userGesture = event?.type === 'click' && event.isTrusted === true;
+  if (!userGesture) throw webV4Error('WEB_V4_USER_GESTURE_REQUIRED', 'Wallet connection requires a trusted user click.');
+  let provider = await discoverWalletProvider({ scope, waitMs });
+  if (!provider) {
+    try {
+      const legacy = scope?.ethereum;
+      if (typeof legacy?.request === 'function') provider = legacy;
+    } catch { /* A hostile or unavailable extension getter cannot block retry. */ }
+  }
+  provider ??= fallbackProvider;
+  if (provider) onProvider(provider);
+  const connection = await connectWalletOnUserGesture(provider, { userGesture: event.type === 'click' && event.isTrusted === true });
+  return Object.freeze({ provider, connection });
+}
 
 export function v4SourceDisplayPath(file) {
   const browserRelativePath = String(file?.webkitRelativePath || file?.relativePath || '').trim();
@@ -153,7 +170,7 @@ export function v4ErrorMessage(error, profile = { networkKey: DEFAULT_WEB_NETWOR
     WEB_V4_EXPORT_INVALID: 'Export verification failed. No file was downloaded.',
     WEB_V4_PROOF_UNAVAILABLE: 'Run and verify a V4 scan before preparing a registry proof.',
     WEB_V4_PROOF_ENVELOPE_INVALID: 'The proof envelope failed integrity verification.',
-    WEB_V4_PROVIDER_UNAVAILABLE: 'No previously authorized injected EVM wallet is available. No connection popup was opened.',
+    WEB_V4_PROVIDER_UNAVAILABLE: 'No injected EVM wallet was found. Install or enable MetaMask/Rabby and retry.',
     WEB_V4_ACCOUNT_UNAVAILABLE: 'The wallet has no previously authorized account for this site.',
     WEB_V4_WRONG_NETWORK: `The wallet is not on the trusted ${networkName} chain. Network switching is intentionally disabled in this phase.`,
     WEB_V4_REGISTRY_MISMATCH: `The proof does not target the trusted ${networkName} Registry V2 address.`,
@@ -606,13 +623,20 @@ export async function initV4Ui(options = {}) {
   };
   const inspectProofWallet = async (event = null, expectedRunId = null) => {
     if (expectedRunId != null && expectedRunId !== state.runId) return state.proof.wallet;
+    if (!state.proof.envelope) return state.proof.wallet;
     if (event && state.proof.wallet.connected && state.proof.wallet.chainId === state.proof.envelope.chainId) return state.proof.wallet;
-    const provider = state.proof.provider ?? (Object.hasOwn(options, 'proofProvider')
-      ? options.proofProvider
-      : await discoverWalletProvider({ scope: options.walletScope ?? globalThis, waitMs: options.walletDiscoveryWaitMs ?? 80 }));
+    let provider = state.proof.provider ?? (Object.hasOwn(options, 'proofProvider') ? options.proofProvider : null);
     if (event) {
       state.proof.walletConnecting = true; state.proof.walletError = null; renderProof();
-      try { await connectWalletOnUserGesture(provider, { userGesture: event.type === 'click' && event.isTrusted === true }); }
+      try {
+        const result = await connectProofWalletFromUserClick(event, {
+          scope: options.walletScope ?? globalThis,
+          waitMs: options.walletDiscoveryWaitMs ?? 80,
+          fallbackProvider: Object.hasOwn(options, 'proofProvider') ? options.proofProvider : null,
+          onProvider(discovered) { state.proof.provider = discovered; },
+        });
+        provider = result.provider;
+      }
       catch (error) { state.proof.walletConnecting = false; state.proof.walletError = uiErrorMessage(error); state.proof.status = 'wallet-not-connected'; renderProof(); return state.proof.wallet; }
     }
     if (expectedRunId != null && expectedRunId !== state.runId) return state.proof.wallet;

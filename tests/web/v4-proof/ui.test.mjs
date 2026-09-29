@@ -132,9 +132,11 @@ test('wallet UI reflects disconnected connected wrong-network and account-change
   assert.notEqual(changed.label, connected.label);
 });
 
-test('provider unavailable and connecting wallet states fail closed', () => {
+test('an absent provider keeps explicit connection available while connecting remains locked', () => {
   const unavailable = deriveProofWalletUiState({}, 5_042_002);
-  assert.equal(unavailable.label, 'Wallet unavailable'); assert.equal(unavailable.disabled, true);
+  assert.equal(unavailable.label, 'Connect Wallet'); assert.equal(unavailable.disabled, false);
+  const retry = deriveProofWalletUiState({}, 5_042_002, { error: 'No injected EVM wallet was found.' });
+  assert.equal(retry.label, 'Retry wallet connection'); assert.equal(retry.disabled, false);
   const connecting = deriveProofWalletUiState({ providerAvailable: true }, 5_042_002, { connecting: true });
   assert.equal(connecting.label, 'Connecting…'); assert.equal(connecting.disabled, true);
 });
