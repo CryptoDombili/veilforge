@@ -43,10 +43,11 @@ test('UI picker selection remains unchanged while file drops use the validated m
   const source = fs.readFileSync(new URL('../apps/web/v4/ui.js', import.meta.url), 'utf8');
   const intake = source.slice(source.indexOf('const acceptFiles'), source.indexOf('const runScan'));
   assert.match(source, /bindV4DropZone, mergeSupportedBrowserFiles, selectSupportedBrowserFiles/u);
+  assert.match(intake, /const acceptFiles = \(files, \{ merge = true \} = \{\}\)/u);
   assert.match(intake, /merge \? mergeSupportedBrowserFiles\(state\.files, files\) : selectSupportedBrowserFiles\(files\)/u);
   assert.match(intake, /state\.files = selected/u);
-  assert.match(source, /const acceptPickerFiles = \(event\) => \{ acceptFiles\(event\.target\.files\)/u);
-  assert.match(source, /onFiles\(files\) \{ return acceptFiles\(files, \{ merge: true \}\); \}/u);
+  assert.match(source, /const acceptPickerFiles = \(event\) => \{ acceptFiles\(event\.target\.files, \{ merge: false \}\)/u);
+  assert.match(source, /onFiles: acceptFiles/u);
 });
 
 const fixtureRoot = new URL('./fixtures/v4-multi-file-project/', import.meta.url);
@@ -123,7 +124,7 @@ test('changing files invalidates only the current verified result and leaves his
 
 test('upload surface advertises file drops and retains explicit Files and Folder pickers', () => {
   const source = fs.readFileSync(new URL('../apps/web/v4/ui.js', import.meta.url), 'utf8');
-  assert.match(source, /Drop Solidity files here, or choose Files \/ Folder/u);
+  assert.match(source, /Drop Solidity files or a project folder/u);
   assert.match(source, /id="v4-file-input" type="file" accept="\.sol,\.txt" multiple hidden/u);
   assert.match(source, /id="v4-folder-input" type="file" accept="\.sol,\.txt" webkitdirectory directory multiple hidden/u);
   assert.match(source, /bindV4DropZone\(byId\('v4-drop-zone'\)/u);

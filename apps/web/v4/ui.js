@@ -294,7 +294,7 @@ export function v4UiTemplate() {
           <label id="v4-policy-label" for="v4-policy" hidden>Policy JSON</label><textarea id="v4-policy" rows="7" spellcheck="false" hidden>{}</textarea>
           <div class="v4-compiler"><span>Exact compiler</span><code>solc 0.8.24</code></div>
           <div id="v4-drop-zone" class="drop-zone" tabindex="0" role="button" aria-label="Choose Solidity source files">
-            <strong>Drop Solidity files here, or choose Files / Folder</strong><div class="drop-actions"><label class="file-button">Files<input id="v4-file-input" type="file" accept=".sol,.txt" multiple hidden></label><label class="file-button">Folder<input id="v4-folder-input" type="file" accept=".sol,.txt" webkitdirectory directory multiple hidden></label></div>
+            <strong>Drop Solidity files or a project folder</strong><div class="drop-actions"><label class="file-button">Files<input id="v4-file-input" type="file" accept=".sol,.txt" multiple hidden></label><label class="file-button">Folder<input id="v4-folder-input" type="file" accept=".sol,.txt" webkitdirectory directory multiple hidden></label></div>
           </div>
           <div class="file-heading"><span>LOCAL SOURCES</span><button id="v4-clear" class="text-button" type="button">Clear</button></div>
           <div id="v4-files" class="v4-files" aria-live="polite"><p>No Solidity files selected.</p></div>
@@ -803,7 +803,7 @@ export async function initV4Ui(options = {}) {
     byId('v4-progress-label').textContent = 'Project files changed. Run a new scan.';
     renderProof(); updateWorkflow(); setBusy(false);
   };
-  const acceptFiles = (files, { merge = false } = {}) => {
+  const acceptFiles = (files, { merge = true } = {}) => {
     const selected = merge ? mergeSupportedBrowserFiles(state.files, files) : selectSupportedBrowserFiles(files);
     const bytes = selected.reduce((total, file) => total + Number(file?.size ?? 0), 0);
     const paths = selected.map((file) => file.webkitRelativePath || file.relativePath || file.name);
@@ -929,15 +929,15 @@ export async function initV4Ui(options = {}) {
     setStatus(cancelled ? 'Scan cancelled' : 'Ready for local analysis', cancelled ? 'The active scan was stopped and no partial result was applied.' : clearFiles ? 'Choose Solidity files to start a new local session.' : 'The current result was cleared. Selected Solidity files were preserved.');
   };
 
-  const acceptPickerFiles = (event) => { acceptFiles(event.target.files); event.target.value = ''; };
+  const acceptPickerFiles = (event) => { acceptFiles(event.target.files, { merge: false }); event.target.value = ''; };
   byId('v4-file-input').addEventListener('change', acceptPickerFiles);
   byId('v4-folder-input').addEventListener('change', acceptPickerFiles);
   byId('v4-clear').addEventListener('click', () => resetCurrentSession({ clearFiles: true }));
   byId('v4-drop-zone').addEventListener('click', (event) => { if (!event.target.closest('label')) byId('v4-file-input').click(); });
   byId('v4-drop-zone').addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); byId('v4-file-input').click(); } });
   bindV4DropZone(byId('v4-drop-zone'), {
-    onFiles(files) { return acceptFiles(files, { merge: true }); },
-    onError(error) { setStatus('Input rejected', uiErrorMessage(error), 'error'); },
+    onFiles: acceptFiles,
+    onError(error) { setStatus('File drop blocked', v4ErrorMessage(error), 'error'); },
   });
   const configurationChanged = () => { state.restoredReport = false; state.sessionReset = false; renderWorkflow(); };
   byId('v4-project-name').addEventListener('input', configurationChanged);
