@@ -178,7 +178,7 @@ test('multiple wallets present an explicit chooser and never auto-connect the fi
   assert.match(proofSectionTemplate(), /Connect wallet/u);
   assert.match(proofSectionTemplate(), /Choose a wallet to connect to VeilForge/u);
   assert.match(proofSectionTemplate(), /role="dialog"[^>]*aria-modal="true"/u);
-  assert.match(proofSectionTemplate(), /No signature or transaction will be requested during connection/u);
+  assert.match(proofSectionTemplate(), /Connection only — no signature or transaction request/u);
   assert.match(proofSectionTemplate(), /id="v4-wallet-dialog-close"/u);
   assert.match(proofSectionTemplate(), /id="v4-wallet-dialog-cancel"/u);
   assert.match(walletChoicesTemplate(choices), /MetaMask/u);
@@ -297,6 +297,7 @@ test('wallet cards render only discovered choices with safe data icons and fallb
     { info: { name: 'Keplr', rdns: 'app.keplr' } },
   ]);
   assert.equal((html.match(/data-v4-wallet-choice=/gu) ?? []).length, 4);
+  assert.equal((html.match(/Ready to connect/gu) ?? []).length, 4);
   assert.equal((html.match(/data-v4-wallet-icon/gu) ?? []).length, 1); // SVG falls back when no browser DOMParser is available.
   assert.match(html, /data-v4-wallet-choice="0"[^>]*>[\s\S]*?<span>M<\/span><img/u);
   assert.match(html, /data-v4-wallet-choice="1"[^>]*>[\s\S]*?<span>R<\/span>/u);
@@ -336,7 +337,13 @@ test('wallet modal has explicit close, cancel, escape, backdrop, and focus conta
   assert.match(ui, /querySelector\('\[data-v4-wallet-choice\]'\)\?\.focus\(\)/u);
   assert.match(ui, /if \(!walletDialog\.open \|\| state\.proof\.walletConnecting\) return/u);
   assert.match(ui, /walletDialog\.addEventListener\('close'/u);
-  assert.match(ui, /selected \? 'Connecting…' : 'Detected'/u);
+  assert.match(ui, /selected \? 'Connecting…' : 'Ready to connect'/u);
+  assert.match(ui, /cancelledInChooser \? 'Connection cancelled\.' : null/u);
+  assert.match(ui, /cancelledInChooser \? previousChoices : \[\]/u);
+  const styles = fs.readFileSync(new URL('../apps/web/styles.css', import.meta.url), 'utf8');
+  assert.match(styles, /width: min\(520px, calc\(100vw - 32px\)\)/u);
+  assert.match(styles, /@media \(max-width: 600px\)[^{]*\{[^}]*width: calc\(100vw - 24px\); padding: 18px/u);
+  assert.match(styles, /\.v4-wallet-card\.is-connecting \[data-v4-wallet-state\]::before/u);
 });
 
 test('startup and scanner code never redefine or eagerly read window.ethereum', () => {

@@ -36,7 +36,7 @@ const WORKFLOW_STEPS = Object.freeze([
 ]);
 const ANALYSIS_PHASES = Object.freeze(['Compiler', 'AST', 'CFG', 'Dataflow', 'Detectors', 'Report']);
 const DEFAULT_FILTERS = Object.freeze({ query: '', severity: 'all', domain: 'all', disposition: 'all', confidence: 'all', completeness: 'all', detector: '', sort: 'severity' });
-const createEmptyProofState = () => ({ envelope: null, wallet: buildWalletState(), walletConnecting: false, walletChoices: [], walletSelectedIndex: null, walletError: null, preflight: null, networkPreflight: null, review: null, status: 'unavailable', failure: null, receipt: null, sendAttempt: null, provider: null, identityVerified: false, completionState: null, verificationRequestId: 0, existingVerification: { status: 'idle', message: '', identity: null } });
+const createEmptyProofState = () => ({ envelope: null, wallet: buildWalletState(), walletConnecting: false, walletChoices: [], walletSelectedIndex: null, walletNotice: null, walletError: null, preflight: null, networkPreflight: null, review: null, status: 'unavailable', failure: null, receipt: null, sendAttempt: null, provider: null, identityVerified: false, completionState: null, verificationRequestId: 0, existingVerification: { status: 'idle', message: '', identity: null } });
 
 const esc = (value) => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
 const formatBytes = (bytes) => bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(bytes < 10240 ? 1 : 0)} KiB`;
@@ -151,7 +151,7 @@ export function walletChoicesTemplate(choices) {
     const label = walletChoiceLabel(choice, { multipleUnknown });
     const initial = walletKnownName(choice)?.slice(0, 1) ?? 'O';
     const icon = safeWalletIconDataUri(choice?.info?.icon);
-    return `<button type="button" class="v4-wallet-card" data-v4-wallet-choice="${index}"><span class="v4-wallet-card-icon" aria-hidden="true"><span>${esc(initial)}</span>${icon ? `<img data-v4-wallet-icon src="${esc(icon)}" alt="">` : ''}</span><span class="v4-wallet-card-copy"><b>${esc(label)}</b><small data-v4-wallet-state>Detected</small></span><span class="v4-wallet-card-chevron" aria-hidden="true">›</span></button>`;
+    return `<button type="button" class="v4-wallet-card" data-v4-wallet-choice="${index}"><span class="v4-wallet-card-icon" aria-hidden="true"><span>${esc(initial)}</span>${icon ? `<img data-v4-wallet-icon src="${esc(icon)}" alt="">` : ''}</span><span class="v4-wallet-card-copy"><b>${esc(label)}</b><small data-v4-wallet-state>Ready to connect</small></span><span class="v4-wallet-card-chevron" aria-hidden="true">›</span></button>`;
   }).join('');
 }
 
@@ -622,13 +622,13 @@ export async function initV4Ui(options = {}) {
         const selected = proof.walletConnecting && Number(card.dataset.v4WalletChoice) === proof.walletSelectedIndex;
         card.disabled = Boolean(selected);
         card.classList.toggle('is-connecting', Boolean(selected));
-        card.querySelector('[data-v4-wallet-state]').textContent = selected ? 'Connecting…' : 'Detected';
+        card.querySelector('[data-v4-wallet-state]').textContent = selected ? 'Connecting…' : 'Ready to connect';
       }
       byId('v4-wallet-dialog-close').disabled = proof.walletConnecting;
       byId('v4-wallet-dialog-cancel').disabled = proof.walletConnecting;
       const modalStatus = byId('v4-wallet-dialog-status');
-      modalStatus.hidden = !proof.walletConnecting;
-      modalStatus.textContent = proof.walletConnecting ? 'Finish or reject the current wallet request before choosing another.' : '';
+      modalStatus.hidden = !proof.walletConnecting && !proof.walletNotice;
+      modalStatus.textContent = proof.walletConnecting ? 'Finish or reject the current wallet request before choosing another.' : proof.walletNotice ?? '';
       if (proof.walletConnecting && proof.walletSelectedIndex !== null && !walletDialog.contains(document.activeElement)) modalStatus.focus();
     }
     byId('v4-proof-inspect-wallet').textContent = choosingWallet ? 'Choose wallet' : walletUi.label;
@@ -761,7 +761,7 @@ export async function initV4Ui(options = {}) {
       const envelope = state.proof.envelope;
       const previousChoices = state.proof.walletChoices;
       if (state.proof.walletConnecting) return state.proof.wallet;
-      state.proof.walletConnecting = true; state.proof.walletSelectedIndex = selectedChoiceIndex; state.proof.walletError = null; renderProof();
+      state.proof.walletConnecting = true; state.proof.walletSelectedIndex = selectedChoiceIndex; state.proof.walletNotice = null; state.proof.walletError = null; renderProof();
       try {
         if (event.type !== 'click' || event.isTrusted !== true) throw webV4Error('WEB_V4_USER_GESTURE_REQUIRED', 'Wallet connection requires a trusted user click.');
         let choice;
@@ -786,7 +786,16 @@ export async function initV4Ui(options = {}) {
         provider = result.provider;
         state.proof.walletChoices = []; state.proof.walletSelectedIndex = null;
       }
-      catch (error) { if (state.proof.envelope !== envelope) return state.proof.wallet; state.proof.walletChoices = []; state.proof.walletSelectedIndex = null; state.proof.walletConnecting = false; state.proof.walletError = uiErrorMessage(error); state.proof.status = 'wallet-not-connected'; renderProof(); return state.proof.wallet; }
+      catch (error) {
+        if (state.proof.envelope !== envelope) return state.proof.wallet;
+        const cancelledInChooser = selectedChoiceIndex !== null && error?.code === 'WEB_V4_USER_REJECTED';
+        state.proof.walletChoices = cancelledInChooser ? previousChoices : [];
+        state.proof.walletSelectedIndex = null; state.proof.walletConnecting = false;
+        state.proof.walletNotice = cancelledInChooser ? 'Connection cancelled.' : null;
+        state.proof.walletError = cancelledInChooser ? null : uiErrorMessage(error);
+        state.proof.status = cancelledInChooser ? 'wallet-choose' : 'wallet-not-connected';
+        renderProof(); return state.proof.wallet;
+      }
     }
     if (expectedRunId != null && expectedRunId !== state.runId) return state.proof.wallet;
     const wallet = await inspectProvider(provider);
@@ -1129,6 +1138,7 @@ export async function initV4Ui(options = {}) {
     if (!walletDialog.open || state.proof.walletConnecting) return;
     state.proof.walletChoices = [];
     state.proof.walletSelectedIndex = null;
+    state.proof.walletNotice = null;
     if (state.proof.status === 'wallet-choose') state.proof.status = 'wallet-not-connected';
     walletDialog.close();
     renderProof();
