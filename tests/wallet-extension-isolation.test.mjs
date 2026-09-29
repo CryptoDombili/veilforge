@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { createWorkerMessage } from '../apps/web/v4/runtime/protocol.js';
 import { createWorkerClient } from '../apps/web/v4/runtime/worker-client.js';
 import { discoverWalletProviders } from '../apps/web/v4/wallet-provider-discovery.js';
-import { connectProofWalletChoiceFromUserClick, discoverProofWalletChoices, normalizeWalletChoices, walletChoiceLabel, walletChoicesTemplate } from '../apps/web/v4/ui.js';
+import { connectProofWalletChoiceFromUserClick, discoverProofWalletChoices, normalizeWalletChoices, safeWalletIconDataUri, walletChoiceLabel, walletChoicesTemplate } from '../apps/web/v4/ui.js';
 import { deriveProofWalletUiState, proofSectionTemplate } from '../apps/web/v4/proof-ui.js';
 
 const ACCOUNT = '0x1111111111111111111111111111111111111111';
@@ -176,12 +176,14 @@ test('multiple wallets present an explicit chooser and never auto-connect the fi
   assert.match(proofSectionTemplate(), /<dialog id="v4-proof-wallet-dialog"[^>]*aria-labelledby="v4-wallet-dialog-title"/u);
   assert.match(proofSectionTemplate(), /id="v4-proof-wallet-dialog"[^>]*aria-modal="true"/u);
   assert.match(proofSectionTemplate(), /Connect wallet/u);
-  assert.match(proofSectionTemplate(), /Choose an EVM wallet to connect to VeilForge/u);
+  assert.match(proofSectionTemplate(), /Choose a wallet to connect to VeilForge/u);
+  assert.match(proofSectionTemplate(), /role="dialog"[^>]*aria-modal="true"/u);
+  assert.match(proofSectionTemplate(), /No signature or transaction will be requested during connection/u);
   assert.match(proofSectionTemplate(), /id="v4-wallet-dialog-close"/u);
   assert.match(proofSectionTemplate(), /id="v4-wallet-dialog-cancel"/u);
   assert.match(walletChoicesTemplate(choices), /MetaMask/u);
-  assert.match(walletChoicesTemplate(choices), />Rabby</u);
-  assert.match(walletChoicesTemplate(choices), />Keplr</u);
+  assert.match(walletChoicesTemplate(choices), /<b>Rabby<\/b>/u);
+  assert.match(walletChoicesTemplate(choices), /<b>Keplr<\/b>/u);
   assert.deepEqual(metamask.calls, []);
   assert.deepEqual(rabby.calls, []);
   assert.deepEqual(keplr.calls, []);
@@ -224,7 +226,7 @@ test('legacy window.ethereum.providers and Phantom EVM remain discoverable along
   environment.scope.phantom = { ethereum: phantom };
   const choices = await discoverProofWalletChoices({ scope: environment.scope, waitMs: 0 });
   assert.deepEqual(new Set(choices.map((item) => item.provider)), new Set([first, second, keplr, phantom]));
-  assert.match(walletChoicesTemplate(choices), />Keplr</u);
+  assert.match(walletChoicesTemplate(choices), /<b>Keplr<\/b>/u);
   assert.match(walletChoicesTemplate(choices), /Phantom/u);
   for (const wallet of [first, second, keplr, phantom]) assert.deepEqual(wallet.calls, []);
 });
@@ -281,6 +283,29 @@ test('wallet names normalize known EIP-6963 identities and never expose generic 
   assert.doesNotMatch(walletChoicesTemplate([unknown, { info: { rdns: 'other.wallet' } }]), /Wallet [0-9]|<svg|<script/u);
 });
 
+test('wallet cards render only discovered choices with safe data icons and fallback initials', () => {
+  const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/eXcAAAAASUVORK5CYII=';
+  const svg = 'data:image/svg+xml;base64,' + Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#fff" d="M1 1h10v10H1z"/></svg>').toString('base64');
+  assert.equal(safeWalletIconDataUri(png), png);
+  assert.equal(safeWalletIconDataUri('https://wallet.example/icon.png'), null);
+  assert.equal(safeWalletIconDataUri('data:image/png;base64,SGVsbG8='), null);
+  assert.equal(safeWalletIconDataUri('data:image/svg+xml;base64,' + Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>').toString('base64')), null);
+  const html = walletChoicesTemplate([
+    { info: { name: 'MetaMask', rdns: 'io.metamask', icon: png } },
+    { info: { name: 'Rabby', rdns: 'io.rabby', icon: 'https://wallet.example/icon.png' } },
+    { info: { name: 'Phantom', rdns: 'app.phantom', icon: svg } },
+    { info: { name: 'Keplr', rdns: 'app.keplr' } },
+  ]);
+  assert.equal((html.match(/data-v4-wallet-choice=/gu) ?? []).length, 4);
+  assert.equal((html.match(/data-v4-wallet-icon/gu) ?? []).length, 1); // SVG falls back when no browser DOMParser is available.
+  assert.match(html, /data-v4-wallet-choice="0"[^>]*>[\s\S]*?<span>M<\/span><img/u);
+  assert.match(html, /data-v4-wallet-choice="1"[^>]*>[\s\S]*?<span>R<\/span>/u);
+  assert.match(html, /<span>P<\/span>/u);
+  assert.match(html, /<span>K<\/span>/u);
+  assert.doesNotMatch(html, /https:\/\/wallet\.example|Wallet [0-9]/u);
+  assert.equal(walletChoicesTemplate([]), '');
+});
+
 test('wallet chooser deduplicates EIP/legacy identities without auto-selecting a provider', () => {
   const metamask = connectableProvider();
   const legacyMirror = Object.assign(connectableProvider(), { isMetaMask: true });
@@ -308,6 +333,10 @@ test('wallet modal has explicit close, cancel, escape, backdrop, and focus conta
   assert.match(ui, /walletDialog\.addEventListener\('click'/u);
   assert.match(ui, /walletDialog\.addEventListener\('keydown'/u);
   assert.match(ui, /event\.key !== 'Tab'/u);
+  assert.match(ui, /querySelector\('\[data-v4-wallet-choice\]'\)\?\.focus\(\)/u);
+  assert.match(ui, /if \(!walletDialog\.open \|\| state\.proof\.walletConnecting\) return/u);
+  assert.match(ui, /walletDialog\.addEventListener\('close'/u);
+  assert.match(ui, /selected \? 'Connecting…' : 'Detected'/u);
 });
 
 test('startup and scanner code never redefine or eagerly read window.ethereum', () => {

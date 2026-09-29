@@ -34,7 +34,7 @@ export function proofSectionTemplate() {
     <div id="v4-proof-status" role="status" aria-live="polite"><p>Run and verify a V4 scan to prepare a proof envelope.</p></div>
     <div id="v4-proof-summary" hidden></div>
     <details id="v4-proof-workflow" class="v4-proof-workflow" hidden><summary>Open proof workflow</summary><div class="v4-proof-workflow-body">
-      <div id="v4-proof-wallet" hidden></div>
+      <div id="v4-proof-wallet" tabindex="-1" hidden></div>
       <div id="v4-proof-disclosure" class="v4-proof-disclosure" hidden><label for="v4-proof-ack"><input id="v4-proof-ack" type="checkbox"> I understand this proof anchors analysis evidence; it does not certify confidentiality.</label></div>
       <div id="v4-proof-checks" hidden></div>
       <div class="v4-button-row"><button id="v4-proof-inspect-wallet" type="button" disabled>Connect Wallet</button><button id="v4-proof-preflight" type="button" disabled>Review &amp; Publish Proof</button></div>
@@ -44,10 +44,12 @@ export function proofSectionTemplate() {
       <details class="v4-proof-reconcile"><summary>Verify an existing transaction</summary><label for="v4-proof-reconcile-hash">Transaction hash</label><input id="v4-proof-reconcile-hash" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="0x…" maxlength="66" aria-describedby="v4-proof-reconcile-status"><button id="v4-proof-reconcile" type="button" disabled>Verify existing transaction</button><div id="v4-proof-reconcile-status" class="v4-proof-reconcile-status" role="status" aria-live="polite" hidden></div></details>
       <p class="v4-proof-boundary"><b>Publishing always requires a separate explicit click.</b> Wallet connection and transaction publication are isolated user actions. No signature, network switch, or transaction request is made automatically.</p>
     </div></details>
-    <dialog id="v4-proof-wallet-dialog" class="v4-wallet-dialog" aria-modal="true" aria-labelledby="v4-wallet-dialog-title" aria-describedby="v4-wallet-dialog-subtitle">
-      <div class="v4-wallet-dialog-head"><div><h3 id="v4-wallet-dialog-title">Connect wallet</h3><p id="v4-wallet-dialog-subtitle">Choose an EVM wallet to connect to VeilForge.</p></div><button id="v4-wallet-dialog-close" type="button" aria-label="Close wallet chooser">×</button></div>
+    <dialog id="v4-proof-wallet-dialog" class="v4-wallet-dialog" role="dialog" aria-modal="true" aria-labelledby="v4-wallet-dialog-title" aria-describedby="v4-wallet-dialog-subtitle">
+      <div class="v4-wallet-dialog-head"><div><h3 id="v4-wallet-dialog-title">Connect wallet</h3><p id="v4-wallet-dialog-subtitle">Choose a wallet to connect to VeilForge.</p></div><button id="v4-wallet-dialog-close" type="button" aria-label="Close wallet chooser">×</button></div>
+      <p class="v4-wallet-security-line"><span aria-hidden="true">✓</span>No signature or transaction will be requested during connection.</p>
       <div id="v4-proof-wallet-choices" class="v4-proof-wallet-choices" role="group" aria-label="Available EVM wallets"></div>
-      <button id="v4-wallet-dialog-cancel" type="button">Cancel</button>
+      <p id="v4-wallet-dialog-status" class="v4-wallet-dialog-status" role="status" aria-live="polite" tabindex="-1" hidden></p>
+      <div class="v4-wallet-dialog-footer"><small>VeilForge never requests a signature or transaction simply to connect.</small><button id="v4-wallet-dialog-cancel" type="button">Cancel</button></div>
     </dialog>
   </section>`;
 }

@@ -36,7 +36,7 @@ const WORKFLOW_STEPS = Object.freeze([
 ]);
 const ANALYSIS_PHASES = Object.freeze(['Compiler', 'AST', 'CFG', 'Dataflow', 'Detectors', 'Report']);
 const DEFAULT_FILTERS = Object.freeze({ query: '', severity: 'all', domain: 'all', disposition: 'all', confidence: 'all', completeness: 'all', detector: '', sort: 'severity' });
-const createEmptyProofState = () => ({ envelope: null, wallet: buildWalletState(), walletConnecting: false, walletChoices: [], walletError: null, preflight: null, networkPreflight: null, review: null, status: 'unavailable', failure: null, receipt: null, sendAttempt: null, provider: null, identityVerified: false, completionState: null, verificationRequestId: 0, existingVerification: { status: 'idle', message: '', identity: null } });
+const createEmptyProofState = () => ({ envelope: null, wallet: buildWalletState(), walletConnecting: false, walletChoices: [], walletSelectedIndex: null, walletError: null, preflight: null, networkPreflight: null, review: null, status: 'unavailable', failure: null, receipt: null, sendAttempt: null, provider: null, identityVerified: false, completionState: null, verificationRequestId: 0, existingVerification: { status: 'idle', message: '', identity: null } });
 
 const esc = (value) => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
 const formatBytes = (bytes) => bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(bytes < 10240 ? 1 : 0)} KiB`;
@@ -114,10 +114,45 @@ export function walletChoiceLabel(choice, { multipleUnknown = false } = {}) {
     ? `Other EVM wallet · ${rdns}` : 'Other EVM wallet';
 }
 
+export function safeWalletIconDataUri(value) {
+  if (typeof value !== 'string' || value.length > 131_200) return null;
+  const match = /^data:image\/(png|jpeg|gif|webp|svg\+xml);base64,([A-Za-z0-9+/]+={0,2})$/u.exec(value);
+  if (!match || match[2].length % 4 !== 0) return null;
+  try {
+    const binary = atob(match[2]);
+    if (binary.length === 0 || binary.length > 96 * 1024) return null;
+    const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+    const header = [...bytes.slice(0, 12)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+    if (match[1] === 'png') return header.startsWith('89504e470d0a1a0a') ? value : null;
+    if (match[1] === 'jpeg') return header.startsWith('ffd8ff') ? value : null;
+    if (match[1] === 'gif') return header.startsWith('474946383761') || header.startsWith('474946383961') ? value : null;
+    if (match[1] === 'webp') return header.startsWith('52494646') && header.slice(16, 24) === '57454250' ? value : null;
+    if (typeof DOMParser !== 'function') return null;
+    const svg = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    if (/<!DOCTYPE|<!ENTITY/iu.test(svg)) return null;
+    const document = new DOMParser().parseFromString(svg, 'image/svg+xml');
+    if (document.querySelector('parsererror') || document.documentElement.localName !== 'svg') return null;
+    const tags = new Set(['svg', 'g', 'path', 'circle', 'rect', 'ellipse', 'line', 'polyline', 'polygon', 'defs', 'linearGradient', 'radialGradient', 'stop']);
+    const attributes = new Set(['xmlns', 'viewBox', 'width', 'height', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'stroke-opacity', 'fill-opacity', 'opacity', 'd', 'cx', 'cy', 'r', 'rx', 'ry', 'x', 'y', 'x1', 'x2', 'y1', 'y2', 'points', 'transform', 'offset', 'stop-color', 'stop-opacity', 'gradientUnits', 'gradientTransform']);
+    for (const element of document.querySelectorAll('*')) {
+      if (!tags.has(element.localName)) return null;
+      for (const attribute of element.attributes) {
+        if (!attributes.has(attribute.name) || /url\s*\(|javascript:|data:|https?:/iu.test(attribute.value)) return null;
+      }
+    }
+    return value;
+  } catch { return null; }
+}
+
 export function walletChoicesTemplate(choices) {
   if (!Array.isArray(choices) || choices.length < 2) return '';
   const multipleUnknown = choices.filter((choice) => !walletKnownName(choice)).length > 1;
-  return choices.map((choice, index) => `<button type="button" data-v4-wallet-choice="${index}">${esc(walletChoiceLabel(choice, { multipleUnknown }))}</button>`).join('');
+  return choices.map((choice, index) => {
+    const label = walletChoiceLabel(choice, { multipleUnknown });
+    const initial = walletKnownName(choice)?.slice(0, 1) ?? 'O';
+    const icon = safeWalletIconDataUri(choice?.info?.icon);
+    return `<button type="button" class="v4-wallet-card" data-v4-wallet-choice="${index}"><span class="v4-wallet-card-icon" aria-hidden="true"><span>${esc(initial)}</span>${icon ? `<img data-v4-wallet-icon src="${esc(icon)}" alt="">` : ''}</span><span class="v4-wallet-card-copy"><b>${esc(label)}</b><small data-v4-wallet-state>Detected</small></span><span class="v4-wallet-card-chevron" aria-hidden="true">›</span></button>`;
+  }).join('');
 }
 
 export async function connectProofWalletChoiceFromUserClick(event, choice, { onProvider = () => {} } = {}) {
@@ -571,13 +606,31 @@ export async function initV4Ui(options = {}) {
     const wallet = proof.wallet;
     const walletUi = deriveProofWalletUiState(wallet, proof.envelope.chainId, { connecting: proof.walletConnecting, error: proof.walletError, networkKey: proof.envelope.networkKey });
     byId('v4-proof-wallet').hidden = false;
-    byId('v4-proof-wallet').innerHTML = `<p><b>Wallet boundary:</b> ${esc(walletUi.description)}</p>`;
-    const choosingWallet = proof.walletChoices.length > 1 && !proof.walletConnecting;
+    const walletDisplay = byId('v4-proof-wallet');
+    walletDisplay.innerHTML = wallet.connected && wallet.account
+      ? `<div class="v4-wallet-connection"><span class="v4-wallet-connection-pill${walletUi.state === 'wrong-network' ? ' is-warning' : ''}">${walletUi.state === 'wrong-network' ? 'Connected' : '✓ Connected'}</span><code>${esc(shortAddress(wallet.account))}</code><span>${esc(walletUi.state === 'wrong-network' ? 'Wrong network' : proofNetworkDisplayName(proof.envelope.networkKey))}</span>${walletUi.state === 'wrong-network' ? `<small>Switch to ${esc(proofNetworkDisplayName(proof.envelope.networkKey))} in your wallet.</small>` : ''}</div>`
+      : `<p><b>Wallet boundary:</b> ${esc(walletUi.description)}</p>`;
+    const choosingWallet = proof.walletChoices.length > 1;
     if (choosingWallet && !walletDialog.open) {
       byId('v4-proof-wallet-choices').innerHTML = walletChoicesTemplate(proof.walletChoices);
+      for (const icon of byId('v4-proof-wallet-choices').querySelectorAll('[data-v4-wallet-icon]')) icon.addEventListener('error', () => icon.remove(), { once: true });
       walletDialog.showModal();
-      byId('v4-wallet-dialog-close').focus();
+      byId('v4-proof-wallet-choices').querySelector('[data-v4-wallet-choice]')?.focus();
     } else if (!choosingWallet && walletDialog.open) walletDialog.close();
+    if (choosingWallet) {
+      for (const card of byId('v4-proof-wallet-choices').querySelectorAll('[data-v4-wallet-choice]')) {
+        const selected = proof.walletConnecting && Number(card.dataset.v4WalletChoice) === proof.walletSelectedIndex;
+        card.disabled = Boolean(selected);
+        card.classList.toggle('is-connecting', Boolean(selected));
+        card.querySelector('[data-v4-wallet-state]').textContent = selected ? 'Connecting…' : 'Detected';
+      }
+      byId('v4-wallet-dialog-close').disabled = proof.walletConnecting;
+      byId('v4-wallet-dialog-cancel').disabled = proof.walletConnecting;
+      const modalStatus = byId('v4-wallet-dialog-status');
+      modalStatus.hidden = !proof.walletConnecting;
+      modalStatus.textContent = proof.walletConnecting ? 'Finish or reject the current wallet request before choosing another.' : '';
+      if (proof.walletConnecting && proof.walletSelectedIndex !== null && !walletDialog.contains(document.activeElement)) modalStatus.focus();
+    }
     byId('v4-proof-inspect-wallet').textContent = choosingWallet ? 'Choose wallet' : walletUi.label;
     byId('v4-proof-inspect-wallet').title = walletUi.description;
     byId('v4-proof-inspect-wallet').dataset.state = walletUi.state;
@@ -707,7 +760,8 @@ export async function initV4Ui(options = {}) {
     if (event) {
       const envelope = state.proof.envelope;
       const previousChoices = state.proof.walletChoices;
-      state.proof.walletConnecting = true; state.proof.walletError = null; renderProof();
+      if (state.proof.walletConnecting) return state.proof.wallet;
+      state.proof.walletConnecting = true; state.proof.walletSelectedIndex = selectedChoiceIndex; state.proof.walletError = null; renderProof();
       try {
         if (event.type !== 'click' || event.isTrusted !== true) throw webV4Error('WEB_V4_USER_GESTURE_REQUIRED', 'Wallet connection requires a trusted user click.');
         let choice;
@@ -719,7 +773,7 @@ export async function initV4Ui(options = {}) {
           });
           if (state.proof.envelope !== envelope || (expectedRunId != null && expectedRunId !== state.runId)) return state.proof.wallet;
           if (choices.length > 1) {
-            state.proof.walletChoices = choices; state.proof.walletConnecting = false; state.proof.status = 'wallet-choose'; renderProof();
+            state.proof.walletChoices = choices; state.proof.walletConnecting = false; state.proof.walletSelectedIndex = null; state.proof.status = 'wallet-choose'; renderProof();
             return state.proof.wallet;
           }
           choice = choices[0] ?? null;
@@ -730,15 +784,15 @@ export async function initV4Ui(options = {}) {
         const result = await connectProofWalletChoiceFromUserClick(event, choice, { onProvider(discovered) { state.proof.provider = discovered; } });
         if (state.proof.envelope !== envelope || (expectedRunId != null && expectedRunId !== state.runId)) return state.proof.wallet;
         provider = result.provider;
-        state.proof.walletChoices = [];
+        state.proof.walletChoices = []; state.proof.walletSelectedIndex = null;
       }
-      catch (error) { if (state.proof.envelope !== envelope) return state.proof.wallet; state.proof.walletChoices = []; state.proof.walletConnecting = false; state.proof.walletError = uiErrorMessage(error); state.proof.status = 'wallet-not-connected'; renderProof(); return state.proof.wallet; }
+      catch (error) { if (state.proof.envelope !== envelope) return state.proof.wallet; state.proof.walletChoices = []; state.proof.walletSelectedIndex = null; state.proof.walletConnecting = false; state.proof.walletError = uiErrorMessage(error); state.proof.status = 'wallet-not-connected'; renderProof(); return state.proof.wallet; }
     }
     if (expectedRunId != null && expectedRunId !== state.runId) return state.proof.wallet;
     const wallet = await inspectProvider(provider);
     if (expectedRunId != null && expectedRunId !== state.runId) return state.proof.wallet;
     state.proof.provider = provider ?? null;
-    state.proof.wallet = wallet; state.proof.walletConnecting = false; state.proof.walletError = wallet.errorCode ? 'The wallet state could not be read safely.' : null;
+    state.proof.wallet = wallet; state.proof.walletConnecting = false; state.proof.walletSelectedIndex = null; state.proof.walletError = wallet.errorCode ? 'The wallet state could not be read safely.' : null;
     state.proof.status = !state.proof.wallet.providerAvailable ? 'wallet-not-connected' : !state.proof.wallet.connected ? 'wallet-not-connected' : state.proof.wallet.chainId !== state.proof.envelope.chainId ? 'wrong-network' : state.proof.envelope.complete ? 'ready' : 'incomplete-warning';
     if (state.proof.wallet.connected && state.proof.wallet.chainId === state.proof.envelope.chainId) {
       try {
@@ -1072,8 +1126,9 @@ export async function initV4Ui(options = {}) {
   byId('v4-cancel').addEventListener('click', () => resetCurrentSession({ cancelled: state.scanStatus === 'scanning' }));
   byId('v4-proof-inspect-wallet').addEventListener('click', inspectProofWallet);
   const dismissWalletChooser = () => {
-    if (!walletDialog.open) return;
+    if (!walletDialog.open || state.proof.walletConnecting) return;
     state.proof.walletChoices = [];
+    state.proof.walletSelectedIndex = null;
     if (state.proof.status === 'wallet-choose') state.proof.status = 'wallet-not-connected';
     walletDialog.close();
     renderProof();
@@ -1082,6 +1137,11 @@ export async function initV4Ui(options = {}) {
   byId('v4-wallet-dialog-close').addEventListener('click', dismissWalletChooser);
   byId('v4-wallet-dialog-cancel').addEventListener('click', dismissWalletChooser);
   walletDialog.addEventListener('cancel', (event) => { event.preventDefault(); dismissWalletChooser(); });
+  walletDialog.addEventListener('close', () => {
+    const trigger = byId('v4-proof-inspect-wallet');
+    if (!trigger.disabled) trigger.focus();
+    else byId('v4-proof-wallet').focus();
+  });
   walletDialog.addEventListener('click', (event) => {
     if (event.target !== walletDialog) return;
     const bounds = walletDialog.getBoundingClientRect();
@@ -1092,12 +1152,13 @@ export async function initV4Ui(options = {}) {
     const focusable = [...walletDialog.querySelectorAll('button:not([disabled])')];
     if (!focusable.length) return;
     const first = focusable[0], last = focusable.at(-1);
+    if (!focusable.includes(document.activeElement)) { event.preventDefault(); (event.shiftKey ? last : first).focus(); return; }
     if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
     else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
   });
   byId('v4-proof-wallet-choices').addEventListener('click', (event) => {
     const button = event.target.closest('[data-v4-wallet-choice]');
-    if (!button) return;
+    if (!button || state.proof.walletConnecting) return;
     void inspectProofWallet(event, null, Number(button.dataset.v4WalletChoice));
   });
   byId('v4-proof-preflight').addEventListener('click', runProofPreflight);
