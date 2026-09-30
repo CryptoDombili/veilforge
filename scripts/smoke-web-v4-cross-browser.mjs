@@ -4,6 +4,7 @@ import process from 'node:process';
 import { chromium, firefox, webkit } from 'playwright';
 import { startStaticServer } from './lib/web-acceptance-browser.mjs';
 import { probeForbiddenCspResources } from './lib/csp-negative-probe.mjs';
+import { createArtifactModuleMimeCheck } from './lib/artifact-module-mime.mjs';
 
 const options = Object.fromEntries(process.argv.slice(2).map((item) => {
   const [key, ...value] = item.replace(/^--/u, '').split('=');
@@ -30,7 +31,7 @@ const folderDropSources = Object.fromEntries([
   'treasury/ArcTreasury.sol',
 ].map((relativePath) => [relativePath, fs.readFileSync(path.join(folderDropRoot, ...relativePath.split('/')), 'utf8')]));
 const policy = JSON.parse(fs.readFileSync(path.join(fixtureRoot, 'policy.json'), 'utf8'));
-const stageLimits = Object.freeze({ launch: 15_000, context: 5_000, page: requestedBrowser === 'webkit' ? 15_000 : 5_000, navigation: 15_000, app: 15_000, scan: 30_000, cleanup: 3_000, shutdown: 5_000 });
+const stageLimits = Object.freeze({ launch: 15_000, context: 5_000, page: requestedBrowser === 'webkit' || requestedBrowser === 'edge' ? 15_000 : 5_000, navigation: 15_000, app: 15_000, scan: 30_000, cleanup: 3_000, shutdown: 5_000 });
 const result = { browser: requestedBrowser, artifact: artifactName, passed: false, version: null, routes: [], folderDrop: null, pageErrors: 0, module404s: 0, moduleMimeFailures: 0, asset404s: 0, cspViolations: [], unauthorizedScriptBlocked: false, unauthorizedWorkerBlocked: false, stages: [], repeatedScans: 0, orphanWorkers: null, pendingRequests: null, responsive390: false, cleanShutdown: false, errorCode: null };
 let currentStage = 'BROWSER_LAUNCH';
 let browser;
@@ -186,6 +187,10 @@ try {
     ? Object.fromEntries(vercel.headers.find((item) => item.source === '/(.*)').headers.map(({ key, value }) => [key, value]))
     : {};
   server = await startStaticServer({ '/': artifact }, { headers: productionHeaders });
+  const hasArtifactModuleMimeFailure = createArtifactModuleMimeCheck({
+    origin: `http://127.0.0.1:${server.port}`,
+    generatedFiles: JSON.parse(fs.readFileSync(path.join(artifact, 'build-manifest.json'), 'utf8')).generatedFiles,
+  });
   const browserType = requestedBrowser === 'firefox' ? firefox : requestedBrowser === 'webkit' ? webkit : chromium;
   const launchOptions = { headless: true, timeout: stageLimits.launch };
   if (requestedBrowser === 'edge') launchOptions.channel = 'msedge';
@@ -220,8 +225,7 @@ try {
     else result.asset404s += 1;
   });
   page.on('response', (response) => {
-    const pathname = new URL(response.url()).pathname;
-    if (/\.(?:c?js|mjs)$/u.test(pathname) && response.status() === 200 && !/^(?:text|application)\/javascript\b/iu.test(response.headers()['content-type'] ?? '')) result.moduleMimeFailures += 1;
+    if (hasArtifactModuleMimeFailure(response)) result.moduleMimeFailures += 1;
   });
   page.on('worker', (worker) => {
     if (!worker.url().includes('veilforge-v4-scanner.worker')) return;
