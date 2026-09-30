@@ -11,6 +11,25 @@ if (!fs.existsSync(path.join(dist, 'app', 'index.html'))) throw new Error('dist/
 
 const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
+function waitForBytecodeState(label, predicate, timeoutMs = 5_000) {
+  return new Promise((resolve, reject) => {
+    const observer = new MutationObserver(check);
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(Object.assign(new Error('Bytecode Truth ' + label + ' timed out after ' + timeoutMs + 'ms.'), { code: 'BYTECODE_TRUTH_STATE_TIMEOUT' }));
+    }, timeoutMs);
+    function cleanup() { observer.disconnect(); clearTimeout(timer); }
+    function check() {
+      try {
+        const value = predicate();
+        if (value) { cleanup(); resolve(value); }
+      } catch (error) { cleanup(); reject(error); }
+    }
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, characterData: true });
+    check();
+  });
+}
+
 function stripModuleSyntax(code) {
   return code
     .replace(/^\s*import\s+[\s\S]*?\s+from\s+['"][^'"]+['"];\s*$/gm, '')
@@ -402,6 +421,7 @@ try {
   await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
   const interactionResult = await cdp.send('Runtime.evaluate', {
     expression: `(async () => {
+      ${waitForBytecodeState.toString()}
       const openView = (name) => document.querySelector('[data-view="' + name + '"]')?.click();
       const bounded = (selector) => {
         const element = document.querySelector(selector);
@@ -462,41 +482,50 @@ try {
       const bytecodeArtifactTransfer = new DataTransfer();
       bytecodeArtifactTransfer.items.add(new File([JSON.stringify({ contractName: 'Payroll', sourceName: 'contracts/Payroll.sol', deployedBytecode: '0x6001600055' })], 'Payroll.json', { type: 'application/json' }));
       const bytecodeArtifactInput = document.querySelector('#bytecode-artifact-input');
+      if (!bytecodeArtifactInput) throw new Error('Bytecode Truth artifact input is missing.');
       bytecodeArtifactInput.files = bytecodeArtifactTransfer.files;
       bytecodeArtifactInput.dispatchEvent(new Event('change', { bubbles: true }));
-      await new Promise((resolve) => setTimeout(resolve, 30));
+      const bytecodeArtifactReady = () => {
+        const control = document.querySelector('[data-action="verify-bytecode"]');
+        return document.querySelector('.artifact-card header strong')?.textContent === 'Payroll.json'
+          && control?.isConnected && !control.disabled && control.getClientRects().length > 0
+          && getComputedStyle(control).visibility !== 'hidden' && control;
+      };
+      const bytecodeVerifyControl = await waitForBytecodeState('artifact/UI readiness (Payroll.json and actionable Verify)', bytecodeArtifactReady);
       document.querySelector('#bytecode-target-address').value = '0x1111111111111111111111111111111111111111';
       const originalFetch = globalThis.fetch;
       const bytecodeRpcMethods = [];
-      globalThis.fetch = async (_url, options) => {
-        const request = JSON.parse(options.body);
-        bytecodeRpcMethods.push(request.method);
-        const result = request.method === 'eth_chainId' ? '0x4CEF52' : request.method === 'eth_getCode' ? '0x6001600055' : '0x' + '0'.repeat(64);
-        return { ok: true, json: async () => ({ jsonrpc: '2.0', id: request.id, result }) };
-      };
-      document.querySelector('[data-action="verify-bytecode"]')?.click();
-      for (let attempt = 0; attempt < 40; attempt += 1) {
-        if (document.querySelector('.bytecode-hero>div:first-child>strong')?.textContent === 'ARC VERIFIED') break;
-        await new Promise((resolve) => setTimeout(resolve, 20));
-      }
-      globalThis.fetch = originalFetch;
-      const bytecodeStatus = document.querySelector('.bytecode-hero>div:first-child>strong')?.textContent || '';
-      const bytecodeArtifactName = document.querySelector('.artifact-card header strong')?.textContent || '';
-      const bytecodeHashes = document.querySelectorAll('.truth-hash-row').length;
       const bytecodeRejectMethods = [];
-      globalThis.fetch = async (_url, options) => {
-        const request = JSON.parse(options.body);
-        bytecodeRejectMethods.push(request.method);
-        return { ok: true, json: async () => ({ jsonrpc: '2.0', id: request.id, result: request.method === 'eth_chainId' ? '0x1' : '0x6001600055' }) };
-      };
-      document.querySelector('[data-action="verify-bytecode"]')?.click();
-      for (let attempt = 0; attempt < 40; attempt += 1) {
-        if (document.querySelector('.bytecode-error')?.textContent.includes('RPC network mismatch')) break;
-        await new Promise((resolve) => setTimeout(resolve, 20));
+      let bytecodeStatus, bytecodeArtifactName, bytecodeHashes, bytecodeRejectedStatus, bytecodeRejectError;
+      try {
+        globalThis.fetch = async (_url, options) => {
+          const request = JSON.parse(options.body);
+          bytecodeRpcMethods.push(request.method);
+          const result = request.method === 'eth_chainId' ? '0x4CEF52' : request.method === 'eth_getCode' ? '0x6001600055' : '0x' + '0'.repeat(64);
+          return { ok: true, json: async () => ({ jsonrpc: '2.0', id: request.id, result }) };
+        };
+        bytecodeVerifyControl.click();
+        await waitForBytecodeState('Arc verification completion (RPC activity and ARC VERIFIED)', () =>
+          bytecodeRpcMethods.length > 0 && document.querySelector('.bytecode-hero>div:first-child>strong')?.textContent === 'ARC VERIFIED');
+        bytecodeStatus = document.querySelector('.bytecode-hero>div:first-child>strong')?.textContent || '';
+        bytecodeArtifactName = document.querySelector('.artifact-card header strong')?.textContent || '';
+        bytecodeHashes = document.querySelectorAll('.truth-hash-row').length;
+
+        globalThis.fetch = async (_url, options) => {
+          const request = JSON.parse(options.body);
+          bytecodeRejectMethods.push(request.method);
+          return { ok: true, json: async () => ({ jsonrpc: '2.0', id: request.id, result: request.method === 'eth_chainId' ? '0x1' : '0x6001600055' }) };
+        };
+        const bytecodeRejectControl = await waitForBytecodeState('wrong-network Verify readiness', bytecodeArtifactReady);
+        bytecodeRejectControl.click();
+        await waitForBytecodeState('wrong-network rejection completion (RPC activity and mismatch)', () =>
+          bytecodeRejectMethods.length > 0 && document.querySelector('.bytecode-hero>div:first-child>strong')?.textContent === 'UNVERIFIED'
+          && document.querySelector('.bytecode-error')?.textContent.includes('RPC network mismatch'));
+        bytecodeRejectedStatus = document.querySelector('.bytecode-hero>div:first-child>strong')?.textContent || '';
+        bytecodeRejectError = document.querySelector('.bytecode-error')?.textContent || '';
+      } finally {
+        globalThis.fetch = originalFetch;
       }
-      globalThis.fetch = originalFetch;
-      const bytecodeRejectedStatus = document.querySelector('.bytecode-hero>div:first-child>strong')?.textContent || '';
-      const bytecodeRejectError = document.querySelector('.bytecode-error')?.textContent || '';
 
       openView('prooftest');
       const proofReceiptTransfer = new DataTransfer();
@@ -623,6 +652,9 @@ try {
     awaitPromise: true,
     returnByValue: true,
   });
+  if (interactionResult.exceptionDetails) {
+    throw new Error('Browser smoke interaction failed: ' + (interactionResult.exceptionDetails.exception?.description || interactionResult.exceptionDetails.text));
+  }
   const interactions = interactionResult.result?.value;
   if ((interactions?.genomeAssets ?? 0) < 1 || (interactions?.genomeMatrix ?? 0) < 1) failures.push('privacy genome view');
   if (!String(interactions?.intentDocument).includes('require_deployment_lineage: true')) failures.push('privacy intent view');
