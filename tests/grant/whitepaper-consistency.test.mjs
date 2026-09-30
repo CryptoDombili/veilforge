@@ -30,7 +30,7 @@ test('whitepaper internal evidence references resolve', () => {
   }
 });
 
-test('canonical transaction, report and benchmark identities are unchanged', () => {
+test('historical Testnet transaction, report and benchmark identities are preserved', () => {
   for (const value of [
     '0xdb674c986195ed9b3950f34d058637fbb2b887f58ca724400225ba177884192c',
     '55469453',
@@ -39,6 +39,31 @@ test('canonical transaction, report and benchmark identities are unchanged', () 
     'sha256:fce5ffa529c79d185a6013a362e25658020d1691550557d59173c9acc6a417ea',
   ]) assert.match(whitepaper, new RegExp(value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&'), 'u'));
   for (const value of ['60/60', '56 true positives', 'zero false positives', 'zero false negatives', 'passed / allow', 'zero nondeterministic results']) assert.match(whitepaper, new RegExp(value, 'iu'));
+});
+
+test('canonical proof evidence uses the supplied verified Mainnet publication, not historical Testnet values', () => {
+  const canonical = whitepaper.split('### 11.1 Canonical Arc Mainnet evidence')[1]?.split('### 11.2')[0];
+  assert.ok(canonical, 'Canonical Arc Mainnet evidence section is required');
+  const values = [
+    'Arc Mainnet',
+    '0x312501dcf496583aedc043bcc5b8b1eb4df60548c56ed5046afb44cbf14b971e',
+    '23531676',
+    '0x60B6333a0722bBEA39d4026b284Ae1E142bEb914',
+    '0x43D76BfCa31eAd660C5d804FEe20d14C0c577337',
+    'publishReport', '0 USDC', '0.0036560965 USDC', 'Success',
+    'not a guaranteed future transaction cost',
+  ];
+  for (const document of [canonical, brief]) {
+    for (const value of values) assert.ok(document.includes(value), `Missing Mainnet publication value: ${value}`);
+    assert.doesNotMatch(document, /0xdb674c986195|55469453|0x88B4055|0\.001175966|Arc Testnet only|Observed Testnet fee|ARC TESTNET PROOF LIFECYCLE/iu);
+  }
+  assert.match(canonical, /Receipt, event, publisher, registry, and report identity verified/u);
+  assert.match(canonical, /Already published; second transaction blocked/u);
+  assert.match(brief, /already-published and blocks a second transaction/u);
+  assert.match(whitepaper, /Historical Testnet transaction:/u);
+  const figure = read('docs/whitepaper/figures/arc-testnet-proof-lifecycle.svg');
+  assert.match(figure, /ARC MAINNET PROOF LIFECYCLE/u);
+  assert.doesNotMatch(figure, /Arc Testnet|Testnet only|ARC TESTNET PROOF LIFECYCLE/u);
 });
 
 test('version, runtime and mainnet boundaries remain explicit', () => {

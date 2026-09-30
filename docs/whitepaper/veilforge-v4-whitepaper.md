@@ -6,7 +6,7 @@
 **Product version:** 4.0.0-gc.1  
 **Technical candidate:** V4 RC1  
 **Grant status:** V4 Grant Candidate  
-**Implementation boundary:** Verified Arc Mainnet production profile with historical Arc Testnet evidence
+**Implementation boundary:** Verified Arc Mainnet production profile with verified Arc Mainnet publication evidence
 **Document date:** 2026-09-26
 **Document status:** Grant Candidate production evidence; not an audit, endorsement, formal verification, or confidentiality guarantee
 
@@ -26,7 +26,7 @@ The product is designed around evidence rather than a promise of perfect detecti
 
 The maintained benchmark currently contains 60 oracle cases across the three Arc-oriented domains. The recorded release baseline passes 60/60 with 56 true positives, zero false positives, zero false negatives, zero negative-case false positives, a release-gate result of `passed / allow`, and zero nondeterministic results. This is strong evidence for the maintained corpus, not a claim of universal correctness, audit assurance, or formal verification. Behavior outside the corpus can differ, and continued corpus and detector expansion remains necessary.
 
-VeilForge also demonstrates a complete Arc Testnet proof lifecycle. A verified report identity was published through Registry V2 in transaction `0xdb674c986195ed9b3950f34d058637fbb2b887f58ca724400225ba177884192c` at block 55469453. Receipt, event, publisher, registry, and report hash were reconciled. The browser can restore the provider-verified identity and recognize the proof as already published, preventing a second transaction request. This evidence is Testnet-only and the observed fee is not a mainnet cost estimate.
+VeilForge also demonstrates a complete Arc Mainnet proof lifecycle. A verified report identity was published through Registry V2 in transaction `0x312501dcf496583aedc043bcc5b8b1eb4df60548c56ed5046afb44cbf14b971e` at block 23531676. Receipt, event, publisher, registry, and report identity were reconciled. The browser can restore the provider-verified identity and recognize the proof as already published, preventing a second transaction request. The observed Mainnet transaction fee was 0.0036560965 USDC and is not a guaranteed future transaction cost.
 
 The current Arc Mainnet production profile is independently evidence-bound to chain `5042` and Registry `0x43D76BfCa31eAd660C5d804FEe20d14C0c577337`. Deployment status is `verified`; `enabled=true`, `proofReadEnabled=true`, and `publishEnabled=true`. The first controlled Mainnet publication was separately receipt-, event-, and readback-verified. These current Mainnet facts do not change or relabel the earlier Testnet milestone.
 
@@ -175,28 +175,27 @@ The proof workflow begins only after report verification. A V4 proof envelope bi
 
 Wallet behavior is user-gated. VeilForge does not automatically connect a wallet, request a network switch, sign, or send. A transaction request is released only after trusted preflight and explicit review. Receipt normalization then verifies success, chain, registry log address, event ABI, hashes, scanner/version token, and publisher. Persistence accepts only the reconciled identity. A later lookup for the same chain, registry, publisher, and report hash returns `already-published`, sets the transaction request to null, and blocks a second send.
 
-### 11.1 Canonical Arc Testnet evidence
+### 11.1 Canonical Arc Mainnet evidence
 
 | Field | Verified value |
 |---|---|
-| Network | Arc Testnet only |
-| Transaction | `0xdb674c986195ed9b3950f34d058637fbb2b887f58ca724400225ba177884192c` |
-| Block | `55469453` |
+| Network | Arc Mainnet |
+| Transaction | `0x312501dcf496583aedc043bcc5b8b1eb4df60548c56ed5046afb44cbf14b971e` |
+| Block | `23531676` |
 | Publisher | `0x60B6333a0722bBEA39d4026b284Ae1E142bEb914` |
-| Registry | `0x88B4055eaB061CEa9BdfeFF524f65ff461B5401d` |
+| Registry | `0x43D76BfCa31eAd660C5d804FEe20d14C0c577337` |
 | Method | `publishReport` |
 | Value | `0 USDC` |
-| Observed Testnet fee | `0.001175966 USDC` |
-| Report hash | `sha256:fce5ffa529c79d185a6013a362e25658020d1691550557d59173c9acc6a417ea` |
+| Observed Mainnet transaction fee | `0.0036560965 USDC` |
 | Status | Success |
-| Reconciliation | Receipt, event, publisher, registry, and report hash verified |
+| Reconciliation | Receipt, event, publisher, registry, and report identity verified |
 | Duplicate state | Already published; second transaction blocked |
 
-The observed fee is historical Testnet evidence, not a mainnet fee or cost estimate.
+The observed fee is from the verified Arc Mainnet publication transaction and is not a guaranteed future transaction cost.
 
-![Arc Testnet proof publication lifecycle from verified report hash to duplicate prevention.](figures/arc-testnet-proof-lifecycle.svg)
+![Arc Mainnet proof publication lifecycle from verified report hash to duplicate prevention.](figures/arc-testnet-proof-lifecycle.svg)
 
-**Figure 2 — Arc Testnet proof publication lifecycle.** Verified report -> trusted preflight -> explicit user approval -> Testnet transaction -> receipt/event reconciliation -> provider-verified persistence -> duplicate prevention.
+**Figure 2 — Arc Mainnet proof publication lifecycle.** Verified report -> trusted preflight -> explicit user approval -> Mainnet transaction -> receipt/event reconciliation -> provider-verified persistence -> duplicate prevention.
 
 ### 11.2 Current verified Arc Mainnet production state
 
@@ -360,12 +359,12 @@ The following limitations are central, not footnotes:
 - Arc Mainnet proof support is limited to chain `5042`, the verified Registry at `0x43D76BfCa31eAd660C5d804FEe20d14C0c577337`, and the documented production controls; other profiles fail closed.
 - Paid plans and production billing are not live.
 - Registry V2 is immutable, public, publisher-scoped, and operationally limited.
-- Testnet fees are historical observations, not mainnet estimates.
+- The observed Mainnet transaction fee is not a guaranteed future transaction cost; Testnet fees remain historical observations.
 - Policies and accepted-risk decisions remain an operator responsibility.
 
 ## 23. Why VeilForge Merits Grant Support
 
-VeilForge presents a working system and reproducible evidence rather than only a concept. The compiler-backed pipeline, domain detectors, reports, developer interfaces, browser runtime, policy gate, and proof workflow are represented in source and targeted tests. A real Arc Testnet transaction demonstrates that the report-to-proof lifecycle has crossed the boundary from design to implementation.
+VeilForge presents a working system and reproducible evidence rather than only a concept. The compiler-backed pipeline, domain detectors, reports, developer interfaces, browser runtime, policy gate, and proof workflow are represented in source and targeted tests. A real Arc Mainnet transaction demonstrates that the report-to-proof lifecycle has crossed the boundary from design to implementation.
 
 The project addresses a specific ecosystem need: application-level privacy-readiness evidence for financial Solidity workflows. Its local-first boundary is useful for teams that do not want to upload source to a remote analysis service. Its deterministic artifacts support developer trust, CI review, and grant evaluation. Its limits are stated directly.
 
@@ -475,11 +474,14 @@ The Phase 5F-3 task intentionally does not rerun the full analyzer, benchmark, c
 - Hash payload: `veilforge.report.hash.v2`
 - Compiler: exact `0.8.24`
 - Benchmark: 60/60; 56 TP / 0 FP / 0 FN; negative FP 0; gate `passed / allow`; nondeterminism 0
-- Testnet transaction: `0xdb674c986195ed9b3950f34d058637fbb2b887f58ca724400225ba177884192c`
-- Testnet block: `55469453`
-- Publisher: `0x60B6333a0722bBEA39d4026b284Ae1E142bEb914`
-- Registry: `0x88B4055eaB061CEa9BdfeFF524f65ff461B5401d`
-- Report hash: `sha256:fce5ffa529c79d185a6013a362e25658020d1691550557d59173c9acc6a417ea`
+- Canonical Mainnet publication transaction: `0x312501dcf496583aedc043bcc5b8b1eb4df60548c56ed5046afb44cbf14b971e`
+- Canonical Mainnet publication block: `23531676`
+- Canonical Mainnet publisher: `0x60B6333a0722bBEA39d4026b284Ae1E142bEb914`
+- Historical Testnet transaction: `0xdb674c986195ed9b3950f34d058637fbb2b887f58ca724400225ba177884192c`
+- Historical Testnet block: `55469453`
+- Historical Testnet publisher: `0x60B6333a0722bBEA39d4026b284Ae1E142bEb914`
+- Historical Testnet Registry: `0x88B4055eaB061CEa9BdfeFF524f65ff461B5401d`
+- Historical Testnet report hash: `sha256:fce5ffa529c79d185a6013a362e25658020d1691550557d59173c9acc6a417ea`
 - Mainnet chain: `5042` (`0x13b2`)
 - Mainnet Registry: `0x43D76BfCa31eAd660C5d804FEe20d14C0c577337`
 - Mainnet deployment transaction: `0x2ad90b2d3c1343295cffbd770ae584bc6f086c0010aabc985ad1af1f8644789f`

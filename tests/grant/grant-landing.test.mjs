@@ -43,8 +43,9 @@ test('current product claims follow the selected runtime profile while Testnet h
   const mainnetLanding = buildV4GrantLanding(source, mainnetProfile);
   assert.match(mainnetLanding, /Arc Mainnet production profile/u);
   assert.match(mainnetLanding, /Chain 5042; verified Registry 0x43D76BfCa31eAd660C5d804FEe20d14C0c577337/u);
-  assert.match(mainnetLanding, /Real Testnet evidence/u);
-  assert.match(mainnetLanding, /Arc Testnet<\/strong><span>real proof publication verified/u);
+  assert.match(mainnetLanding, /Historical Testnet evidence/u);
+  assert.match(mainnetLanding, /Arc Mainnet<\/strong><span>real proof publication verified/u);
+  assert.doesNotMatch(mainnetLanding, /Arc Testnet<\/strong><span>real proof publication verified/u);
   assert.doesNotMatch(read('scripts/build-web.mjs'), /<span>✓ Arc Testnet proof<\/span>/u);
 });
 
