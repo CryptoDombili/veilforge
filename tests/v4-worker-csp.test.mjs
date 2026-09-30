@@ -26,12 +26,28 @@ test('production CSP validator rejects unsafe or incomplete scanner policies', (
 test('production browser regression uses built modules, exact hosting CSP and negative probes', () => {
   const smoke = fs.readFileSync(new URL('../scripts/smoke-arc-mainnet-production-v4-csp.mjs', import.meta.url), 'utf8');
   const crossBrowser = fs.readFileSync(new URL('../scripts/smoke-web-v4-cross-browser.mjs', import.meta.url), 'utf8');
-  for (const source of [smoke, crossBrowser]) {
-    assert.match(source, /securitypolicyviolation/u);
-    assert.match(source, /unauthorized\.invalid/u);
-    assert.match(source, /data:text\/javascript/u);
-  }
+  const probe = fs.readFileSync(new URL('../scripts/lib/csp-negative-probe.mjs', import.meta.url), 'utf8');
+  assert.match(smoke, /securitypolicyviolation/u);
+  assert.match(smoke, /unauthorized\.invalid/u);
+  assert.match(smoke, /data:text\/javascript/u);
   assert.match(smoke, /assets\.reachableModules/u);
   assert.match(smoke, /SmokeTest\.sol/u);
+  assert.match(crossBrowser, /securitypolicyviolation/u);
   assert.match(crossBrowser, /dist-mainnet-production/u);
+  assert.match(crossBrowser, /import\s*\{\s*probeForbiddenCspResources\s*\}\s*from\s*['"]\.\/lib\/csp-negative-probe\.mjs['"]/u);
+  assert.match(crossBrowser, /page\.evaluate\(probeForbiddenCspResources\)/u);
+  assert.match(crossBrowser, /if\s*\(!cspProbe\.scriptBlocked\s*\|\|\s*!cspProbe\.workerBlocked\)\s*throw/u);
+  assert.match(probe, /script\.src\s*=\s*`data:text\/javascript;charset=utf-8,/u);
+  assert.match(probe, /new Worker\(`data:text\/javascript;charset=utf-8,/u);
+  assert.match(probe, /globalThis\.\$\{marker\}=true;/u);
+  assert.match(probe, /postMessage\("veilforge-csp-probe-executed"\)/u);
+  assert.match(probe, /script\.onload\s*=\s*\(\)\s*=>\s*finish\('load'\)/u);
+  assert.match(probe, /script\.onerror\s*=\s*\(\)\s*=>\s*finish\('error'\)/u);
+  assert.match(probe, /worker\.onmessage\s*=\s*\(\)\s*=>\s*finish\('message'\)/u);
+  assert.match(probe, /worker\.onerror\s*=[^\n]*finish\('error'\)/u);
+  assert.equal((probe.match(/setTimeout\(\(\)\s*=>\s*finish\('timeout'\),\s*timeoutMs\)/gu) ?? []).length, 2);
+  assert.match(probe, /blocked:\s*outcome === 'error' && globalThis\[marker\] !== true/u);
+  assert.match(probe, /blocked:\s*outcome === 'constructor-error' \|\| outcome === 'error'/u);
+  assert.match(probe, /scriptBlocked:\s*script\.blocked && !scriptExecuted/u);
+  assert.match(probe, /workerBlocked:\s*worker\.blocked/u);
 });

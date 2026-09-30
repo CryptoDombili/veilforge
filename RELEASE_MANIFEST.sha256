@@ -888,7 +888,7 @@ f29d2f12b4c141082b8007fe2d139111add40b291c360848e777ef426bed7378  tests/spec/rep
 f0555b796ac4ad5c7001fd71ab12f9f26633f62df7a3e9016128a4b69042eb80  tests/v4-additive-input.test.mjs
 b1b300507a7d362070645ec48fbd403b841f0da3f56c3f4a537d143359096d26  tests/v4-post-scan-boundary.test.mjs
 1f13323a66102db509500e05b42884c01fd76043272d4dfd61cc4902e7bf9f31  tests/v4-recursive-folder-drop.test.mjs
-25d1bb9d73822a22a6c6d34939d0092b93b4dd6efd8e9f19d82dd35d49dbe496  tests/v4-worker-csp.test.mjs
+12a6965e321a1cad460f2481913c4579c95ca018f52d739c2fb1b4785c7edbcc  tests/v4-worker-csp.test.mjs
 642810c52a3fc4a1091e670d0ebde6b2ed06a144f62124db94d9c1018b26cfba  tests/v4/action/action.test.mjs
 951fd8c95d13e42920384276f7188177349ba8b70e8e41cfe49cf924bf144a65  tests/v4/action/cli-integration.test.mjs
 09a981c50f63e0831c5b6cff3568b8d0dfa9791fdef36dd62b7a8af1838d7fc5  tests/v4/action/examples.test.mjs
