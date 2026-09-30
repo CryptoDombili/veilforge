@@ -10,7 +10,7 @@ Items marked TODO are not claimed complete.
 - [ ] TODO: update root README with final release/demo/evidence links after coordinated release approval.
 - [x] Technical architecture and V4 release boundaries are documented.
 - [x] Full grant whitepaper and executive brief are included in the canonical evidence manifest.
-- [x] Preview-only grant landing links to site-readable whitepaper and executive brief readers.
+- [x] Production Grant Candidate landing links to site-readable whitepaper and executive brief readers.
 - [x] Downloadable whitepaper and executive brief PDFs include metadata, contents, page numbers, and deterministic source digests.
 - [x] Five real SVG figures cover architecture, product workflow, Testnet proof, sustainability, and mainnet rollout/rollback.
 - [x] License file exists and must be reviewed for submission fit.
@@ -24,7 +24,7 @@ Items marked TODO are not claimed complete.
 - [x] Real Arc Testnet transaction identity recorded.
 - [x] Receipt/event/publisher/registry/report-hash reconciliation recorded.
 - [x] Duplicate second-send protection recorded.
-- [x] Mainnet readiness GO/NO-GO and Registry V2 limitations recorded.
+- [x] Verified Mainnet deployment/publication evidence and Registry V2 limitations recorded.
 - [x] Security/privacy/known limitations included.
 
 ## Commercial and grant plan
@@ -49,7 +49,7 @@ Items marked TODO are not claimed complete.
 
 ## Final editorial and operational review
 
-- [x] Shipped, bounded, roadmap, hypothesis, mainnet-unresolved, and not-claimed statuses separated.
+- [x] Shipped, bounded, verified Mainnet, roadmap, hypothesis, and not-claimed statuses separated.
 - [x] Transaction, report hash, publisher, registry, benchmark, MRR, and budget values consistency-checked.
 - [ ] TODO: final human grammar and tone review.
 - [ ] TODO: final legal/compliance review of commercial, USDC, privacy, and public-chain statements.

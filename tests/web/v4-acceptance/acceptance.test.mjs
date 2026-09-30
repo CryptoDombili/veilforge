@@ -13,9 +13,9 @@ test('preview exposes scan, cancel, progress, recovery, verified history and exp
 
 test('UI verifies before render/persist and always unlocks after lifecycle errors', () => {
   assert.ok(uiSource.indexOf('await verifyV4Report') < uiSource.indexOf('await saveV4Report'));
-  const lifecycle = uiSource.slice(uiSource.indexOf('const client = createWorkerClient()'), uiSource.indexOf('const resetCurrentSession'));
+  const lifecycle = uiSource.slice(uiSource.indexOf('let client = null'), uiSource.indexOf('const resetCurrentSession'));
   assert.match(lifecycle, /finally\s*\{/u);
-  assert.match(lifecycle, /client\.dispose\(\)/u);
+  assert.match(lifecycle, /client\?\.dispose\(\)/u);
   assert.match(lifecycle, /if \(state\.client === client\) state\.client = null/u);
   assert.match(lifecycle, /if \(runId === state\.runId\)\s*\{\s*setBusy\(false\);\s*updateWorkflow\(\);\s*\}/u);
   const resetLifecycle = uiSource.slice(uiSource.indexOf('const resetCurrentSession'), uiSource.indexOf("byId('v4-file-input').addEventListener"));

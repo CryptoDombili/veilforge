@@ -1,11 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createUserGatedProofReview, WEB_PROOF_SEND_ENABLED } from '../../../apps/web/v4/proof-send-boundary.js';
-import { inspectExistingProofTransaction, isValidProofTransactionHash, reconcileVerifiedProofPublication, submitUserApprovedProofTransaction, waitForVerifiedProofReceipt, WEB_PROOF_USER_APPROVED_SEND_ENABLED } from '../../../apps/web/v4/proof-transaction-acceptance.js';
-import { PUBLISH_REPORT_SELECTOR } from '../../../packages/proof/src/registry.js';
+import { inspectExistingProofTransaction, isValidProofTransactionHash, proofPublicationIntentId, reconcileVerifiedProofPublication, submitUserApprovedProofTransaction, waitForVerifiedProofReceipt, WEB_PROOF_USER_APPROVED_SEND_ENABLED } from '../../../apps/web/v4/proof-transaction-acceptance.js';
+import { encodePublishReport, PUBLISH_REPORT_SELECTOR } from '../../../packages/proof/src/registry.js';
 import { preflightArcTestnetProvider, REGISTRY_GET_LATEST_REPORT_SELECTOR, REGISTRY_HAS_REPORT_SELECTOR } from '../../../apps/web/v4/proof-network-preflight.js';
 import { renderTransactionSummary } from '../../../apps/web/v4/proof-ui.js';
-import { ACCOUNT, TX_HASH, publicationLog, readyProof, receipt } from './helpers.mjs';
+import { PROOF_SEND_STATES } from '../../../apps/web/v4/proof-send-coordinator.js';
+import { ACCOUNT, TX_HASH, proofSendCoordinationEnvironment, publicationLog, readyProof, receipt, registryRecordResult, testProofSendCoordinator } from './helpers.mjs';
 
 const click = Object.freeze({ type: 'click', isTrusted: true });
 const network = (overrides = {}) => ({ passed: true, status: 'passed', stateBindingDigest: 'sha256:state', duplicate: false, ...overrides });
@@ -14,7 +15,7 @@ async function context(overrides = {}) {
   const proof = await readyProof();
   const networkPreflight = network(overrides.networkPreflight);
   const review = await createUserGatedProofReview({ envelope: proof.envelope, preflight: proof.preflight, networkPreflight, disclosureAcknowledged: true, userGesture: true, reviewAcknowledged: true, currentStateBindingDigest: networkPreflight.stateBindingDigest });
-  return { ...proof, ...overrides, networkPreflight, review: overrides.review ?? review, currentStateBindingDigest: overrides.currentStateBindingDigest ?? networkPreflight.stateBindingDigest };
+  return { ...proof, ...overrides, networkPreflight, review: overrides.review ?? review, currentStateBindingDigest: overrides.currentStateBindingDigest ?? networkPreflight.stateBindingDigest, sendCoordinator: overrides.sendCoordinator ?? testProofSendCoordinator() };
 }
 
 function provider(handler) {
@@ -23,11 +24,11 @@ function provider(handler) {
 }
 
 const word = (value) => `0x${BigInt(value).toString(16).padStart(64, '0')}`;
-const publishInput = (reportHash) => `${PUBLISH_REPORT_SELECTOR}${'0'.repeat(128)}${String(reportHash).replace(/^0x/u, '')}`;
-function reconciliationProvider(input, { duplicate = true, receiptHash = TX_HASH } = {}) {
+const publishInput = (payload, reportHash = payload.reportHash) => encodePublishReport({ ...payload, reportHash });
+function reconciliationProvider(input, { duplicate = true, receiptHash = TX_HASH, latestPayload = input.preflight.payload } = {}) {
   return provider(({ method, params = [] }) => {
     if (method === 'eth_getTransactionReceipt') return receipt(input.envelope, input.preflight, { transactionHash: receiptHash });
-    if (method === 'eth_getTransactionByHash') return { hash: TX_HASH, from: ACCOUNT, to: input.envelope.registryAddress, input: publishInput(input.preflight.payload.reportHash), blockNumber: '0x10' };
+    if (method === 'eth_getTransactionByHash') return { hash: TX_HASH, from: ACCOUNT, to: input.envelope.registryAddress, input: publishInput(input.preflight.payload), blockNumber: '0x10' };
     if (method === 'eth_chainId') return '0x4cef52';
     if (method === 'eth_getCode') return `0x6000${PUBLISH_REPORT_SELECTOR.slice(2)}6000`;
     if (method === 'eth_blockNumber') return '0x100';
@@ -35,7 +36,7 @@ function reconciliationProvider(input, { duplicate = true, receiptHash = TX_HASH
     if (method === 'eth_call') {
       const data = String(params[0]?.data ?? '').toLowerCase();
       if (data.startsWith(REGISTRY_HAS_REPORT_SELECTOR.toLowerCase())) return word(duplicate ? 1 : 0);
-      if (data.startsWith(REGISTRY_GET_LATEST_REPORT_SELECTOR.toLowerCase())) return '0x1234';
+      if (data.startsWith(REGISTRY_GET_LATEST_REPORT_SELECTOR.toLowerCase())) return registryRecordResult(latestPayload);
       return '0x';
     }
     throw new Error(`unsupported ${method}`);
@@ -94,7 +95,7 @@ async function liveContext(overrides = {}) {
     currentStateBindingDigest: networkPreflight.stateBindingDigest,
   });
   mock.calls.length = 0;
-  return { ...proof, provider: mock, state, networkPreflight, review, currentStateBindingDigest: networkPreflight.stateBindingDigest, revalidationTimeoutMs: 250 };
+  return { ...proof, provider: mock, state, networkPreflight, review, currentStateBindingDigest: networkPreflight.stateBindingDigest, revalidationTimeoutMs: 250, sendCoordinator: testProofSendCoordinator() };
 }
 
 test('existing transaction hash validation happens before provider access', async () => {
@@ -116,7 +117,7 @@ test('valid existing transaction with another report remains an explicit mismatc
   const input = await context(); const otherReportHash = `0x${'cd'.repeat(32)}`;
   const mock = provider(({ method }) => {
     if (method === 'eth_chainId') return '0x4cef52';
-    if (method === 'eth_getTransactionByHash') return { hash: TX_HASH, from: ACCOUNT, to: input.envelope.registryAddress, input: publishInput(otherReportHash), blockNumber: '0x10' };
+    if (method === 'eth_getTransactionByHash') return { hash: TX_HASH, from: ACCOUNT, to: input.envelope.registryAddress, input: publishInput(input.preflight.payload, otherReportHash), blockNumber: '0x10' };
     if (method === 'eth_getTransactionReceipt') return receipt(input.envelope, input.preflight, { logs: [publicationLog(input.envelope, input.preflight, { reportHash: otherReportHash })] });
     throw new Error(`unsupported ${method}`);
   });
@@ -127,7 +128,7 @@ test('valid existing transaction with another report remains an explicit mismatc
 test('existing transaction inspection exposes not-found, pending and reverted classifications', async () => {
   const input = await context();
   for (const [receiptValue, transactionValue, code] of [[null, null, 'WEB_V4_TX_NOT_FOUND'], [null, {}, 'WEB_V4_RECEIPT_PENDING'], [{ status: '0x0' }, {}, 'WEB_V4_RECEIPT_REVERTED']]) {
-    const transaction = { hash: TX_HASH, from: ACCOUNT, to: input.envelope.registryAddress, input: publishInput(input.preflight.payload.reportHash), blockNumber: '0x10', ...transactionValue };
+    const transaction = { hash: TX_HASH, from: ACCOUNT, to: input.envelope.registryAddress, input: publishInput(input.preflight.payload), blockNumber: '0x10', ...transactionValue };
     const receiptValueFull = receiptValue && { ...receipt(input.envelope, input.preflight), ...receiptValue };
     const mock = provider(({ method }) => method === 'eth_chainId' ? '0x4cef52' : method === 'eth_getTransactionByHash' ? (transactionValue === null ? null : transaction) : receiptValueFull);
     await assert.rejects(() => inspectExistingProofTransaction({ provider: mock, transactionHash: TX_HASH, envelope: input.envelope, verification: input.verification, walletState: input.walletState }), (error) => error.code === code);
@@ -139,9 +140,9 @@ test('existing transaction inspection reports provider unavailable without leaki
   await assert.rejects(() => inspectExistingProofTransaction({ provider: null, transactionHash: TX_HASH, envelope: input.envelope, verification: input.verification, walletState: input.walletState }), (error) => error.code === 'WEB_V4_PROVIDER_UNAVAILABLE' && !error.message.includes('secret'));
 });
 
-test('user-approved capability does not enable automatic sending', () => {
+test('compatibility flags are unified but cannot bypass the lower-level send gate', () => {
   assert.equal(WEB_PROOF_USER_APPROVED_SEND_ENABLED, true);
-  assert.equal(WEB_PROOF_SEND_ENABLED, false);
+  assert.equal(WEB_PROOF_SEND_ENABLED, true);
 });
 
 test('transaction review shows the complete safe acceptance summary', () => {
@@ -204,9 +205,9 @@ test('wallet transaction hash is normalized and explorer-bound', async () => {
   assert.equal(pending.transactionHash, TX_HASH); assert.match(pending.explorerUrl, new RegExp(`${TX_HASH}$`, 'u'));
 });
 
-test('invalid transaction hash fails closed', async () => {
+test('invalid post-send transaction hash requires reconciliation', async () => {
   const input = await liveContext(); input.state.sendResult = '0x1234';
-  await assert.rejects(() => submitUserApprovedProofTransaction({ ...input, event: click }), (error) => error.code === 'WEB_V4_TX_INVALID');
+  await assert.rejects(() => submitUserApprovedProofTransaction({ ...input, event: click }), (error) => error.code === 'WEB_V4_RECONCILIATION_REQUIRED');
 });
 
 test('wallet rejection is classified without raw provider details', async () => {
@@ -214,14 +215,14 @@ test('wallet rejection is classified without raw provider details', async () => 
   await assert.rejects(() => submitUserApprovedProofTransaction({ ...input, event: click }), (error) => error.code === 'WEB_V4_USER_REJECTED' && !error.message.includes('secret'));
 });
 
-test('wallet failure is classified without raw provider details', async () => {
+test('ambiguous wallet failure requires reconciliation without raw provider details', async () => {
   const input = await liveContext(); input.state.sendResult = () => { throw new Error('secret raw message'); };
-  await assert.rejects(() => submitUserApprovedProofTransaction({ ...input, event: click }), (error) => error.code === 'WEB_V4_TX_INVALID' && !error.message.includes('secret'));
+  await assert.rejects(() => submitUserApprovedProofTransaction({ ...input, event: click }), (error) => error.code === 'WEB_V4_RECONCILIATION_REQUIRED' && !error.message.includes('secret'));
 });
 
 test('unresolved wallet request times out within the configured bound', async () => {
   const input = await liveContext(); input.state.sendResult = () => new Promise(() => {}); const started = Date.now();
-  await assert.rejects(() => submitUserApprovedProofTransaction({ ...input, event: click, timeoutMs: 50 }), (error) => error.code === 'WEB_V4_TIMEOUT');
+  await assert.rejects(() => submitUserApprovedProofTransaction({ ...input, event: click, timeoutMs: 50 }), (error) => error.code === 'WEB_V4_RECONCILIATION_REQUIRED');
   assert.ok(Date.now() - started < 500);
 });
 
@@ -238,7 +239,7 @@ test('network change after review blocks before send', async () => {
 });
 
 test('publisher-scoped duplicate appearing after review blocks before send', async () => {
-  const input = await liveContext(); input.state.duplicate = true;
+  const input = await liveContext(); input.state.duplicate = true; input.state.latestRecordRaw = registryRecordResult(input.preflight.payload);
   await assert.rejects(() => submitUserApprovedProofTransaction({ ...input, event: click }), (error) => error.code === 'WEB_V4_PROOF_DUPLICATE');
   assert.equal(input.provider.calls.some((call) => call.method === 'eth_sendTransaction'), false);
 });
@@ -306,6 +307,140 @@ test('post-success duplicate check prevents a second transaction', async () => {
   const input = await liveContext();
   await submitUserApprovedProofTransaction({ ...input, event: click });
   const duplicate = { ...input, networkPreflight: { ...input.networkPreflight, duplicate: true } };
-  await assert.rejects(() => submitUserApprovedProofTransaction({ ...duplicate, event: click }), (error) => error.code === 'WEB_V4_PROOF_DUPLICATE');
+  await assert.rejects(() => submitUserApprovedProofTransaction({ ...duplicate, event: click }), (error) => error.code === 'WEB_V4_RECONCILIATION_REQUIRED');
+  assert.equal(input.provider.calls.filter((call) => call.method === 'eth_sendTransaction').length, 1);
+});
+
+test('VF-SEC-002 rejects a historical receipt after current Registry state is overwritten', async () => {
+  const input = await context();
+  const latestPayload = { ...input.preflight.payload, reportHash: `0x${'cd'.repeat(32)}` };
+  const mock = reconciliationProvider(input, { latestPayload });
+  await assert.rejects(
+    () => reconcileVerifiedProofPublication({ provider: mock, transactionHash: TX_HASH, envelope: input.envelope, verification: input.verification, walletState: input.walletState, disclosureAcknowledged: true, receiptTimeoutMs: 250, pollIntervalMs: 0, rpcTimeoutMs: 250 }),
+    (error) => error.code === 'WEB_V4_STALE_PUBLICATION',
+  );
+  assert.equal(mock.calls.some((call) => call.method === 'eth_sendTransaction'), false);
+});
+
+test('VF-SEC-003 single-flight permits at most one send across 100 concurrent clicks', async () => {
+  const input = await liveContext();
+  const coordination = proofSendCoordinationEnvironment();
+  const results = await Promise.allSettled(Array.from({ length: 100 }, (_, index) => submitUserApprovedProofTransaction({ ...input, event: click, sendCoordinator: testProofSendCoordinator(coordination, { ownerId: `context-${index}` }) })));
+  assert.equal(results.filter((result) => result.status === 'fulfilled').length, 1);
+  assert.equal(results.filter((result) => result.status === 'rejected' && ['WEB_V4_SEND_IN_FLIGHT', 'WEB_V4_RECONCILIATION_REQUIRED'].includes(result.reason?.code)).length, 99);
+  assert.equal(input.provider.calls.filter((call) => call.method === 'eth_sendTransaction').length, 1);
+});
+
+test('AUDIT-ROUND2-MED-DOUBLE-SEND-01 coordinates ten separate tab and module contexts atomically', async () => {
+  const input = await liveContext();
+  const coordination = proofSendCoordinationEnvironment();
+  input.state.sendResult = () => new Promise((resolve) => setTimeout(() => resolve(TX_HASH), 25));
+  const results = await Promise.allSettled(Array.from({ length: 10 }, (_, index) => submitUserApprovedProofTransaction({
+    ...input,
+    event: click,
+    sendCoordinator: testProofSendCoordinator(coordination, { ownerId: `tab-module-${index}` }),
+  })));
+  assert.equal(results.filter((result) => result.status === 'fulfilled').length, 1);
+  assert.equal(input.provider.calls.filter((call) => call.method === 'eth_sendTransaction').length, 1);
+});
+
+test('AUDIT-ROUND3-MED-RECOVERY-01 recovers stale pre-provider states but never provider-started ambiguity', async () => {
+  const coordination = proofSendCoordinationEnvironment();
+  let timestamp = 1_000_000;
+  const first = testProofSendCoordinator(coordination, { ownerId: 'crashed-before-send', now: () => timestamp, leaseMs: 30_000 });
+  const intentId = `0x${'12'.repeat(32)}`;
+  assert.equal((await first.claim(intentId)).acquired, true);
+  timestamp += 30_001;
+  const reopened = testProofSendCoordinator(coordination, { ownerId: 'reopened-tab', now: () => timestamp, leaseMs: 30_000 });
+  assert.equal((await reopened.claim(intentId)).acquired, true);
+  await reopened.transition(intentId, PROOF_SEND_STATES.WALLET_REQUEST_PENDING);
+  timestamp += 300_000;
+  const later = testProofSendCoordinator(coordination, { ownerId: 'later-reload', now: () => timestamp, leaseMs: 30_000 });
+  assert.equal(await later.recoverPreProvider(intentId), true);
+  assert.equal((await later.claim(intentId)).acquired, true);
+  await later.transition(intentId, PROOF_SEND_STATES.WALLET_REQUEST_PENDING);
+  await later.transition(intentId, PROOF_SEND_STATES.PROVIDER_CALL_STARTED);
+  timestamp += 300_000;
+  const afterProvider = testProofSendCoordinator(coordination, { ownerId: 'post-provider-reload', now: () => timestamp, leaseMs: 30_000 });
+  const blocked = await afterProvider.claim(intentId);
+  assert.equal(blocked.acquired, false);
+  assert.equal(blocked.record.state, PROOF_SEND_STATES.RECONCILIATION_REQUIRED);
+  assert.equal(await afterProvider.recoverPreProvider(intentId), false);
+});
+
+test('AUDIT-ROUND4-MED-RECOVERY-02 reload converts provider-started state to reconciliation without resending', async () => {
+  const input = await liveContext();
+  const coordination = proofSendCoordinationEnvironment();
+  const intentId = proofPublicationIntentId(input.preflight.transactionRequest, input.envelope.networkKey);
+  const crashed = testProofSendCoordinator(coordination, { ownerId: 'provider-started-tab' });
+  assert.equal((await crashed.claim(intentId)).acquired, true);
+  await crashed.transition(intentId, PROOF_SEND_STATES.WALLET_REQUEST_PENDING);
+  await crashed.transition(intentId, PROOF_SEND_STATES.PROVIDER_CALL_STARTED);
+
+  const reloaded = testProofSendCoordinator(coordination, { ownerId: 'reloaded-tab' });
+  const recovery = await reloaded.recoverAfterReload(intentId);
+  assert.equal(recovery.action, 'reconciliation-required');
+  assert.equal(recovery.record.state, PROOF_SEND_STATES.RECONCILIATION_REQUIRED);
+  await assert.rejects(
+    () => submitUserApprovedProofTransaction({ ...input, event: click, sendCoordinator: reloaded }),
+    (error) => error.code === 'WEB_V4_RECONCILIATION_REQUIRED',
+  );
+  assert.equal(input.provider.calls.filter((call) => call.method === 'eth_sendTransaction').length, 0);
+});
+
+test('AUDIT-ROUND4-MED-RECOVERY-03 known transaction hash remains reconciliation-only after reload', async () => {
+  const input = await liveContext();
+  const coordination = proofSendCoordinationEnvironment();
+  const intentId = proofPublicationIntentId(input.preflight.transactionRequest, input.envelope.networkKey);
+  const submitted = testProofSendCoordinator(coordination, { ownerId: 'submitted-tab' });
+  assert.equal((await submitted.claim(intentId)).acquired, true);
+  await submitted.transition(intentId, PROOF_SEND_STATES.WALLET_REQUEST_PENDING);
+  await submitted.transition(intentId, PROOF_SEND_STATES.PROVIDER_CALL_STARTED);
+  await submitted.transition(intentId, PROOF_SEND_STATES.TX_HASH_KNOWN, TX_HASH);
+
+  const reloaded = testProofSendCoordinator(coordination, { ownerId: 'known-hash-reload' });
+  const recovery = await reloaded.recoverAfterReload(intentId);
+  assert.equal(recovery.action, 'reconcile-known-transaction');
+  assert.equal(recovery.record.transactionHash, TX_HASH);
+  await assert.rejects(
+    () => submitUserApprovedProofTransaction({ ...input, event: click, sendCoordinator: reloaded }),
+    (error) => error.code === 'WEB_V4_RECONCILIATION_REQUIRED',
+  );
+  assert.equal(input.provider.calls.filter((call) => call.method === 'eth_sendTransaction').length, 0);
+});
+
+test('AUDIT-ROUND3-MED-RECOVERY-01 exposes every explicit publication state around one provider call', async () => {
+  const input = await liveContext();
+  const states = [];
+  await submitUserApprovedProofTransaction({ ...input, event: click, onAttemptState: (attempt) => { states.push(attempt.state); } });
+  assert.deepEqual(states, [PROOF_SEND_STATES.WALLET_REQUEST_PENDING, PROOF_SEND_STATES.PROVIDER_CALL_STARTED, PROOF_SEND_STATES.TX_HASH_KNOWN]);
+  assert.equal(input.provider.calls.filter((call) => call.method === 'eth_sendTransaction').length, 1);
+});
+
+test('AUDIT-ROUND2-MED-DOUBLE-SEND-01 wallet rejection safely releases the shared claim for a new explicit click', async () => {
+  const input = await liveContext();
+  const coordination = proofSendCoordinationEnvironment();
+  const states = [];
+  input.state.sendResult = () => { throw Object.assign(new Error('rejected'), { code: 4001 }); };
+  await assert.rejects(() => submitUserApprovedProofTransaction({ ...input, event: click, sendCoordinator: testProofSendCoordinator(coordination, { ownerId: 'rejected-tab' }), onAttemptState: (attempt) => { states.push(attempt); } }), (error) => error.code === 'WEB_V4_USER_REJECTED');
+  assert.ok(states.some((attempt) => attempt.state === PROOF_SEND_STATES.REJECTED));
+  input.state.sendResult = TX_HASH;
+  const pending = await submitUserApprovedProofTransaction({ ...input, event: click, sendCoordinator: testProofSendCoordinator(coordination, { ownerId: 'new-explicit-click' }) });
+  assert.equal(pending.transactionHash, TX_HASH);
+  assert.equal(input.provider.calls.filter((call) => call.method === 'eth_sendTransaction').length, 2);
+});
+
+test('VF-SEC-003 timeout persists ambiguity and captures a late wallet hash without retry', async () => {
+  const input = await liveContext();
+  input.state.sendResult = () => new Promise((resolve) => setTimeout(() => resolve(TX_HASH), 80));
+  const states = [];
+  await assert.rejects(
+    () => submitUserApprovedProofTransaction({ ...input, event: click, timeoutMs: 50, onAttemptState: (attempt) => { states.push(attempt); } }),
+    (error) => error.code === 'WEB_V4_RECONCILIATION_REQUIRED',
+  );
+  await new Promise((resolve) => setTimeout(resolve, 60));
+  assert.equal(states.at(-1).status, 'pending');
+  assert.equal(states.at(-1).transactionHash, TX_HASH);
+  await assert.rejects(() => submitUserApprovedProofTransaction({ ...input, event: click, priorAttempt: states.at(-1) }), (error) => error.code === 'WEB_V4_RECONCILIATION_REQUIRED');
   assert.equal(input.provider.calls.filter((call) => call.method === 'eth_sendTransaction').length, 1);
 });

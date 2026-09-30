@@ -109,6 +109,7 @@ test('wallet publication simulates, sends, and confirms one transaction', async 
     report,
     reportURI: '',
     pollIntervalMs: 0,
+    userApproved: true,
   });
   assert.equal(response.account, '0x0000000000000000000000000000000000000001');
   assert.equal(response.confirmed, true);
@@ -137,6 +138,7 @@ test('wallet publication rejects a mined transaction with failed status', async 
       registryAddress: '0x88B4055eaB061CEa9BdfefF524f65ff461B5401d',
       report,
       pollIntervalMs: 0,
+      userApproved: true,
     }),
     (error) => {
       assert.match(error.message, /mined but reverted/i);
@@ -144,6 +146,13 @@ test('wallet publication rejects a mined transaction with failed status', async 
       return true;
     },
   );
+});
+
+test('wallet publication requires explicit approval before provider access', async () => {
+  const calls = [];
+  const provider = { async request(request) { calls.push(request); throw new Error('provider must not be called'); } };
+  await assert.rejects(() => publishReport({ provider, registryAddress: '0x88B4055eaB061CEa9BdfefF524f65ff461B5401d', report }), /Explicit user approval/u);
+  assert.deepEqual(calls, []);
 });
 
 test('reference registry source exposes the same publication ABI order', () => {

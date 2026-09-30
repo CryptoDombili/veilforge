@@ -14,6 +14,6 @@ export { buildAttackLab, buildTransactionMRI } from './attack.js';
 export { buildForgePlan, applyForgeCandidates } from './forge.js';
 export { buildPrivacyPassport } from './passport.js';
 export { buildPrivacyDeploymentTwin } from './twin.js';
-export { ARC_TESTNET_PROFILE, buildArcDeployRehearsal, buildDeploymentLineage, evaluateDeploymentEvidence } from './deployment.js';
+export { ARC_MAINNET_PROFILE, ARC_TESTNET_PROFILE, buildArcDeployRehearsal, buildDeploymentLineage, evaluateDeploymentEvidence, resolveDeploymentNetwork } from './deployment.js';
 export { buildPrivacyGate, buildRulePackSelection } from './gate.js';
 export { buildSourceGuidedFuzzPlan } from './fuzz.js';

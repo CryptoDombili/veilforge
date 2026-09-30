@@ -3,9 +3,58 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { createV4ProofEnvelope } from '../../../packages/proof/v4/envelope.js';
 import { createWebProofEnvelope } from '../../../apps/web/v4/proof-adapter.js';
-import { createProofSummary, deriveProofWalletUiState, proofSectionTemplate, renderExistingTransactionVerification, renderPreflightChecks, renderProofExplorerLink, renderProofSummary } from '../../../apps/web/v4/proof-ui.js';
-import { v4ErrorMessage, v4UiTemplate } from '../../../apps/web/v4/ui.js';
+import { createProofSummary, deriveProofWalletUiState, proofNetworkDisplayName, proofSectionTemplate, renderExistingTransactionVerification, renderPreflightChecks, renderProofExplorerLink, renderProofSummary } from '../../../apps/web/v4/proof-ui.js';
+import { proofNetworkContextLabel, v4ErrorMessage, v4UiTemplate } from '../../../apps/web/v4/ui.js';
 import { currentReport, incompleteReport, verification } from './helpers.mjs';
+
+test('arc-mainnet profile renders the Arc Mainnet network label', () => {
+  assert.equal(proofNetworkContextLabel({ networkKey: 'arc-mainnet' }), 'ARC MAINNET');
+});
+
+test('arc-testnet profile renders the Arc Testnet network label', () => {
+  assert.equal(proofNetworkContextLabel({ networkKey: 'arc-testnet' }), 'ARC TESTNET');
+});
+
+test('unknown or missing network profiles render a fail-safe neutral label', () => {
+  for (const profile of [undefined, null, {}, { networkKey: 'arc-devnet' }]) {
+    assert.equal(proofNetworkContextLabel(profile), 'ARC NETWORK UNKNOWN');
+  }
+});
+
+test('exceptional UI wording follows Mainnet, Testnet, and unknown profiles', () => {
+  const codes = ['WEB_V4_WRONG_NETWORK', 'WEB_V4_REGISTRY_MISMATCH', 'WEB_V4_TX_NOT_FOUND'];
+  for (const code of codes) {
+    const mainnet = v4ErrorMessage({ code }, { networkKey: 'arc-mainnet' });
+    assert.match(mainnet, /Arc Mainnet/u);
+    assert.doesNotMatch(mainnet, /Arc Testnet/u);
+
+    const testnet = v4ErrorMessage({ code }, { networkKey: 'arc-testnet' });
+    assert.match(testnet, /Arc Testnet/u);
+    assert.doesNotMatch(testnet, /Arc Mainnet/u);
+
+    const unknown = v4ErrorMessage({ code }, { networkKey: 'arc-devnet' });
+    assert.match(unknown, /Arc network/u);
+    assert.doesNotMatch(unknown, /Arc (?:Mainnet|Testnet)/u);
+  }
+  assert.equal(proofNetworkDisplayName({ networkKey: 'arc-mainnet' }), 'Arc Mainnet');
+  assert.equal(proofNetworkDisplayName({ networkKey: 'arc-testnet' }), 'Arc Testnet');
+  assert.equal(proofNetworkDisplayName({ networkKey: 'arc-devnet' }), 'Arc network');
+});
+
+test('existing transaction exceptional wording follows the selected profile', () => {
+  assert.match(renderExistingTransactionVerification({ status: 'verifying' }, 'arc-mainnet'), /Arc Mainnet/u);
+  assert.doesNotMatch(renderExistingTransactionVerification({ status: 'verifying' }, 'arc-mainnet'), /Arc Testnet/u);
+  assert.match(renderExistingTransactionVerification({ status: 'verifying' }, 'arc-testnet'), /Arc Testnet/u);
+  assert.match(renderExistingTransactionVerification({ status: 'verifying' }, 'arc-devnet'), /Arc network/u);
+});
+
+test('exceptional UI sources contain no hardcoded Testnet-only wording', () => {
+  const sources = [
+    '../../../apps/web/v4/ui.js',
+    '../../../apps/web/v4/proof-transaction-acceptance.js',
+  ].map((relative) => fs.readFileSync(new URL(relative, import.meta.url), 'utf8')).join('\n');
+  assert.doesNotMatch(sources, /trusted Arc Testnet|Transaction not found on Arc Testnet|valid Arc Testnet transaction|Arc Testnet provider request failed/u);
+});
 
 test('verified V4 report produces a visible proof section', async () => {
   const envelope = await createWebProofEnvelope(await verification());
@@ -83,9 +132,11 @@ test('wallet UI reflects disconnected connected wrong-network and account-change
   assert.notEqual(changed.label, connected.label);
 });
 
-test('provider unavailable and connecting wallet states fail closed', () => {
+test('an absent provider keeps explicit connection available while connecting remains locked', () => {
   const unavailable = deriveProofWalletUiState({}, 5_042_002);
-  assert.equal(unavailable.label, 'Wallet unavailable'); assert.equal(unavailable.disabled, true);
+  assert.equal(unavailable.label, 'Connect Wallet'); assert.equal(unavailable.disabled, false);
+  const retry = deriveProofWalletUiState({}, 5_042_002, { error: 'No injected EVM wallet was found.' });
+  assert.equal(retry.label, 'Retry wallet connection'); assert.equal(retry.disabled, false);
   const connecting = deriveProofWalletUiState({ providerAvailable: true }, 5_042_002, { connecting: true });
   assert.equal(connecting.label, 'Connecting…'); assert.equal(connecting.disabled, true);
 });

@@ -56,9 +56,10 @@ jobs:
       - run: npm ci
       - run: npm install --no-save --package-lock=false playwright@${{ env.PLAYWRIGHT_VERSION }}
       - run: npx playwright install --with-deps ${{ matrix.browser }}
-      - run: npm run build:grant-release
+      - run: npm run build:arc-mainnet-production
+      - run: npm run verify:arc-mainnet-production
       - name: Real production-artifact browser acceptance
-        run: node scripts/smoke-web-v4-cross-browser.mjs --browser=${{ matrix.browser }} --summary=output/ci-safe/${{ matrix.browser }}.json
+        run: node scripts/smoke-web-v4-cross-browser.mjs --artifact=dist-mainnet-production --browser=${{ matrix.browser }} --summary=output/ci-safe/${{ matrix.browser }}.json
       - if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -80,9 +81,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm install --no-save --package-lock=false playwright@${{ env.PLAYWRIGHT_VERSION }}
-      - run: npm run build:grant-release
+      - run: npm run build:arc-mainnet-production
+      - run: npm run verify:arc-mainnet-production
       - name: Real production-artifact Edge acceptance
-        run: node scripts/smoke-web-v4-cross-browser.mjs --browser=edge --summary=output/ci-safe/edge.json
+        run: node scripts/smoke-web-v4-cross-browser.mjs --artifact=dist-mainnet-production --browser=edge --summary=output/ci-safe/edge.json
       - if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -106,6 +108,8 @@ jobs:
       - run: npm run build:grant-release
       - run: npm run verify:grant-release-artifact
       - run: npm run smoke:grant-release-app
+      - run: npm run build:arc-mainnet-production
+      - run: npm run verify:arc-mainnet-production
       - run: npm run smoke:web-v4-rollback
       - run: npm run build && npm run smoke:browser
       - run: npm run test:web-v4-ui && npm run test:web-v4-ui-accessibility && npm run test:web-v4-ui-history && npm run test:web-v4-ui-export

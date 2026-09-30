@@ -51,7 +51,7 @@ export async function browserFilesToScanInput(files, options = {}) {
   const folded = new Map();
   let projectBytes = 0;
   for (const file of files) {
-    const suppliedPath = canonicalSourcePath(file.webkitRelativePath || file.relativePath || file.path || file.name);
+    const suppliedPath = canonicalSourcePath(file.webkitRelativePath || file.relativePath || file.name);
     const path = selectedRoot ? canonicalSourcePath(suppliedPath.slice(selectedRoot.length + 1)) : suppliedPath;
     const key = path.toLowerCase();
     if (folded.has(key)) throw webV4Error('WEB_V4_INPUT_INVALID', folded.get(key) === path ? 'Duplicate source path.' : 'Case-folding source path collision.');

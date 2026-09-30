@@ -41,7 +41,11 @@ test('README distinguishes legacy v3 from the implemented Grant Candidate and un
   assert.match(readme, /Compatibility-bound V4 engine identity:\*\* `4\.0\.0-gc\.1`/);
   assert.match(readme, /working, tested release candidate/i);
   assert.match(readme, /No other Circle product is represented as integrated/i);
-  assert.match(readme, /Mainnet is not active/i);
+  assert.match(readme, /Arc Mainnet is active in the official production profile/i);
+  for (const claim of ['deploymentStatus=verified', 'enabled=true', 'proofReadEnabled=true', 'publishEnabled=true']) {
+    assert.ok(readme.includes(`\`${claim}\``), `Missing verified production claim: ${claim}`);
+  }
+  assert.doesNotMatch(readme, /Mainnet is not active/i);
   assert.doesNotMatch(readme, /V4 Grant Candidate.{0,80}not yet implemented/is);
 });
 

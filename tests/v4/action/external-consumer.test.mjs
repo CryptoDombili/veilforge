@@ -19,6 +19,16 @@ function installPinnedRuntime(actionRoot) {
   assert.equal(result.status, 0, result.stderr || result.stdout);
 }
 
+function copyDirectory(source, destination) {
+  fs.mkdirSync(destination, { recursive: true });
+  for (const entry of fs.readdirSync(source, { withFileTypes: true })) {
+    const sourcePath = path.join(source, entry.name);
+    const destinationPath = path.join(destination, entry.name);
+    if (entry.isDirectory()) copyDirectory(sourcePath, destinationPath);
+    else if (entry.isFile()) fs.copyFileSync(sourcePath, destinationPath);
+  }
+}
+
 test('Action executes a real scan from a clean unrelated consumer repository', { timeout: 180_000 }, () => {
   const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'veilforge-action-consumer-'));
   const actionRoot = path.join(fixture, 'action-checkout');
@@ -38,7 +48,7 @@ test('Action executes a real scan from a clean unrelated consumer repository', {
     assert.equal(JSON.parse(fs.readFileSync(path.join(actionRoot, 'node_modules', 'tmp', 'package.json'))).version, '0.2.7');
 
     fs.mkdirSync(consumerRoot, { recursive: true });
-    fs.cpSync(path.join(actionRoot, 'examples', 'vulnerable-payroll'), path.join(consumerRoot, 'contracts'), { recursive: true });
+    copyDirectory(path.join(actionRoot, 'examples', 'vulnerable-payroll'), path.join(consumerRoot, 'contracts'));
     fs.copyFileSync(path.join(actionRoot, 'examples', 'github-actions', 'veilforge-gate.json'), path.join(consumerRoot, 'gate.json'));
     const githubOutput = path.join(consumerRoot, 'github-output.txt');
     const result = spawnSync(process.execPath, [path.join(actionRoot, 'action', 'entrypoint.mjs')], {

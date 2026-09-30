@@ -1,16 +1,37 @@
-VEILFORGE v3.2 FINAL — MAIN BRANCH GITHUB UPLOAD
+VEILFORGE V4 GRANT CANDIDATE - ARC MAINNET PRODUCTION SOURCE UPLOAD
 
-1. Extract this ZIP on your computer.
-2. Open the extracted folder.
-3. Select every file and folder inside it. Do not upload the ZIP file itself.
-4. In the GitHub repository, open Add file > Upload files.
-5. Drag all selected files and folders into the upload area.
-6. Choose the main branch and commit the files directly to main.
-7. Wait for Vercel to build the project and finish the production deployment.
+Product:
+- VeilForge V4 Grant Candidate
 
-Vercel settings are already included:
-- Build command: npm run build:web
-- Output directory: dist
+Vercel production settings:
+- Build command: npm run build:arc-mainnet-production
+- Output directory: dist-mainnet-production
 - Node.js: 20 or newer
 
-The ZIP itself must not be uploaded as one file because GitHub does not automatically extract ZIP archives.
+GitHub source upload:
+1. Extract the final package locally.
+2. Upload only source files and tracked release files that are permitted by .gitignore.
+3. Preserve vercel.json as the deployment source of truth.
+4. Do not upload the ZIP file itself; GitHub does not extract ZIP archives.
+5. Review the resulting Git diff before committing or opening a pull request.
+
+Required clean-source reproduction (run in this exact order):
+
+npm ci --ignore-scripts
+npm run build
+npm test
+npm run typecheck
+npm run manifest:check
+
+After those checks pass, reproduce and verify the official production artifact with:
+
+npm run build:arc-mainnet-production
+npm run verify:arc-mainnet-production
+
+IMPORTANT - GENERATED PRODUCTION OUTPUT:
+- Do not manually upload or commit dist-mainnet-production to the source GitHub repository.
+- dist-mainnet-production is generated only by npm run build:arc-mainnet-production.
+- The production builder rejects a stale dist-mainnet-production directory fail-closed.
+- A sharing ZIP may contain a separately verified dist-mainnet-production artifact for review, but that generated folder is not source input.
+
+Never upload .git, node_modules, .env files, private keys, seed phrases, wallet exports, RPC credentials, tokens, logs, caches, temporary files, or backup ZIPs.

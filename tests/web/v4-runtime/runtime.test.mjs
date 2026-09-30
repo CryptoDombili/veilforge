@@ -39,3 +39,15 @@ test('ArcPaymentsDemo completes while compiler diagnostics remain fail-closed', 
   assert.ok(result.report.findings.length > 0);
   await assert.rejects(VeilForgeV4BrowserRuntime.scanProject({ ...input, projectId: 'ArcPaymentsDemo-malformed', sources: { 'ArcPaymentsDemo.sol': { content: source.replaceAll('paymentReference', 'reference') } } }), (error) => error.code === 'WEB_V4_COMPILE_FAILED' && error.safeDetails.failureType === 'compile' && error.safeDetails.stage === 'compilation' && error.safeDetails.diagnosticCount === 1 && error.safeDetails.compilerDiagnostics[0].errorCode === '2314');
 });
+
+test('valid SmokeTest.sol completes in the built browser runtime', async () => {
+  const input = {
+    projectId: 'SmokeTest',
+    sources: { 'SmokeTest.sol': { content: 'pragma solidity 0.8.24; contract SmokeTest { function ok() external pure returns (bool) { return true; } }' } },
+    compiler: { version: '0.8.24' },
+    domains: ['arc-payments'],
+  };
+  const result = await VeilForgeV4BrowserRuntime.scanProject(input);
+  assert.equal(result.verification.verified, true);
+  assert.equal(result.report.project.projectId, 'SmokeTest');
+});

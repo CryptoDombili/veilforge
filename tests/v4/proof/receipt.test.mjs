@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  attachRegistryTransaction, decodeReportPublishedLog, normalizeRegistryReceipt, prepareRegistryPublish,
-  verifyRegistryRecord,
+  attachRegistryTransaction, createV4ProofEnvelope, decodeReportPublishedLog, normalizeRegistryReceipt, prepareRegistryPublish,
+  verifyRegistryRecord, verifyReportLocatorContent,
 } from '../../../packages/proof/v4/index.js';
 import { ACCOUNT, TX_HASH, reportPublishedLog, validEnvelope, validReceipt, validReport } from './helpers.mjs';
 
@@ -67,4 +67,22 @@ test('registry record tuple normalizes without rewriting its values', () => {
   const envelope = validEnvelope();
   const payload = prepareRegistryPublish(envelope, { report: validReport(), providerChainId: 5_042_002, account: ACCOUNT, signerAvailable: true }).payload;
   assert.equal(verifyRegistryRecord([payload.sourceHash, payload.reportHash, 0, payload.scannerVersion, '', ACCOUNT, 12], envelope, { publisher: ACCOUNT }), true);
+});
+
+test('VF-SEC-004 treats reportURI as an untrusted locator and verifies fetched content canonically', () => {
+  const report = validReport();
+  const envelope = createV4ProofEnvelope(report);
+  assert.equal(verifyReportLocatorContent(report, envelope), true);
+  const tampered = structuredClone(report);
+  tampered.project.name = 'content from an untrusted locator';
+  assert.throws(() => verifyReportLocatorContent(tampered, envelope));
+});
+
+test('VF-SEC-004 binds the expected URI instead of trusting the emitted event URI', () => {
+  const envelope = validEnvelope();
+  const eventURI = 'https://attacker.invalid/report.json';
+  assert.throws(
+    () => normalizeRegistryReceipt(validReceipt(envelope, { logs: [reportPublishedLog(envelope, { reportURI: eventURI })] }), envelope, { publisher: ACCOUNT, reportURI: 'ipfs://reviewed-report' }),
+    (error) => error.code === 'PROOF_RECEIPT_INVALID',
+  );
 });

@@ -5,12 +5,12 @@ import process from 'node:process';
 
 const root = process.cwd();
 const outputFile = 'RELEASE_MANIFEST.sha256';
-const ignoredDirectories = new Set(['.git', 'dist', 'dist-grant-release', 'dist-preview-v4', 'node_modules', 'coverage', 'output', 'tmp']);
+const ignoredDirectories = new Set(['.git', 'dist', 'dist-grant-release', 'dist-preview-v4', 'dist-mainnet-production', 'node_modules', 'coverage', 'output', 'tmp']);
 const ignoredFiles = new Set([outputFile, '.DS_Store']);
 const normalizedTextExtensions = new Set([
   '.css', '.html', '.js', '.json', '.md', '.mjs', '.py', '.sha256', '.sol', '.svg', '.txt', '.yaml', '.yml',
 ]);
-const normalizedTextNames = new Set(['.gitignore', 'LICENSE']);
+const normalizedTextNames = new Set(['.gitattributes', '.gitignore', 'LICENSE']);
 
 const isNormalizedText = (file) => normalizedTextNames.has(path.posix.basename(file)) || normalizedTextExtensions.has(path.extname(file).toLowerCase());
 

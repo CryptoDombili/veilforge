@@ -12,6 +12,16 @@ test('valid browser files become deterministic V4 ScanInput', async () => {
   assert.equal(input.compiler.version, '0.8.24');
   assert.equal(input.policy.policyId, 'p');
 });
+test('top-level picker files ignore non-standard absolute file.path and fall back to name', async () => {
+  const first = browserFile('PrivacyLeakDemo.sol');
+  first.webkitRelativePath = '';
+  first.path = 'C:\\Users\\Example\\PrivacyLeakDemo.sol';
+  const second = browserFile('TreasuryDisclosureDemo.sol');
+  second.webkitRelativePath = '';
+  second.path = 'C:\\Users\\Example\\TreasuryDisclosureDemo.sol';
+  const input = await browserFilesToScanInput([first, second], options);
+  assert.deepEqual(Object.keys(input.sources), ['PrivacyLeakDemo.sol', 'TreasuryDisclosureDemo.sol']);
+});
 test('traversal and absolute paths are rejected', async () => {
   await assert.rejects(browserFilesToScanInput([browserFile('../Case.sol')], options), { code: 'WEB_V4_INPUT_INVALID' });
   await assert.rejects(browserFilesToScanInput([browserFile('C:\\Case.sol')], options), { code: 'WEB_V4_INPUT_INVALID' });

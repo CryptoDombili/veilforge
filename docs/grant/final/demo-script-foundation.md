@@ -1,6 +1,6 @@
 # Demo Script Foundation
 
-Use the isolated V4 preview. Do not enable the production flag, open a wallet automatically, send a transaction, expose source/report contents unnecessarily, or present mock data as live chain evidence.
+Use the verified V4 production artifact in read-only demo mode. Do not open a wallet automatically, send a transaction, expose source/report contents unnecessarily, or present mock data as live chain evidence.
 
 ## 30-second demo
 
@@ -21,7 +21,7 @@ Use the isolated V4 preview. Do not enable the production flag, open a wallet au
 7. Open proof; show the existing verified Testnet receipt/event identity and ArcScan link.
 8. Show duplicate protection; do not click Publish.
 9. Show CLI/SDK/SARIF/GitHub Action evidence paths.
-10. Close with open core, hosted roadmap, mainnet NO-GO, and grant milestones.
+10. Close with the open core, verified Mainnet profile, hosted roadmap, and grant milestones.
 
 ## 3-minute demo
 
@@ -30,13 +30,13 @@ Follow the 2-minute path, then add:
 - the 60-case benchmark table and its bounded interpretation;
 - JSON/Markdown/manifest verified exports and local history;
 - receipt/event publisher, registry, block, and report-hash reconciliation;
-- the fail-closed mainnet model and Registry V2 operational limitations;
+- the identity-bound Mainnet profile, fail-closed mismatches, and Registry V2 operational limitations;
 - Community/Developer/Team/Enterprise status, explicitly distinguishing shipped free capabilities from roadmap hypotheses;
 - budget and measurable acceptance evidence for the four proposed milestones.
 
 ## Click-by-click path
 
-1. Open V4 preview landing.
+1. Open the verified V4 Arc Mainnet production landing.
 2. Select **Launch V4 Scanner**.
 3. Add a reviewed `.sol` fixture or folder.
 4. Confirm selected domain(s), policy, exact compiler, count, and size.
@@ -65,7 +65,7 @@ Follow the 2-minute path, then add:
 ## What not to claim
 
 - “Universal detection,” “zero risk,” “secure,” “confidential,” “audit passed,” or “formal verification.”
-- Mainnet deployment, production billing, paid customers, partnerships, endorsement, grant certainty, or revenue.
+- Mainnet security guarantees beyond the exact verified profile, production billing, paid customers, partnerships, endorsement, grant certainty, or revenue.
 - Firefox/Edge support as passed while clean-CI confirmation remains pending.
 - Testnet fee as a mainnet estimate.
 

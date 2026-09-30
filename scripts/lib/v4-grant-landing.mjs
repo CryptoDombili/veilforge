@@ -1,6 +1,6 @@
 const githubUrl = 'https://github.com/CryptoDombili/veilforge';
 
-const grantSections = `
+const grantSections = (selectedNetwork) => `
     <section class="grant-proof-strip" aria-label="Verified release evidence">
       <article><strong>60/60</strong><span>maintained oracle cases passed</span></article>
       <article><strong>56 TP / 0 FP / 0 FN</strong><span>bounded benchmark baseline</span></article>
@@ -28,14 +28,14 @@ const grantSections = `
           <li><b>Verified report identity</b><span>Schema 4.1.0 and veilforge.report.hash.v2.</span></li>
           <li><b>Developer workflow</b><span>CLI, SDK, SARIF, GitHub Action, and policy gate.</span></li>
           <li><b>Real Testnet evidence</b><span>Receipt/event reconciliation and duplicate prevention.</span></li>
-          <li><b>Fail-closed mainnet</b><span>Read and publish remain disabled until operational gates resolve.</span></li>
+          <li><b>${selectedNetwork.chainName} production profile</b><span>Chain ${selectedNetwork.chainId}; verified Registry ${selectedNetwork.registryAddress}; reads and publishing enabled.</span></li>
         </ul>
       </div>
     </section>
 
     <section class="grant-section whitepaper-section" id="whitepaper">
       <div class="whitepaper-copy"><p>VEILFORGE V4 WHITEPAPER</p><h2>Read the architecture, evidence model, and measurable roadmap.</h2><span>The full paper connects the product boundary to reproducible technical evidence, real Arc Testnet proof, sustainability hypotheses, and explicit limitations.</span><div class="grant-actions"><a class="launch" href="./whitepaper/">Read Whitepaper</a><a class="secondary" href="./whitepaper/VeilForge_V4_Whitepaper.pdf" download>Download PDF</a><a class="secondary" href="./whitepaper/executive-brief.html">Executive Brief</a></div></div>
-      <div class="paper-stack" aria-hidden="true"><span>VEILFORGE V4</span><strong>Deterministic privacy-readiness analysis and verifiable evidence for Solidity on Arc.</strong><small>GRANT CANDIDATE / AUGUST 2026</small></div>
+      <div class="paper-stack" aria-hidden="true"><span>VEILFORGE V4</span><strong>Deterministic privacy-readiness analysis and verifiable evidence for Solidity on Arc.</strong><small>GRANT CANDIDATE / SEPTEMBER 2026</small></div>
     </section>
 
     <section class="grant-section brief-card" id="executive-brief">
@@ -48,12 +48,13 @@ const grantSections = `
       <div class="grant-actions"><a class="launch" href="./app/index.html#scanner">Launch V4 Scanner</a><a class="secondary" href="./whitepaper/">Read Whitepaper</a><a class="secondary" href="${githubUrl}" target="_blank" rel="noreferrer">View Open Source</a></div>
     </section>`;
 
-export function buildV4GrantLanding(source) {
+export function buildV4GrantLanding(source, selectedNetwork) {
+  if (!selectedNetwork?.chainName || !Number.isSafeInteger(selectedNetwork.chainId) || !selectedNetwork?.registryAddress) throw new Error('Grant landing requires a trusted selected network profile.');
   return source
     .replace('<link rel="stylesheet" href="./landing-fixes.css?v=32.7" />', '<link rel="stylesheet" href="./landing-fixes.css?v=32.7" />\n  <link rel="stylesheet" href="./v4-grant-landing.css?v=1" />')
     .replace('<body>', '<body class="v4-grant-landing">')
     .replace(/<div class="navlinks">[\s\S]*?<\/div>\s*<div class="landing-nav-actions">/u, '<div class="navlinks"><a href="#whitepaper">Whitepaper</a><a href="#executive-brief">Executive Brief</a><a href="#technical-evidence">Technical Evidence</a><a href="https://github.com/CryptoDombili/veilforge" target="_blank" rel="noreferrer">Open Source</a></div>\n    <div class="landing-nav-actions">')
     .replace(/<p class="flow-intro-copy">[\s\S]*?<\/p>/u, '<p class="flow-intro-copy">Deterministic Solidity analysis that runs locally, preserves source privacy, and produces verifiable release evidence for Arc teams.</p>')
     .replace('<div class="actions hero-actions"><a class="launch" href="./app/index.html#scanner">Launch V4 Scanner</a><a class="secondary hero-upload" href="./app/index.html#scanner">Upload Solidity project</a></div>', '<div class="actions hero-actions"><a class="launch" href="./app/index.html#scanner">Launch V4 Scanner</a><a class="secondary" href="./whitepaper/">Read Whitepaper</a><a class="secondary" href="./whitepaper/executive-brief.html">Executive Brief</a></div>')
-    .replace(/\n    <section class="product"[\s\S]*?\n    <section class="cta">[\s\S]*?<\/section>/u, grantSections);
+    .replace(/\n    <section class="product"[\s\S]*?\n    <section class="cta">[\s\S]*?<\/section>/u, grantSections(selectedNetwork));
 }

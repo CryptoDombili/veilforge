@@ -1,5 +1,5 @@
 import { keccakHex } from '../../../packages/analyzer/src/keccak.js';
-import { checksumAddress, normalizeChainId, resolveProofNetwork } from '../../../packages/proof/v4/network.js';
+import { assertProofNetworkCapability, assertTrustedNetwork, checksumAddress, normalizeChainId, resolveProofNetwork } from '../../../packages/proof/v4/network.js';
 import { deepFreeze } from './canonical.js';
 import { webV4Error } from './errors.js';
 import { createWebRegistryPayload, verifyWebProofEnvelope } from './proof-adapter.js';
@@ -51,7 +51,9 @@ export function decodeWebReportPublishedLog(log) {
 export function safeWebExplorerLink(transactionHash, networkKey = 'arc-testnet') {
   const hash = String(transactionHash ?? '').toLowerCase();
   if (!HEX32.test(hash)) fail('WEB_V4_TX_INVALID', 'Transaction hash is invalid.');
-  const network = resolveProofNetwork(networkKey);
+  let network;
+  try { network = assertProofNetworkCapability(networkKey, 'read'); }
+  catch { fail('WEB_V4_SEND_DISABLED', 'Proof explorer access is disabled or unresolved for the selected network.'); }
   return `${network.explorerBaseUrl}/tx/${hash}`;
 }
 
@@ -59,7 +61,8 @@ export async function normalizeWebRegistryReceipt(receipt, envelope, expected = 
   await verifyWebProofEnvelope(envelope, expected.verification ? { verification: expected.verification } : {});
   const network = resolveProofNetwork(envelope.networkKey);
   const chainId = normalizeChainId(expected.providerChainId ?? envelope.chainId);
-  if (chainId !== network.chainId) fail('WEB_V4_WRONG_NETWORK', 'Receipt chain does not match Arc Testnet.');
+  try { assertTrustedNetwork({ networkKey: network.networkKey, providerChainId: chainId, registryAddress: network.registryAddress, operation: 'read' }); }
+  catch { fail('WEB_V4_WRONG_NETWORK', `Receipt does not match trusted ${network.chainName} configuration.`); }
   if (!(receipt?.status === true || receipt?.status === 1 || receipt?.status === '1' || receipt?.status === '0x1')) fail('WEB_V4_RECEIPT_REVERTED', 'The registry transaction reverted.');
   const transactionHash = String(receipt.transactionHash ?? '').toLowerCase();
   if (!HEX32.test(transactionHash)) fail('WEB_V4_TX_INVALID', 'Transaction hash is invalid.');
@@ -72,9 +75,10 @@ export async function normalizeWebRegistryReceipt(receipt, envelope, expected = 
     && String(candidate?.topics?.[0] ?? '').toLowerCase() === WEB_REPORT_PUBLISHED_TOPIC.toLowerCase());
   if (!log) fail('WEB_V4_EVENT_MISMATCH', 'The trusted registry publication event is missing.');
   const event = decodeWebReportPublishedLog(log);
-  const payload = await createWebRegistryPayload(envelope, event.reportURI);
+  const payload = await createWebRegistryPayload(envelope, expected.payload?.reportURI ?? expected.reportURI ?? '');
   if (event.projectId !== payload.projectId || event.sourceHash !== payload.sourceHash || event.reportHash !== payload.reportHash
     || event.score !== payload.score || event.scannerVersion !== payload.scannerVersion
+    || event.reportURI !== payload.reportURI
     || event.publisher.toLowerCase() !== publisher.toLowerCase()) fail('WEB_V4_EVENT_MISMATCH', 'Registry event identity does not match the proof.');
   return deepFreeze({
     chainId: network.chainId,
@@ -84,8 +88,12 @@ export async function normalizeWebRegistryReceipt(receipt, envelope, expected = 
     transactionHash,
     blockNumber,
     publisher,
+    projectId: event.projectId,
+    sourceHash: event.sourceHash,
     reportHash: envelope.reportHash,
+    reportURI: event.reportURI,
     status: 'confirmed',
+    evidenceStatus: 'historical-transaction',
     explorerUrl: safeWebExplorerLink(transactionHash, network.networkKey),
   });
 }

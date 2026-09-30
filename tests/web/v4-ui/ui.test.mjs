@@ -9,7 +9,9 @@ const finding = (overrides = {}) => ({ findingId: 'f-1', detectorId: 'payments.e
 test('V4 mode is an explicit flag branch and V3 remains the default path', () => {
   const source = fs.readFileSync(new URL('../../../apps/web/app.js', import.meta.url), 'utf8');
   assert.match(source, /if \(WEB_V4_ENABLED\) \{[\s\S]*await initV4Ui\(\);[\s\S]*return;/u);
-  assert.match(source, /bindEvents\(\);[\s\S]*await hydrateWallet\(\);/u);
+  assert.match(source, /bindEvents\(\);[\s\S]*setWalletUi\(null\);/u);
+  const init = source.slice(source.indexOf('async function init()'), source.indexOf('\ninit();'));
+  assert.doesNotMatch(init, /requestAnnouncedProviders|hydrateWallet|eip6963:requestProvider/u);
 });
 
 test('finding controls filter and deterministically sort canonical V4 findings', () => {
@@ -22,6 +24,9 @@ test('finding controls filter and deterministically sort canonical V4 findings',
 test('UI exposes V4 scan configuration, verified findings, details, history and exports', () => {
   const html = v4UiTemplate();
   for (const id of ['v4-project-name', 'v4-file-input', 'v4-folder-input', 'v4-policy-mode', 'v4-scan', 'v4-cancel', 'v4-progress', 'v4-summary', 'v4-findings', 'v4-detail', 'v4-history', 'v3-history', 'v4-export']) assert.match(html, new RegExp(`id="${id}"`, 'u'));
+  assert.match(html, /Drop Solidity files or a project folder/u);
+  assert.match(html, /id="v4-file-input"[^>]*multiple/u);
+  assert.match(html, /id="v4-folder-input"[^>]*webkitdirectory[^>]*multiple/u);
   assert.match(html, /solc 0\.8\.24/u); assert.match(html, /1 MiB MAX/u);
   const source = fs.readFileSync(new URL('../../../apps/web/v4/ui.js', import.meta.url), 'utf8');
   assert.match(source, /Evaluate in CLI\/CI/u);
@@ -39,7 +44,7 @@ test('local source rows remove only the browser root and safely expose the full 
   const html = v4SourceRowsTemplate([nested, short, { name: 'unsafe.sol', size: 1, relativePath: 'Root/src/<unsafe>.sol' }]);
   assert.match(html, /title="VeilForgeScannerTestPack\/contracts\/deep\/ArcTreasury\.sol">VeilForgeScannerTestPack\/contracts\/deep\/ArcTreasury\.sol<\/span><small>47 B<\/small>/u);
   assert.match(html, /title="A\.sol">A\.sol<\/span><small>12 B<\/small>/u);
-  assert.match(html, /title="src\/&lt;unsafe&gt;\.sol">src\/&lt;unsafe&gt;\.sol<\/span>/u);
+  assert.match(html, /title="Root\/src\/&lt;unsafe&gt;\.sol">Root\/src\/&lt;unsafe&gt;\.sol<\/span>/u);
   assert.doesNotMatch(html, /title="[^"]*<unsafe>/u);
 });
 
@@ -56,11 +61,16 @@ test('controlled errors do not expose worker internals or source content', () =>
   assert.doesNotMatch(v4ErrorMessage({ code: 'WEB_V4_WORKER_CRASH', message: 'PRIVATE_SENTINEL' }), /PRIVATE_SENTINEL/u);
   assert.match(v4ErrorMessage({ code: 'WEB_V4_COMPILE_FAILED', message: 'PRIVATE_SENTINEL' }), /exact solc 0\.8\.24/u);
   assert.doesNotMatch(v4ErrorMessage({ code: 'WEB_V4_COMPILE_FAILED', message: 'PRIVATE_SENTINEL' }), /PRIVATE_SENTINEL/u);
+  const diagnostic = v4ErrorMessage({ code: 'WEB_V4_COMPILER_LOAD_FAILED', message: 'PRIVATE_SENTINEL', safeDetails: { reasonCode: 'COMPILER_LOAD_FAILED', assetPath: 'v4/soljson-v0.8.24.js', privateValue: 'PRIVATE_SENTINEL' } });
+  assert.match(diagnostic, /Diagnostic: COMPILER_LOAD_FAILED · asset: v4\/soljson-v0\.8\.24\.js/u);
+  assert.doesNotMatch(diagnostic, /PRIVATE_SENTINEL/u);
+  const csp = v4ErrorMessage({ code: 'WEB_V4_CSP_BLOCKED', safeDetails: { reasonCode: 'CSP_BLOCKED', effectiveDirective: 'script-src', blockedURI: 'wasm-eval', assetPath: 'v4/soljson-v0.8.24.js' } });
+  assert.match(csp, /Diagnostic: CSP_BLOCKED · directive: script-src · blocked: wasm-eval · asset: v4\/soljson-v0\.8\.24\.js/u);
 });
 
 test('a new scan clears previously rendered verified evidence before worker execution', () => {
   const source = fs.readFileSync(new URL('../../../apps/web/v4/ui.js', import.meta.url), 'utf8');
-  const start = source.slice(source.indexOf('const runScan = async'), source.indexOf('const client = createWorkerClient()'));
+  const start = source.slice(source.indexOf('const runScan = async'), source.indexOf('client = createWorkerClient()'));
   assert.match(start, /state\.verification = null; state\.viewModel = null; state\.exportBundle = null;\s*clearRenderedReport\(\);/u);
 });
 
@@ -85,4 +95,13 @@ test('existing proof and connected wallet UI are provider-backed and stale state
   assert.match(source, /'new-transaction-reconciled'/u);
   assert.match(source, /Already published/u);
   assert.match(source, /No new transaction required/u);
+});
+
+test('durable publication recovery is explicit and never presented as an automatic resend', () => {
+  const source = fs.readFileSync(new URL('../../../apps/web/v4/ui.js', import.meta.url), 'utf8');
+  assert.match(source, /coordinator\.recoverAfterReload\(attempt\.intentId\)/u);
+  assert.match(source, /recovery\.action === 'reconcile-known-transaction'/u);
+  assert.match(source, /recovery\.action === 'reconciliation-required'/u);
+  assert.match(source, /Do not retry; reconcile the wallet or transaction hash first\./u);
+  assert.doesNotMatch(source, /proof\.status === 'pending'/u);
 });

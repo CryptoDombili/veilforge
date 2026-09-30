@@ -39,6 +39,8 @@ const moduleOrder = [
   'engine/compare.js',
   'engine/report.js',
   'engine/format.js',
+  'proof-v4/errors.js',
+  'proof-v4/network.js',
   'proof/registry.js',
   'lib/zip.js',
   'lib/unzip.js',

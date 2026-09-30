@@ -5,17 +5,17 @@
 </p>
 
 <p align="center">
-  VeilForge helps Solidity developers and security reviewers trace how financial data can reach events, public storage, return values, revert data, calldata, metadata, and external calls. It analyzes multi-file projects locally with exact solc 0.8.24 and supports optional report-hash publication on Arc Testnet.
+  VeilForge helps Solidity developers and security reviewers trace how financial data can reach events, public storage, return values, revert data, calldata, metadata, and external calls. It analyzes multi-file projects locally with exact solc 0.8.24 and supports optional report-hash publication through a trusted Arc runtime profile. The official production artifact uses verified Arc Mainnet.
 </p>
 
 <p align="center">
   <img alt="Latest published release: v4.0.0-gc.2" src="https://img.shields.io/badge/latest%20release-v4.0.0--gc.2-6f8cff">
   <img alt="Report schema: v4.1.0" src="https://img.shields.io/badge/report%20schema-v4.1.0-8b6cff">
   <img alt="Live web: V4 Grant Candidate" src="https://img.shields.io/badge/live%20web-V4%20Grant%20Candidate-35d6aa">
-  <img alt="Network: Arc Testnet" src="https://img.shields.io/badge/network-Arc%20Testnet-6fd5ff">
+  <img alt="Network: Arc Mainnet" src="https://img.shields.io/badge/network-Arc%20Mainnet-6fd5ff">
   <img alt="Compiler: Solidity 0.8.24" src="https://img.shields.io/badge/solidity-0.8.24-363636?logo=solidity">
   <img alt="Tests: passing" src="https://img.shields.io/badge/tests-passing-35d6aa">
-  <img alt="Mainnet: disabled" src="https://img.shields.io/badge/mainnet-disabled-8b949e">
+  <img alt="Mainnet: verified" src="https://img.shields.io/badge/mainnet-verified-35d6aa">
   <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue">
 </p>
 
@@ -26,7 +26,9 @@
   <a href="https://veilforge.dev/whitepaper/executive-brief.html">Executive Brief</a> ·
   <a href="docs/grant/final/technical-evidence-index.md">Technical Evidence</a> ·
   <a href="https://github.com/CryptoDombili/veilforge/releases/tag/v4.0.0-gc.2">GitHub Release</a> ·
-  <a href="https://testnet.arcscan.app/tx/0x75c62f12af38de075cbca5a3582faf587cec5f3809591efd0eebbef724d49ead">Arc Testnet Transaction</a> ·
+  <a href="https://explorer.arc.io/tx/0x2ad90b2d3c1343295cffbd770ae584bc6f086c0010aabc985ad1af1f8644789f">Arc Mainnet Deployment</a> ·
+  <a href="https://explorer.arc.io/tx/0xc546c684ccc4a04ae2466926972a3c20d53c8b4616022f03240f4319d3de1693">First Mainnet Proof</a> ·
+  <a href="https://testnet.arcscan.app/tx/0x75c62f12af38de075cbca5a3582faf587cec5f3809591efd0eebbef724d49ead">Historical Arc Testnet Transaction</a> ·
   <a href="SECURITY.md">Security</a> ·
   <a href="CONTRIBUTING.md">Contributing</a>
 </p>
@@ -48,7 +50,22 @@ The complete reviewer matrix is maintained in [`docs/RELEASE_STATUS.md`](docs/RE
 
 ### Deployment model
 
-The repository-safe source default intentionally keeps `WEB_V4_ENABLED=false` as a fail-closed legacy-compatibility boundary. The production Vercel configuration explicitly sets `VEILFORGE_WEB_V4_ENABLED=true` for its build, so [veilforge.dev](https://veilforge.dev) serves the V4 Grant Candidate without changing that source default. This web deployment flag does not enable Arc mainnet: mainnet `enabled=false`, `proofReadEnabled=false`, and `publishEnabled=false` remain fail-closed.
+The repository-safe source default intentionally keeps `WEB_V4_ENABLED=false` as a fail-closed legacy-compatibility boundary. The official `arc-mainnet-production` build explicitly enables the V4 presentation and selects the verified `arc-mainnet` runtime profile without changing that source default. Network trust is controlled independently from the web presentation flag.
+
+### Verified Arc Mainnet production identity
+
+| Field | Current production value |
+|---|---|
+| Product | VeilForge V4 Grant Candidate |
+| Network key | `arc-mainnet` |
+| Chain ID | `5042` / `0x13b2` |
+| Registry V2 | [`0x43D76BfCa31eAd660C5d804FEe20d14C0c577337`](https://explorer.arc.io/address/0x43D76BfCa31eAd660C5d804FEe20d14C0c577337) |
+| Deployment status | `verified` |
+| Runtime flags | `enabled=true`, `proofReadEnabled=true`, `publishEnabled=true` |
+| Deployment transaction | [`0x2ad90b2d…64789f`](https://explorer.arc.io/tx/0x2ad90b2d3c1343295cffbd770ae584bc6f086c0010aabc985ad1af1f8644789f) |
+| First controlled Mainnet proof | [`0xc546c684…de1693`](https://explorer.arc.io/tx/0xc546c684ccc4a04ae2466926972a3c20d53c8b4616022f03240f4319d3de1693) |
+
+The Arc Testnet transactions documented below are retained as historical milestones. They are not the current production network identity.
 
 ### Dependency security
 
@@ -70,12 +87,12 @@ Solidity systems can disclose sensitive financial or identity data through event
 - **Arc-specific domain packs** — Arc Payments, Arc Treasury, and Arc Private Credit.
 - **Policy-aware review** — declassification, accepted-risk, suppression, and incomplete states remain visible.
 - **Deterministic report identity** — schema `4.1.0` with hash payload `veilforge.report.hash.v2`.
-- **Arc Testnet proof anchoring** — optional, explicit, zero-value publication through Registry V2.
+- **Arc proof anchoring** — optional, explicit, zero-value publication through a trusted Registry V2 profile; production uses verified Arc Mainnet.
 - **Multi-file and folder intake** — bounded browser input and documented project-local dependency/remapping patterns with exact `solc 0.8.24`.
 - **Export packages** — report JSON, readable Markdown, and a manifest with file digests.
 - **CLI and CI integration** — V4 CLI, SDK, SARIF, GitHub Actions, and policy gates.
 - **Fail-closed incomplete analysis** — unsupported or unresolved boundaries are surfaced, not silently treated as safe.
-- **Explicit safety boundaries** — no automatic wallet popup, network switch, transaction, or mainnet publication.
+- **Explicit safety boundaries** — no automatic wallet popup, network switch, signature, or transaction; publication requires an explicit wallet action.
 
 ## Product workflow
 
@@ -85,16 +102,16 @@ Solidity systems can disclose sensitive financial or identity data through event
 | **2. Scan** | Run compiler-backed analysis locally. Source code stays inside the browser or local CLI process. |
 | **3. Review** | Inspect findings, severity, confidence, completeness, exact source locations, and source-to-sink traces. |
 | **4. Verify** | Recompute the report hash and validate the schema and report identity. |
-| **5. Publish** | With a separate explicit wallet action, optionally publish a zero-value proof on Arc Testnet. Publisher-scoped duplicate protection prevents a second send for the same proof. |
+| **5. Publish** | With a separate explicit wallet action, optionally publish a zero-value proof through the selected trusted Arc profile. The official production profile is Arc Mainnet. Publisher-scoped duplicate protection prevents a second send for the same proof. |
 | **6. Export** | Produce JSON, Markdown, and manifest deliverables. SARIF and GitHub Actions support are available for CLI/CI workflows. |
 
 <p align="center">
   <img src="assets/v4/veilforge-v4-scanner.png" alt="VeilForge V4 scanner showing local analysis, findings, proof workflow, and exports" width="100%">
 </p>
 
-## Arc Testnet proof
+## Historical Arc Testnet proof evidence
 
-The following publication was checked read-only against its Arc Testnet transaction, receipt, Registry V2 event, publisher-scoped duplicate state, and report identity.
+The following pre-Mainnet publication is retained as a historical milestone. It was checked read-only against its Arc Testnet transaction, receipt, Registry V2 event, publisher-scoped duplicate state, and report identity.
 
 | Field | Recorded value |
 |---|---|
@@ -127,7 +144,7 @@ This is a **demonstration fixture result**, not a benchmark or a claim about gen
 | Combined scan | 3 Solidity files; 41 findings |
 | Review state | 35 active detections; 6 incomplete findings |
 | Integrity | Report hash verified |
-| Proof | Arc Testnet proof published; existing transaction reverified |
+| Proof | Historical Arc Testnet proof published; existing transaction reverified |
 | Completion | Publish and Export completed |
 
 The maintained release benchmark is tracked separately in [`benchmarks/v4`](benchmarks/v4). Its 60 cases, oracle, methodology, and reproduction commands are documented in the [technical evidence index](docs/grant/final/technical-evidence-index.md). Results apply only to that corpus.
@@ -140,7 +157,7 @@ VeilForge models privacy-readiness concerns for three concrete Arc application d
 - **Arc Treasury** — treasury operations, approvals, execution metadata, return and external-call disclosure.
 - **Arc Private Credit** — borrower terms, collateral, credit metadata, and cross-contract boundaries.
 
-The current proof workflow uses Arc Testnet Registry V2, ArcScan verification, and a zero-value publication call in Arc's USDC-native execution context. No other Circle product is represented as integrated. Arc mainnet network identity, proof reads, and publication remain fail-closed and disabled pending the documented readiness gates.
+The current production proof workflow uses verified Registry V2 on Arc Mainnet, chain `5042`, and a zero-value publication call in Arc's USDC-native execution context. The production registry is `0x43D76BfCa31eAd660C5d804FEe20d14C0c577337`; its deployment and first controlled proof transaction are recorded above. Historical Arc Testnet evidence remains available as a completed milestone. No other Circle product is represented as integrated.
 
 ## Architecture
 
@@ -152,7 +169,7 @@ Solidity files
   → domain policy evaluation
   → versioned report
   → report hash
-  → optional Arc Testnet proof
+  → optional trusted Arc proof
   → export package
 ```
 
@@ -168,7 +185,7 @@ VeilForge is a privacy-readiness analysis and reporting tool. It is not:
 - a confidentiality guarantee;
 - a system that uploads source to an AI API or remote analyzer;
 - a system that automatically opens a wallet popup, switches networks, or sends transactions;
-- a mainnet proof publisher.
+- a system that bypasses trusted network, registry, or explicit wallet-action gates.
 
 An **incomplete analysis** result is a positive fail-closed behavior: when VeilForge reaches an unsupported expression, unresolved boundary, budget limit, or other uncertainty, it records the reason and marks the report incomplete instead of presenting absence of a finding as proof of safety.
 
@@ -181,7 +198,7 @@ Private keys and seed phrases remain inside the user's wallet and are never requ
 3. Select one or more Arc domains and an optional policy.
 4. Run the V4 scan.
 5. Review findings, source-to-sink traces, confidence, and incomplete states.
-6. Optionally publish the report proof on Arc Testnet with an explicit wallet action.
+6. Optionally publish the report proof through the selected trusted Arc profile with an explicit wallet action. The official production artifact selects Arc Mainnet.
 7. Export the JSON, Markdown, and manifest deliverables.
 
 ## Local development
@@ -250,7 +267,8 @@ Use `--output <directory>` instead of `--no-export` to write the export set. Run
 | [Contributing](CONTRIBUTING.md) | Repository contribution workflow. |
 | [Release Notes](docs/releases/v4.0.0-rc1.md) | V4 RC1 release integration notes and gates. |
 | [Product Boundaries](docs/grant-candidate/product-boundary.md) | Claims the product makes—and deliberately does not make. |
-| [Mainnet Readiness](docs/releases/v4-arc-mainnet-readiness.md) | Disabled-by-default mainnet controls, rehearsal, and blockers. |
+| [Mainnet Production Status](docs/RELEASE_STATUS.md) | Canonical verified Arc Mainnet runtime, deployment, proof, and build status. |
+| [Historical Mainnet Readiness](docs/grant/arc-mainnet-readiness-summary.md) | Pre-deployment gates preserved alongside the current verified production state. |
 
 ## Roadmap
 
@@ -258,7 +276,8 @@ Use `--output <directory>` instead of `--no-export` to write the export set. Run
 
 - V4 Grant Candidate and live production presentation
 - local browser scanner and CLI/SDK
-- Arc Testnet proof workflow with receipt/event reconciliation
+- verified Arc Mainnet proof workflow with receipt/event/readback reconciliation
+- historical Arc Testnet proof evidence retained as an earlier milestone
 - JSON, Markdown, manifest, and SARIF exports
 - CI gates and GitHub Actions integration
 
@@ -268,9 +287,9 @@ Use `--output <directory>` instead of `--no-export` to write the export set. Run
 - stronger compiler-backed analysis coverage
 - expanded Arc domain rules and fixtures
 - production documentation and onboarding
-- controlled mainnet-readiness work with independent review
+- continued independent review and controlled production operations
 
-Mainnet is not active. `enabled=false`, `proofReadEnabled=false`, and `publishEnabled=false` remain the configured mainnet state.
+Arc Mainnet is active in the official production profile with `deploymentStatus=verified`, `enabled=true`, `proofReadEnabled=true`, and `publishEnabled=true`. Publication still requires an explicit user wallet action and all network/registry trust checks remain fail-closed.
 
 ## Why this grant matters
 

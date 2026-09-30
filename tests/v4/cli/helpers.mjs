@@ -7,7 +7,7 @@ import { runCli } from '../../../packages/cli/src/index.js';
 
 export async function fixture(content = 'pragma solidity 0.8.24; contract Tiny { uint256 private value; }') {
   const root = await mkdtemp(path.join(tmpdir(), 'veilforge-cli-test-')); const contracts = path.join(root, 'contracts'); await mkdir(contracts); await writeFile(path.join(contracts, 'Tiny.sol'), content);
-  return { root, contracts, output: path.join(root, 'export'), cleanup: () => rm(root, { recursive: true, force: true }) };
+  return { root, contracts, output: path.join(root, 'export'), cleanup: () => rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 }) };
 }
 export async function capture(args, cwd) {
   let stdout = ''; let stderr = ''; const exitCode = await runCli(args, { cwd, stdout: (text) => { stdout += text; }, stderr: (text) => { stderr += text; } });

@@ -65,15 +65,15 @@ test('safe transaction request accepts only trusted zero-value Registry V2 calls
 
 test('matching duplicate is idempotent and prepares no transaction', async () => {
   const first = await readyProof();
-  const identity = { chainId: first.envelope.chainId, networkKey: first.envelope.networkKey, registryAddress: first.envelope.registryAddress, registryContractVersion: first.envelope.registryContractVersion, transactionHash: TX_HASH, blockNumber: 42, publisher: ACCOUNT, reportHash: first.envelope.reportHash, status: 'confirmed', explorerUrl: `https://testnet.arcscan.app/tx/${TX_HASH}` };
-  const duplicate = await prepareWebRegistryPublish({ verification: first.verification, envelope: first.envelope, walletState: first.walletState, existingRecord: { ...first.preflight.payload, publisher: ACCOUNT }, existingTransactionIdentity: identity });
+  const identity = { chainId: first.envelope.chainId, networkKey: first.envelope.networkKey, registryAddress: first.envelope.registryAddress, registryContractVersion: first.envelope.registryContractVersion, transactionHash: TX_HASH, blockNumber: 42, publisher: ACCOUNT, projectId: first.preflight.payload.projectId, sourceHash: first.preflight.payload.sourceHash, reportHash: first.envelope.reportHash, reportURI: first.preflight.payload.reportURI, status: 'confirmed', evidenceStatus: 'current-state-verified', explorerUrl: `https://testnet.arcscan.app/tx/${TX_HASH}` };
+  const duplicate = await prepareWebRegistryPublish({ verification: first.verification, envelope: first.envelope, walletState: first.walletState, existingRecord: { ...first.preflight.payload, publisher: ACCOUNT, publishedAt: 1 }, existingTransactionIdentity: identity });
   assert.equal(duplicate.status, 'already-published'); assert.equal(duplicate.transactionRequest, null); assert.deepEqual(duplicate.transactionIdentity, identity);
 });
 
 test('duplicate transaction identity is verified before explorer reuse', async () => {
   const first = await readyProof();
-  const existingRecord = { ...first.preflight.payload, publisher: ACCOUNT };
-  const identity = { chainId: first.envelope.chainId, networkKey: first.envelope.networkKey, registryAddress: first.envelope.registryAddress, registryContractVersion: first.envelope.registryContractVersion, transactionHash: TX_HASH, blockNumber: 42, publisher: ACCOUNT, reportHash: first.envelope.reportHash, status: 'confirmed', explorerUrl: `https://testnet.arcscan.app/tx/${TX_HASH}` };
+  const existingRecord = { ...first.preflight.payload, publisher: ACCOUNT, publishedAt: 1 };
+  const identity = { chainId: first.envelope.chainId, networkKey: first.envelope.networkKey, registryAddress: first.envelope.registryAddress, registryContractVersion: first.envelope.registryContractVersion, transactionHash: TX_HASH, blockNumber: 42, publisher: ACCOUNT, projectId: first.preflight.payload.projectId, sourceHash: first.preflight.payload.sourceHash, reportHash: first.envelope.reportHash, reportURI: first.preflight.payload.reportURI, status: 'confirmed', evidenceStatus: 'current-state-verified', explorerUrl: `https://testnet.arcscan.app/tx/${TX_HASH}` };
   await assert.rejects(() => prepareWebRegistryPublish({ verification: first.verification, envelope: first.envelope, walletState: first.walletState, existingRecord, existingTransactionIdentity: { ...identity, explorerUrl: 'https://evil.example/tx/fake' } }));
 });
 

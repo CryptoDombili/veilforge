@@ -1,6 +1,6 @@
 # Technical Evidence Index
 
-Status values: **Shipped and verified**, **Shipped with bounded limitations**, **Roadmap**, **Mainnet unresolved**, **Commercial hypothesis**, and **Not claimed**.
+Status values: **Shipped and verified**, **Shipped with bounded limitations**, **Roadmap**, **Commercial hypothesis**, and **Not claimed**.
 
 ## Evidence inventory
 
@@ -15,7 +15,7 @@ Status values: **Shipped and verified**, **Shipped with bounded limitations**, *
 | Report schema/hash and proof envelope | Shipped and verified | `schemas/`, `packages/analyzer/src/v4/report/`, `packages/proof/v4/` |
 | Arc Testnet transaction/reconciliation/duplicate protection | Shipped and verified | `docs/releases/v4-arc-testnet-proof-acceptance.md` |
 | Mainnet readiness model/runbooks | Shipped with bounded limitations | `packages/proof/v4/mainnet-readiness.js`, `docs/releases/v4-arc-mainnet-readiness.md` |
-| Mainnet deployment and production publishing | Mainnet unresolved | `docs/releases/v4-registry-deployment-manifest.md` |
+| Mainnet deployment and production publishing | Shipped and verified | `deployment/arc-mainnet-registry-deployment.json`, `deployment/arc-mainnet-proof-publication.json` |
 | Community/open local core | Shipped and verified | `docs/business/free-vs-paid-feature-matrix.md` |
 | Hosted CI/accounts/team workflows | Roadmap | `docs/business/commercial-roadmap.md` |
 | Pricing and twelve-month scenarios | Commercial hypothesis | `docs/business/pricing-hypothesis.md`, `docs/business/twelve-month-scenarios.md` |
@@ -39,18 +39,18 @@ Status values: **Shipped and verified**, **Shipped with bounded limitations**, *
 | Receipt/event verification | Shipped and verified | `apps/web/v4/proof-receipt.js` | Receipt suite 11/11; live reconciliation passed | Trusted chain/registry required | `npm.cmd run test:web-v4-proof-receipt` |
 | Duplicate protection | Shipped and verified | `apps/web/v4/proof-network-preflight.js` | `already-published`; no second send | Client-side idempotency over publisher-scoped Registry V2 | `npm.cmd run test:web-v4-proof-transaction-acceptance` |
 | Browser acceptance | Shipped with bounded limitations | `docs/releases/v4-web-browser-support.md` | Chromium/WebKit local acceptance evidence | Edge/Firefox local environment remains unverified | `npm.cmd run test:web-v4-acceptance` |
-| Mainnet readiness controls | Shipped with bounded limitations | `packages/proof/v4/mainnet-readiness.js` | Readiness 9/9 baseline | Deployment values and operators unresolved | `npm.cmd run test:v4-mainnet-readiness` |
+| Mainnet production profile | Shipped and verified | `packages/proof/v4/network.js`, `deployment/arc-mainnet-registry-deployment.json`, `deployment/arc-mainnet-proof-publication.json` | Chain 5042; exact Registry; deployment and first publication verified | Immutable Registry and exact-identity scope | `npm.cmd run verify:arc-mainnet-production` |
 | Rollback and incident response | Shipped with bounded limitations | `docs/releases/v4-arc-mainnet-rollback.md`, `v4-arc-mainnet-incident-response.md` | Deterministic fail-closed config | Cannot erase on-chain history | `npm.cmd run rehearse:arc-mainnet-registry` |
 | Commercial model | Commercial hypothesis | `docs/business/`, `docs/grant/grant-sustainability.md` | Arithmetic and boundary consistency checked | No live billing, customers, or revenue | `npm.cmd run test:grant-evidence` |
 | Whitepaper evidence consistency | Shipped and verified | `docs/whitepaper/` | Version, benchmark, proof, budget, mainnet and claim boundaries checked | Reader document; canonical sources remain authoritative | `npm.cmd run test:whitepaper-consistency` |
-| Grant landing and whitepaper assets | Shipped and verified | `apps/web/whitepaper/`, `scripts/lib/v4-grant-landing.mjs` | Semantic landing checks, HTML/PDF/SVG asset checks, responsive browser smoke | V4 landing remains preview-only while the production flag is false | `npm.cmd run test:grant-landing` and `npm.cmd run test:whitepaper-assets` |
+| Grant landing and whitepaper assets | Shipped and verified | `apps/web/whitepaper/`, `scripts/lib/v4-grant-landing.mjs` | Semantic landing checks, HTML/PDF/SVG asset checks, responsive browser smoke | Source defaults fail closed; production requires a trusted snapshot | `npm.cmd run test:grant-landing` and `npm.cmd run test:whitepaper-assets` |
 
 ## Canonical grant story
 
 **Problem:** Application-level disclosure and privacy-readiness risks in Arc payment, treasury, and private-credit Solidity applications may not be seen consistently before deployment.
 
-**Solution:** VeilForge performs local compiler-backed deterministic analysis, produces verified evidence, integrates with developer/CI workflows, and can anchor a verified report identity on Arc Testnet without uploading source to a remote AI service.
+**Solution:** VeilForge performs local compiler-backed deterministic analysis, produces verified evidence, integrates with developer/CI workflows, and can anchor a verified report identity through a trusted Arc profile without uploading source to a remote AI service.
 
-**Current evidence:** working scanner; CLI, SDK, SARIF, GitHub Action and gate; browser worker; verified reports; bounded 60-case benchmark; real Testnet publication; receipt/event verification; duplicate protection; mainnet readiness package; commercial sustainability plan.
+**Current evidence:** working scanner; CLI, SDK, SARIF, GitHub Action and gate; browser worker; verified reports; bounded 60-case benchmark; historical Testnet publication; verified Mainnet deployment and first controlled publication; receipt/event/readback verification; duplicate protection; commercial sustainability plan.
 
 **Grant unlocks:** hosted CI; secure account and metering foundations; Team workflows; detector and benchmark expansion; independent security validation; Arc ecosystem integration and onboarding. These are future deliverables, not current product claims.

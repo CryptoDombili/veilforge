@@ -6,10 +6,10 @@
 4. **Exact compiler baseline.** The candidate supports exact `solc 0.8.24`. Other versions can be rejected or require separate validated support.
 5. **Browser project limit.** The V4 browser scanner is bounded to 1 MiB total project input, with additional file-count and per-file limits.
 6. **Incomplete analysis exists.** Inline assembly, unresolved imports/aliases, recursion, dynamic function pointers, unknown external behavior/returns, low-level calls, compiler-specific builtins, and budget exhaustion can produce explicit incomplete states.
-7. **Browser support is bounded.** Chromium and WebKit have local acceptance evidence. Local Edge/Firefox execution remained blocked by environment/tooling and requires clean-CI confirmation. The production V4 feature flag remains false.
+7. **Browser support is bounded.** Chromium and WebKit have local acceptance evidence. Local Edge/Firefox execution remained blocked by environment/tooling and requires clean-CI confirmation. Source defaults remain fail-closed; the provenance-bound Mainnet production build explicitly activates V4.
 8. **Reports are sensitive.** Source is processed locally, but verified reports, findings, paths, traces, exports, and local history can contain sensitive engineering evidence.
-9. **Testnet only.** The canonical proof transaction is Arc Testnet evidence. No mainnet deployment, registry address, transaction, or production publishing is claimed.
-10. **Mainnet unresolved.** Official chain/RPC/explorer/fee data, independent review, deployment rehearsal, named operational ownership, monitoring, and fee validation remain pending.
+9. **Historical Testnet evidence is separate.** The canonical Arc Testnet proof remains a historical milestone and is never reused or relabeled as Mainnet evidence.
+10. **Mainnet scope is exact.** Production support is bounded to chain `5042`, Registry `0x43D76BfCa31eAd660C5d804FEe20d14C0c577337`, verified deployment/publication evidence, and the trusted runtime profile. Unknown or mismatched profiles fail closed.
 11. **Registry V2 operational limitations.** The public contract is immutable and has no admin, pause, upgrade, moderation, revocation, or protocol-wide recovery. Any address can publish its own record.
 12. **Publisher-scoped overwrite semantics.** A publisher can replace its latest project-scoped record. Client-side reconciliation and duplicate protection are required; contract-level duplicate immutability is not claimed.
 13. **Irreversible public evidence.** Rollback cannot remove contracts, transactions, events, records, fees, or leaked public-chain history.

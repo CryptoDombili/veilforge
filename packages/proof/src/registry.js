@@ -1,12 +1,19 @@
 import { functionSelector } from '../../analyzer/src/keccak.js';
+import {
+  assertProofNetworkCapability,
+  assertTrustedNetwork,
+  DEFAULT_PROOF_NETWORK,
+  resolveProofNetwork,
+} from '../v4/network.js';
 
+const testnetProfile = resolveProofNetwork(DEFAULT_PROOF_NETWORK);
 export const ARC_TESTNET = Object.freeze({
-  chainId: 5_042_002,
-  chainIdHex: '0x4CEF52',
-  chainName: 'Arc Testnet',
-  nativeCurrency: Object.freeze({ name: 'USDC', symbol: 'USDC', decimals: 18 }),
-  rpcUrls: Object.freeze(['https://rpc.testnet.arc.network']),
-  blockExplorerUrls: Object.freeze(['https://testnet.arcscan.app']),
+  chainId: testnetProfile.chainId,
+  chainIdHex: testnetProfile.chainIdHex.toUpperCase().replace('0X', '0x'),
+  chainName: testnetProfile.chainName,
+  nativeCurrency: testnetProfile.nativeCurrency,
+  rpcUrls: testnetProfile.rpcUrls,
+  blockExplorerUrls: testnetProfile.blockExplorerUrls,
 });
 
 export const PUBLISH_REPORT_SIGNATURE = 'publishReport(bytes32,bytes32,bytes32,uint16,string,string)';
@@ -110,6 +117,47 @@ export function encodePublishReport({ projectId, sourceHash, reportHash, score, 
   return `${PUBLISH_REPORT_SELECTOR}${head}${versionTail}${uriTail}`;
 }
 
+function decodeCanonicalString(body, offset, field) {
+  if (!Number.isSafeInteger(offset) || offset < 192 || offset % 32 !== 0) throw new Error(`${field} offset is invalid.`);
+  const start = offset * 2;
+  if (start + 64 > body.length) throw new Error(`${field} offset exceeds calldata.`);
+  const length = Number(BigInt(`0x${body.slice(start, start + 64)}`));
+  if (!Number.isSafeInteger(length) || length < 0 || length > 4_096) throw new Error(`${field} length is invalid.`);
+  const valueStart = start + 64;
+  const valueEnd = valueStart + length * 2;
+  const paddedEnd = valueStart + Math.ceil(length / 32) * 64;
+  if (valueEnd > body.length || paddedEnd > body.length || !/^0*$/u.test(body.slice(valueEnd, paddedEnd))) throw new Error(`${field} encoding is invalid.`);
+  try {
+    const bytes = Uint8Array.from(body.slice(valueStart, valueEnd).match(/../gu) ?? [], (byte) => Number.parseInt(byte, 16));
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    throw new Error(`${field} is not valid UTF-8.`);
+  }
+}
+
+export function decodeCanonicalPublishReportCalldata(value) {
+  const data = String(value ?? '').toLowerCase();
+  if (!/^0x[0-9a-f]+$/u.test(data) || data.length % 2 !== 0 || !data.startsWith(PUBLISH_REPORT_SELECTOR)) throw new Error('Calldata does not use the canonical publishReport selector.');
+  const body = data.slice(PUBLISH_REPORT_SELECTOR.length);
+  if (body.length < 64 * 6) throw new Error('publishReport calldata is incomplete.');
+  const words = body.slice(0, 64 * 6).match(/.{64}/gu);
+  if (!words || words.length !== 6) throw new Error('publishReport calldata head is invalid.');
+  const score = Number(BigInt(`0x${words[3]}`));
+  if (!Number.isSafeInteger(score) || score < 0 || score > 100) throw new Error('publishReport score is invalid.');
+  const scannerVersion = decodeCanonicalString(body, Number(BigInt(`0x${words[4]}`)), 'scannerVersion');
+  const reportURI = decodeCanonicalString(body, Number(BigInt(`0x${words[5]}`)), 'reportURI');
+  const payload = {
+    projectId: `0x${words[0]}`,
+    sourceHash: `0x${words[1]}`,
+    reportHash: `0x${words[2]}`,
+    score,
+    scannerVersion,
+    reportURI,
+  };
+  if (encodePublishReport(payload).toLowerCase() !== data) throw new Error('publishReport calldata is not canonically encoded.');
+  return Object.freeze(payload);
+}
+
 export function buildProofPayload(report, reportURI = '') {
   if (!report) throw new Error('Run a scan before building a proof payload.');
   return {
@@ -144,46 +192,57 @@ function walletErrorCode(error) {
   return null;
 }
 
-export async function ensureArcTestnet(provider = globalThis.ethereum) {
+export async function ensureProofNetwork(networkKey = DEFAULT_PROOF_NETWORK, provider = globalThis.ethereum) {
+  const network = assertProofNetworkCapability(networkKey, 'publish');
   if (!provider?.request) throw new Error('No EIP-1193 wallet was detected.');
-  const targetChainId = ARC_TESTNET.chainIdHex.toLowerCase();
+  const walletChainIdHex = network.networkKey === DEFAULT_PROOF_NETWORK ? ARC_TESTNET.chainIdHex : network.chainIdHex;
+  const targetChainId = walletChainIdHex.toLowerCase();
   const readChainId = async () => String(await provider.request({ method: 'eth_chainId' })).toLowerCase();
   if (await readChainId() === targetChainId) return;
+
+  if (network.environment === 'mainnet') {
+    throw new Error(`${network.chainName} must be selected manually and is not available for proof publishing.`);
+  }
 
   try {
     await provider.request({
       method: 'wallet_switchEthereumChain',
-      params: [{ chainId: ARC_TESTNET.chainIdHex }],
+      params: [{ chainId: walletChainIdHex }],
     });
   } catch (error) {
     if (walletErrorCode(error) !== 4902) throw error;
     await provider.request({
       method: 'wallet_addEthereumChain',
       params: [{
-        chainId: ARC_TESTNET.chainIdHex,
-        chainName: ARC_TESTNET.chainName,
-        nativeCurrency: ARC_TESTNET.nativeCurrency,
-        rpcUrls: [...ARC_TESTNET.rpcUrls],
-        blockExplorerUrls: [...ARC_TESTNET.blockExplorerUrls],
+        chainId: walletChainIdHex,
+        chainName: network.chainName,
+        nativeCurrency: network.nativeCurrency,
+        rpcUrls: [...network.rpcUrls],
+        blockExplorerUrls: [...network.blockExplorerUrls],
       }],
     });
     await provider.request({
       method: 'wallet_switchEthereumChain',
-      params: [{ chainId: ARC_TESTNET.chainIdHex }],
+      params: [{ chainId: walletChainIdHex }],
     });
   }
 
   const selectedChainId = await readChainId();
   if (selectedChainId !== targetChainId) {
-    throw new Error('The selected wallet did not switch to Arc Testnet. Select Arc Testnet in your wallet and try again.');
+    throw new Error(`The selected wallet did not switch to ${network.chainName}. Select ${network.chainName} in your wallet and try again.`);
   }
+}
+
+export async function ensureArcTestnet(provider = globalThis.ethereum) {
+  return ensureProofNetwork(DEFAULT_PROOF_NETWORK, provider);
 }
 
 export async function waitForTransactionReceipt(
   provider,
   transactionHash,
-  { pollIntervalMs = 1_000, timeoutMs = 120_000 } = {},
+  { pollIntervalMs = 1_000, timeoutMs = 120_000, networkKey = DEFAULT_PROOF_NETWORK } = {},
 ) {
+  const network = assertProofNetworkCapability(networkKey, 'read');
   const startedAt = Date.now();
   while (Date.now() - startedAt <= timeoutMs) {
     const receipt = await provider.request({
@@ -193,9 +252,9 @@ export async function waitForTransactionReceipt(
     if (receipt) return receipt;
     await delay(pollIntervalMs);
   }
-  const error = new Error('The proof transaction was submitted but confirmation timed out. Check ArcScan for its final status.');
+  const error = new Error(`The proof transaction was submitted but confirmation timed out. Check ${network.chainName}'s explorer for its final status.`);
   error.transactionHash = transactionHash;
-  error.explorerUrl = `${ARC_TESTNET.blockExplorerUrls[0]}/tx/${transactionHash}`;
+  error.explorerUrl = `${network.explorerBaseUrl}/tx/${transactionHash}`;
   throw error;
 }
 
@@ -208,13 +267,18 @@ export async function publishReport({
   onTransactionHash,
   pollIntervalMs = 1_000,
   receiptTimeoutMs = 120_000,
+  networkKey = DEFAULT_PROOF_NETWORK,
+  userApproved = false,
 }) {
   if (!report) throw new Error('Run a scan before publishing a proof.');
+  if (userApproved !== true) throw new Error('Explicit user approval is required before proof publication.');
+  const network = assertProofNetworkCapability(networkKey, 'publish');
   if (!provider?.request) throw new Error('No EIP-1193 wallet was detected.');
 
   const to = requireAddress(registryAddress, 'Registry address');
+  if (to.toLowerCase() !== network.registryAddress.toLowerCase()) throw new Error(`Registry address does not match trusted ${network.chainName} configuration.`);
   const from = account ?? await connectWallet(provider);
-  await ensureArcTestnet(provider);
+  await ensureProofNetwork(networkKey, provider);
 
   const payload = buildProofPayload(report, reportURI);
   const data = encodePublishReport(payload);
@@ -227,20 +291,23 @@ export async function publishReport({
     throw new Error(`Proof simulation failed: ${readableWalletError(error)}`);
   }
 
+  const providerChainId = await provider.request({ method: 'eth_chainId' });
+  assertTrustedNetwork({ networkKey, providerChainId, registryAddress: transaction.to, operation: 'publish' });
   const transactionHash = await provider.request({
     method: 'eth_sendTransaction',
     params: [transaction],
   });
-  const explorerUrl = `${ARC_TESTNET.blockExplorerUrls[0]}/tx/${transactionHash}`;
+  const explorerUrl = `${network.explorerBaseUrl}/tx/${transactionHash}`;
   if (typeof onTransactionHash === 'function') onTransactionHash({ transactionHash, explorerUrl });
 
   const receipt = await waitForTransactionReceipt(provider, transactionHash, {
     pollIntervalMs,
     timeoutMs: receiptTimeoutMs,
+    networkKey,
   });
 
   if (!receiptSucceeded(receipt.status)) {
-    const error = new Error('The proof transaction was mined but reverted on Arc Testnet.');
+    const error = new Error(`The proof transaction was mined but reverted on ${network.chainName}.`);
     error.transactionHash = transactionHash;
     error.explorerUrl = explorerUrl;
     error.receipt = receipt;

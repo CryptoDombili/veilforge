@@ -1,6 +1,6 @@
 import { createV4WebExport, verifyV4WebExport } from './export-adapter.js';
 import { browserFilesToScanInput, canonicalSourcePath } from './input-adapter.js';
-import { bindV4DropZone, selectSupportedBrowserFiles } from './folder-drop.js';
+import { bindV4DropZone, mergeSupportedBrowserFiles, selectSupportedBrowserFiles } from './folder-drop.js';
 import { clearV4Reports, listV4Reports, readV3Storage, removeV4Report, saveV4Report } from './persistence.js';
 import { verifyV4Report } from './report-adapter.js';
 import { createWorkerClient } from './runtime/worker-client.js';
@@ -8,13 +8,17 @@ import { WEB_V4_LIMITS } from './runtime/limits.js';
 import { V4_PRODUCT_NAME, V4_PRODUCT_VERSION, V4_REPORT_VERSION } from './version.js';
 import { createV4ViewModel } from './view-models.js';
 import { createWebProofEnvelope, prepareWebRegistryPublish } from './proof-adapter.js';
-import { loadVerifiedWebProofPublication, saveWebProofState } from './proof-persistence.js';
-import { deriveProofWalletUiState, proofSectionTemplate, renderExistingTransactionVerification, renderPreflightChecks, renderProofExplorerLink, renderProofSummary, renderTransactionSummary } from './proof-ui.js';
+import { loadVerifiedWebProofPublication, loadWebProofSendAttempt, saveWebProofState } from './proof-persistence.js';
+import { deriveProofWalletUiState, proofNetworkDisplayName, proofSectionTemplate, renderExistingTransactionVerification, renderPreflightChecks, renderProofExplorerLink, renderProofSummary, renderTransactionSummary } from './proof-ui.js';
 import { attachProviderListeners, buildWalletState, disposeProviderListeners, inspectProvider } from './proof-wallet.js';
 import { connectWalletOnUserGesture } from './proof-connect-boundary.js';
-import { invalidateNetworkPreflight, preflightArcTestnetProvider } from './proof-network-preflight.js';
+import { invalidateNetworkPreflight, preflightProofNetworkProvider } from './proof-network-preflight.js';
 import { createUserGatedProofReview } from './proof-send-boundary.js';
-import { inspectExistingProofTransaction, isValidProofTransactionHash, reconcileVerifiedProofPublication, submitUserApprovedProofTransaction, WEB_PROOF_USER_APPROVED_SEND_ENABLED } from './proof-transaction-acceptance.js';
+import { createBrowserProofSendCoordinator, PROOF_SEND_STATES } from './proof-send-coordinator.js';
+import { inspectExistingProofTransaction, isValidProofTransactionHash, reconcileVerifiedProofPublication, submitUserApprovedProofTransaction } from './proof-transaction-acceptance.js';
+import { discoverWalletProviders } from './wallet-provider-discovery.js';
+import { webV4Error } from './errors.js';
+import { DEFAULT_WEB_NETWORK_KEY, resolveWebNetworkConfig } from '../config.js';
 
 const DOMAIN_LABELS = Object.freeze({
   'arc-payments': 'Arc Payments',
@@ -32,7 +36,7 @@ const WORKFLOW_STEPS = Object.freeze([
 ]);
 const ANALYSIS_PHASES = Object.freeze(['Compiler', 'AST', 'CFG', 'Dataflow', 'Detectors', 'Report']);
 const DEFAULT_FILTERS = Object.freeze({ query: '', severity: 'all', domain: 'all', disposition: 'all', confidence: 'all', completeness: 'all', detector: '', sort: 'severity' });
-const createEmptyProofState = () => ({ envelope: null, wallet: buildWalletState(), walletConnecting: false, walletError: null, preflight: null, networkPreflight: null, review: null, status: 'unavailable', receipt: null, provider: null, identityVerified: false, completionState: null, verificationRequestId: 0, existingVerification: { status: 'idle', message: '', identity: null } });
+const createEmptyProofState = () => ({ envelope: null, wallet: buildWalletState(), walletConnecting: false, walletChoices: [], walletSelectedIndex: null, walletNotice: null, walletError: null, preflight: null, networkPreflight: null, review: null, status: 'unavailable', failure: null, receipt: null, sendAttempt: null, provider: null, identityVerified: false, completionState: null, verificationRequestId: 0, existingVerification: { status: 'idle', message: '', identity: null } });
 
 const esc = (value) => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
 const formatBytes = (bytes) => bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(bytes < 10240 ? 1 : 0)} KiB`;
@@ -40,10 +44,132 @@ const shortAddress = (value) => value ? `${value.slice(0, 6)}…${value.slice(-4
 const locationText = (location) => location ? `${location.sourcePath}:${location.startLine ?? '?'}:${location.startColumn ?? '?'}` : 'No safe source location';
 const slug = (value) => String(value || 'veilforge-project').toLowerCase().replace(/[^a-z0-9]+/gu, '-').replace(/^-|-$/gu, '') || 'veilforge-project';
 
+export async function discoverProofWalletChoices({ scope = globalThis, waitMs = 80, fallbackProvider = null } = {}) {
+  const discovered = await discoverWalletProviders({ scope, waitMs });
+  if (discovered.length) return normalizeWalletChoices(discovered);
+  let legacy = null;
+  try {
+    const injected = scope?.ethereum;
+    if (typeof injected?.request === 'function') legacy = injected;
+  } catch { /* A hostile or unavailable extension getter cannot block retry. */ }
+  const provider = legacy ?? fallbackProvider;
+  return provider && typeof provider.request === 'function'
+    ? normalizeWalletChoices([{ provider, source: 'legacy', info: { name: '', rdns: '', uuid: '' } }])
+    : Object.freeze([]);
+}
+
+function walletKnownName(choice) {
+  const rdns = String(choice?.info?.rdns ?? '').trim().toLowerCase();
+  const name = String(choice?.info?.name ?? '').trim().toLowerCase();
+  if (rdns === 'io.metamask' || /^metamask(?: wallet)?$/u.test(name)) return 'MetaMask';
+  if (rdns === 'io.rabby' || /^rabby(?: wallet)?$/u.test(name)) return 'Rabby';
+  if (rdns === 'com.coinbase.wallet' || /^coinbase(?: wallet)?$/u.test(name)) return 'Coinbase Wallet';
+  if (rdns === 'app.phantom' || /^phantom(?: wallet)?$/u.test(name)) return 'Phantom';
+  if (rdns === 'app.keplr' || /^keplr(?: evm| wallet)?$/u.test(name)) return 'Keplr';
+  try {
+    if (choice?.source === 'legacy') {
+      if (choice.provider?.isMetaMask === true) return 'MetaMask';
+      if (choice.provider?.isRabby === true) return 'Rabby';
+      if (choice.provider?.isCoinbaseWallet === true) return 'Coinbase Wallet';
+      if (choice.provider?.isPhantom === true) return 'Phantom';
+      if (choice.provider?.isKeplr === true) return 'Keplr';
+    }
+  } catch { /* Untrusted extension flags are presentation-only. */ }
+  return null;
+}
+
+const WALLET_PRESENTATION_ORDER = Object.freeze(['MetaMask', 'Rabby', 'Coinbase Wallet', 'Phantom', 'Keplr']);
+
+export function normalizeWalletChoices(choices) {
+  const byProvider = new Map();
+  for (const choice of choices ?? []) {
+    const provider = choice?.provider;
+    if (!provider) continue;
+    const previous = byProvider.get(provider);
+    if (!previous || (previous.source !== 'eip6963' && choice.source === 'eip6963')) byProvider.set(provider, choice);
+  }
+  const seenUuids = new Set();
+  const seenKnown = new Set();
+  const unique = [];
+  const candidates = [...byProvider.values()];
+  candidates.sort((left, right) => Number(right?.source === 'eip6963') - Number(left?.source === 'eip6963'));
+  for (const choice of candidates) {
+    const known = walletKnownName(choice);
+    const uuid = choice.source === 'eip6963' ? String(choice.info?.uuid ?? '').trim().toLowerCase() : '';
+    if ((uuid && seenUuids.has(uuid)) || (known && seenKnown.has(known))) continue;
+    if (uuid) seenUuids.add(uuid);
+    if (known) seenKnown.add(known);
+    unique.push(choice);
+  }
+  return Object.freeze(unique.map((choice, index) => ({ choice, index, rank: WALLET_PRESENTATION_ORDER.indexOf(walletKnownName(choice)) }))
+    .sort((left, right) => (left.rank < 0 ? WALLET_PRESENTATION_ORDER.length : left.rank) - (right.rank < 0 ? WALLET_PRESENTATION_ORDER.length : right.rank) || left.index - right.index)
+    .map(({ choice }) => choice));
+}
+
+export function walletChoiceLabel(choice, { multipleUnknown = false } = {}) {
+  const known = walletKnownName(choice);
+  if (known) return known;
+  const rdns = String(choice?.info?.rdns ?? '').trim();
+  return multipleUnknown && rdns.length <= 128 && /^[a-z0-9]+(?:[.-][a-z0-9]+)*$/iu.test(rdns)
+    ? `Other EVM wallet · ${rdns}` : 'Other EVM wallet';
+}
+
+export function safeWalletIconDataUri(value) {
+  if (typeof value !== 'string' || value.length > 131_200) return null;
+  const match = /^data:image\/(png|jpeg|gif|webp|svg\+xml);base64,([A-Za-z0-9+/]+={0,2})$/u.exec(value);
+  if (!match || match[2].length % 4 !== 0) return null;
+  try {
+    const binary = atob(match[2]);
+    if (binary.length === 0 || binary.length > 96 * 1024) return null;
+    const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+    const header = [...bytes.slice(0, 12)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+    if (match[1] === 'png') return header.startsWith('89504e470d0a1a0a') ? value : null;
+    if (match[1] === 'jpeg') return header.startsWith('ffd8ff') ? value : null;
+    if (match[1] === 'gif') return header.startsWith('474946383761') || header.startsWith('474946383961') ? value : null;
+    if (match[1] === 'webp') return header.startsWith('52494646') && header.slice(16, 24) === '57454250' ? value : null;
+    if (typeof DOMParser !== 'function') return null;
+    const svg = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    if (/<!DOCTYPE|<!ENTITY/iu.test(svg)) return null;
+    const document = new DOMParser().parseFromString(svg, 'image/svg+xml');
+    if (document.querySelector('parsererror') || document.documentElement.localName !== 'svg') return null;
+    const tags = new Set(['svg', 'g', 'path', 'circle', 'rect', 'ellipse', 'line', 'polyline', 'polygon', 'defs', 'linearGradient', 'radialGradient', 'stop']);
+    const attributes = new Set(['xmlns', 'viewBox', 'width', 'height', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'stroke-opacity', 'fill-opacity', 'opacity', 'd', 'cx', 'cy', 'r', 'rx', 'ry', 'x', 'y', 'x1', 'x2', 'y1', 'y2', 'points', 'transform', 'offset', 'stop-color', 'stop-opacity', 'gradientUnits', 'gradientTransform']);
+    for (const element of document.querySelectorAll('*')) {
+      if (!tags.has(element.localName)) return null;
+      for (const attribute of element.attributes) {
+        if (!attributes.has(attribute.name) || /url\s*\(|javascript:|data:|https?:/iu.test(attribute.value)) return null;
+      }
+    }
+    return value;
+  } catch { return null; }
+}
+
+export function walletChoicesTemplate(choices) {
+  if (!Array.isArray(choices) || choices.length < 2) return '';
+  const multipleUnknown = choices.filter((choice) => !walletKnownName(choice)).length > 1;
+  return choices.map((choice, index) => {
+    const label = walletChoiceLabel(choice, { multipleUnknown });
+    const knownName = walletKnownName(choice);
+    const initial = knownName?.slice(0, 1) ?? 'O';
+    const localIcon = ({ MetaMask: '/assets/wallets/metamask.svg', Rabby: '/assets/wallets/rabby.svg' })[knownName] ?? null;
+    const icon = localIcon ?? safeWalletIconDataUri(choice?.info?.icon);
+    return `<button type="button" class="v4-wallet-card" data-v4-wallet-choice="${index}"><span class="v4-wallet-card-icon" aria-hidden="true">${localIcon ? '' : `<span>${esc(initial)}</span>`}${icon ? `<img data-v4-wallet-icon src="${esc(icon)}" alt="">` : ''}</span><span class="v4-wallet-card-copy"><b>${esc(label)}</b><small data-v4-wallet-state>Ready to connect</small></span><span class="v4-wallet-card-chevron" aria-hidden="true">›</span></button>`;
+  }).join('');
+}
+
+export async function connectProofWalletChoiceFromUserClick(event, choice, { onProvider = () => {} } = {}) {
+  if (event?.type !== 'click' || event.isTrusted !== true) throw webV4Error('WEB_V4_USER_GESTURE_REQUIRED', 'Wallet connection requires a trusted user click.');
+  const provider = choice?.provider ?? null;
+  if (provider) onProvider(provider);
+  const connection = await connectWalletOnUserGesture(provider, { userGesture: event.type === 'click' && event.isTrusted === true });
+  return Object.freeze({ provider, connection });
+}
+
 export function v4SourceDisplayPath(file) {
   const browserRelativePath = String(file?.webkitRelativePath || file?.relativePath || '').trim();
   if (!browserRelativePath) return String(file?.name ?? '');
   try {
+    if (file?.relativePath && !file?.webkitRelativePath) return canonicalSourcePath(browserRelativePath);
     const parts = canonicalSourcePath(browserRelativePath).split('/');
     return parts.length > 1 ? parts.slice(1).join('/') : parts[0];
   } catch {
@@ -108,7 +234,7 @@ export function deriveV4WorkflowState(input = {}) {
     publish: input.proofAvailable ? 'Verify the report before opening proof publication.' : 'Proof publication is unavailable until a verified proof envelope exists.',
     export: 'Verify the report before exporting evidence.',
   };
-  const proofStarted = ['preflight-checking', 'ready-to-publish', 'already-published', 'pending', 'confirmed', 'reconciling', 'report-hash-mismatch', 'reverted', 'receipt-invalid', 'preflight-failed', 'user-rejected', 'timeout', 'cancelled'].includes(input.proofStatus);
+  const proofStarted = ['preflight-checking', 'ready-to-publish', 'already-published', 'wallet-request-pending', 'pending', 'reconciliation-required', 'confirmed', 'reconciling', 'report-hash-mismatch', 'reverted', 'receipt-invalid', 'preflight-failed', 'user-rejected', 'timeout', 'cancelled'].includes(input.proofStatus);
   let active = sessionReset || !configured ? 'configure'
     : input.scanStatus === 'scanning' || !scanned || !reviewReady ? 'scan'
       : !reviewComplete && accessible.review ? 'review'
@@ -118,16 +244,25 @@ export function deriveV4WorkflowState(input = {}) {
   return Object.freeze({ active, completion: Object.freeze(completion), accessible: Object.freeze(accessible), reasons: Object.freeze(reasons) });
 }
 
-export function v4ErrorMessage(error) {
+export function v4ErrorMessage(error, profile = { networkKey: DEFAULT_WEB_NETWORK_KEY }) {
+  const networkName = proofNetworkDisplayName(profile);
   const messages = {
     WEB_V4_INPUT_INVALID: 'Choose valid UTF-8 Solidity files with safe project-relative paths.',
     WEB_V4_INPUT_LIMIT: 'The selected project exceeds the browser safety limit (100 files, 512 KiB per file, 1 MiB total).',
-    WEB_V4_DIRECTORY_DROP_UNSUPPORTED: 'This browser cannot read a dropped folder safely. Use the Folder picker instead.',
+    WEB_V4_DIRECTORY_DROP_UNSUPPORTED: 'This browser cannot read dropped folders safely. Use the Folder button.',
     WEB_V4_COMPILE_FAILED: 'Solidity compilation failed under exact solc 0.8.24. Fix the source diagnostics and retry.',
     WEB_V4_PROTOCOL_INVALID: 'The scanner returned an invalid worker message.',
     WEB_V4_PROTOCOL_MISMATCH: 'This page and its scanner worker are incompatible. Refresh after rebuilding the site.',
     WEB_V4_WORKER_BUSY: 'A V4 scan is already running.',
     WEB_V4_RUNTIME_UNAVAILABLE: 'The browser-compatible V4 scanner runtime is unavailable in this build.',
+    WEB_V4_WORKER_CONSTRUCTION_FAILED: 'The browser could not construct the isolated V4 scanner worker.',
+    WEB_V4_WORKER_INIT_FAILED: 'The isolated V4 scanner worker could not initialize.',
+    WEB_V4_COMPILER_LOAD_FAILED: 'The pinned solc 0.8.24 browser compiler could not load.',
+    WEB_V4_ASSET_NOT_FOUND: 'A required V4 scanner asset was not found.',
+    WEB_V4_CSP_BLOCKED: 'Browser Content Security Policy blocked the V4 scanner worker or one of its modules.',
+    WEB_V4_MIME_MISMATCH: 'A V4 scanner module was served with an incompatible MIME type.',
+    WEB_V4_MESSAGE_ERROR: 'The browser could not deserialize a V4 scanner worker message.',
+    WEB_V4_WORKER_RUNTIME_EXCEPTION: 'The isolated V4 scanner raised a runtime exception.',
     WEB_V4_ABORTED: 'The V4 scan was cancelled. No partial result was saved.',
     WEB_V4_TIMEOUT: 'The V4 scan exceeded its safe runtime limit and was stopped.',
     WEB_V4_WORKER_CRASH: 'The isolated V4 scanner stopped unexpectedly. Retry with the same local files.',
@@ -140,16 +275,16 @@ export function v4ErrorMessage(error) {
     WEB_V4_EXPORT_INVALID: 'Export verification failed. No file was downloaded.',
     WEB_V4_PROOF_UNAVAILABLE: 'Run and verify a V4 scan before preparing a registry proof.',
     WEB_V4_PROOF_ENVELOPE_INVALID: 'The proof envelope failed integrity verification.',
-    WEB_V4_PROVIDER_UNAVAILABLE: 'No previously authorized injected EVM wallet is available. No connection popup was opened.',
+    WEB_V4_PROVIDER_UNAVAILABLE: 'No injected EVM wallet was found. Install or enable MetaMask/Rabby and retry.',
     WEB_V4_ACCOUNT_UNAVAILABLE: 'The wallet has no previously authorized account for this site.',
-    WEB_V4_WRONG_NETWORK: 'The wallet is not on the trusted Arc Testnet chain. Network switching is intentionally disabled in this phase.',
-    WEB_V4_REGISTRY_MISMATCH: 'The proof does not target the trusted Arc Testnet Registry V2 address.',
+    WEB_V4_WRONG_NETWORK: `The wallet is not on the trusted ${networkName} chain. Network switching is intentionally disabled in this phase.`,
+    WEB_V4_REGISTRY_MISMATCH: `The proof does not target the trusted ${networkName} Registry V2 address.`,
     WEB_V4_PROOF_DISCLOSURE_REQUIRED: 'Acknowledge the incomplete-analysis disclosure before preflight.',
     WEB_V4_PROOF_PREFLIGHT_FAILED: 'Proof preflight failed closed. No transaction request was released.',
     WEB_V4_PROOF_DUPLICATE: 'This publisher-scoped proof is already present in the registry.',
     WEB_V4_USER_REJECTED: 'The simulated wallet request was rejected.',
     WEB_V4_TX_INVALID: 'The transaction identity is invalid.',
-    WEB_V4_TX_NOT_FOUND: 'Transaction not found on Arc Testnet.',
+    WEB_V4_TX_NOT_FOUND: `Transaction not found on ${networkName}.`,
     WEB_V4_RECEIPT_PENDING: 'Transaction is not confirmed yet.',
     WEB_V4_RECEIPT_REVERTED: 'The simulated registry transaction reverted.',
     WEB_V4_RECEIPT_INVALID: 'The simulated receipt failed verification.',
@@ -160,7 +295,91 @@ export function v4ErrorMessage(error) {
     WEB_V4_REGISTRY_ABI_MISMATCH: 'Trusted Registry V2 runtime bytecode does not expose the expected method.',
     WEB_V4_SEND_DISABLED: 'Transaction sending is disabled in this preflight build.',
   };
-  return messages[error?.code] ?? 'The V4 scan could not complete safely. No unverified result was displayed.';
+  const message = messages[error?.code] ?? 'The V4 scan could not complete safely. No unverified result was displayed.';
+  const diagnostic = error?.safeDetails;
+  if (!diagnostic?.reasonCode || !/^[A-Z0-9_]{1,64}$/u.test(diagnostic.reasonCode)) return message;
+  const asset = typeof diagnostic.assetPath === 'string' && /^v4\/[A-Za-z0-9._~%/-]{1,240}$/u.test(diagnostic.assetPath)
+    ? ` · asset: ${diagnostic.assetPath}` : '';
+  const directive = typeof diagnostic.effectiveDirective === 'string' && /^[a-z][a-z0-9-]{0,63}$/u.test(diagnostic.effectiveDirective)
+    ? ` · directive: ${diagnostic.effectiveDirective}` : '';
+  const blocked = typeof diagnostic.blockedURI === 'string' && /^(?:[a-z][a-z0-9+.-]*(?:-eval)?|https?:\/\/[A-Za-z0-9.-]+)$/u.test(diagnostic.blockedURI)
+    ? ` · blocked: ${diagnostic.blockedURI}` : '';
+  return `${message} Diagnostic: ${diagnostic.reasonCode}${directive}${blocked}${asset}`;
+}
+
+const SAFE_LIFECYCLE_TOKEN = /^[A-Za-z][A-Za-z0-9_.:-]{0,95}$/u;
+
+export function safeV4LifecycleFailure(error, stage, fallbackCode = 'WEB_V4_POST_SCAN_FAILED') {
+  const candidateCode = typeof error?.code === 'string' && error.code ? error.code : error?.name;
+  const code = SAFE_LIFECYCLE_TOKEN.test(candidateCode ?? '') ? candidateCode : fallbackCode;
+  const safeStage = SAFE_LIFECYCLE_TOKEN.test(stage ?? '') ? stage : 'post-scan';
+  return Object.freeze({ code, stage: safeStage });
+}
+
+export function transitionV4Lifecycle(state, event, payload = {}) {
+  if (!state || typeof state !== 'object') throw new TypeError('V4 lifecycle state is required.');
+  if (event === 'scan-failed') {
+    const alreadyVerified = state.scanStatus === 'verified'
+      && state.verification?.verified === true
+      && state.verification?.report?.integrity?.verified === true;
+    if (alreadyVerified) return state;
+    state.scanStatus = payload.cancelled === true ? 'cancelled' : 'error';
+    state.reviewReady = false;
+    state.verifyReady = false;
+    state.analysis = payload.analysis;
+    state.proof = { ...state.proof, envelope: null, failure: null, identityVerified: false, status: 'report-unverified' };
+    return state;
+  }
+  if (event === 'report-verified') {
+    state.verification = payload.verification;
+    state.viewModel = payload.viewModel;
+    state.exportBundle = null;
+    state.scanStatus = 'verified';
+    state.analysis = payload.analysis;
+    state.historyFailure = null;
+    return state;
+  }
+  if (event === 'proof-ready') {
+    state.proof.failure = null;
+    return state;
+  }
+  if (event === 'proof-failed') {
+    state.proof = {
+      ...state.proof,
+      envelope: null,
+      preflight: null,
+      networkPreflight: null,
+      review: null,
+      receipt: null,
+      sendAttempt: null,
+      identityVerified: false,
+      completionState: null,
+      status: 'preparation-error',
+      failure: payload.failure,
+    };
+    return state;
+  }
+  if (event === 'history-failed') {
+    state.historyFailure = payload.failure;
+    return state;
+  }
+  if (event === 'files-changed') {
+    state.verification = null;
+    state.viewModel = null;
+    state.exportBundle = null;
+    state.scanStatus = 'idle';
+    state.sessionReset = false;
+    state.restoredReport = false;
+    state.reviewReady = false;
+    state.verifyReady = false;
+    state.reviewedFinding = false;
+    state.exported = false;
+    state.historyFailure = null;
+    state.analysis = payload.analysis;
+    state.proof = createEmptyProofState();
+    return state;
+  }
+  throw new TypeError(`Unsupported V4 lifecycle event: ${event}`);
 }
 
 export function filterAndSortV4Findings(findings, filters = {}) {
@@ -260,7 +479,15 @@ function download(filename, bytes, mediaType) {
   setTimeout(() => URL.revokeObjectURL(url), 500);
 }
 
+export function proofNetworkContextLabel(profile) {
+  const name = proofNetworkDisplayName(profile);
+  return name === 'Arc network' ? 'ARC NETWORK UNKNOWN' : name.toUpperCase();
+}
+
 export async function initV4Ui(options = {}) {
+  const proofNetworkKey = options.proofNetworkKey ?? DEFAULT_WEB_NETWORK_KEY;
+  const configuredProofNetwork = resolveWebNetworkConfig(proofNetworkKey);
+  const uiErrorMessage = (error) => v4ErrorMessage(error, configuredProofNetwork);
   const root = options.root ?? document.querySelector('#scanner');
   const storage = options.storage ?? localStorage;
   if (!root) throw new Error('V4 scanner mount is unavailable.');
@@ -279,7 +506,7 @@ export async function initV4Ui(options = {}) {
   const nav = document.querySelector('.topbar .navlinks');
   if (nav) nav.innerHTML = '<a href="#scanner">V4 Scanner</a><a href="#v4-proof">Proof</a><a href="https://github.com/CryptoDombili/veilforge/tree/main/docs" target="_blank" rel="noreferrer">Documentation</a>';
   const navActions = document.querySelector('.topbar .navActions');
-  if (navActions) navActions.insertAdjacentHTML('afterbegin', `<span class="v4-context-pill">LOCAL / PRIVATE</span><span class="v4-context-pill">ARC TESTNET</span><span class="v4-context-pill">REPORT ${V4_REPORT_VERSION}</span>`);
+  if (navActions) navActions.insertAdjacentHTML('afterbegin', `<span class="v4-context-pill">LOCAL / PRIVATE</span><span class="v4-context-pill">${esc(proofNetworkContextLabel(configuredProofNetwork))}</span><span class="v4-context-pill">REPORT ${V4_REPORT_VERSION}</span>`);
   root.innerHTML = v4UiTemplate();
   document.body.classList.remove('v4-preview-pending');
   if (window.location.hash === '#scanner') {
@@ -295,7 +522,8 @@ export async function initV4Ui(options = {}) {
     queueScannerAlignment();
   }
   const byId = (id) => root.querySelector(`#${id}`);
-  const state = { files: [], bytes: 0, inputError: null, client: null, runId: 0, verification: null, viewModel: null, exportBundle: null, scanStatus: 'idle', sessionReset: true, restoredReport: false, reviewReady: false, verifyReady: false, reviewedFinding: false, exported: false, analysis: { state: 'ready', phase: null, message: 'Select Solidity files to begin.' }, proof: createEmptyProofState(), filters: { ...DEFAULT_FILTERS } };
+  const walletDialog = byId('v4-proof-wallet-dialog');
+  const state = { files: [], bytes: 0, inputError: null, client: null, runId: 0, verification: null, viewModel: null, exportBundle: null, scanStatus: 'idle', sessionReset: true, restoredReport: false, reviewReady: false, verifyReady: false, reviewedFinding: false, exported: false, historyFailure: null, analysis: { state: 'ready', phase: null, message: 'Select Solidity files to begin.' }, proof: createEmptyProofState(), filters: { ...DEFAULT_FILTERS } };
   let detailTrigger = null;
 
   let toastTimer = null;
@@ -361,7 +589,11 @@ export async function initV4Ui(options = {}) {
     const proof = state.proof;
     byId('v4-proof-state').textContent = proof.status.replaceAll('-', ' ').toUpperCase();
     if (!proof.envelope) {
-      byId('v4-proof-status').innerHTML = '<p>Run and verify a V4 scan to prepare a proof envelope.</p>';
+      if (walletDialog.open) walletDialog.close();
+      const failure = proof.status === 'preparation-error' ? proof.failure : null;
+      byId('v4-proof-status').innerHTML = failure
+        ? `<p>Arc proof preparation unavailable. <small>Diagnostic: ${esc(failure.code)} · stage: ${esc(failure.stage)}</small></p>`
+        : '<p>Run and verify a V4 scan to prepare a proof envelope.</p>';
       byId('v4-proof-summary').hidden = true; byId('v4-proof-wallet').hidden = true; byId('v4-proof-checks').hidden = true; byId('v4-proof-transaction').hidden = true;
       byId('v4-proof-inspect-wallet').disabled = true; byId('v4-proof-preflight').disabled = true; byId('v4-proof-disclosure').hidden = true;
       byId('v4-proof-review-acknowledgement').hidden = true; byId('v4-proof-send').disabled = true; byId('v4-proof-reconcile').disabled = true;
@@ -374,36 +606,65 @@ export async function initV4Ui(options = {}) {
     byId('v4-proof-summary').hidden = false; byId('v4-proof-summary').innerHTML = renderProofSummary(proof.envelope);
     byId('v4-proof-disclosure').hidden = proof.envelope.complete;
     const wallet = proof.wallet;
-    const walletUi = deriveProofWalletUiState(wallet, proof.envelope.chainId, { connecting: proof.walletConnecting, error: proof.walletError });
+    const walletUi = deriveProofWalletUiState(wallet, proof.envelope.chainId, { connecting: proof.walletConnecting, error: proof.walletError, networkKey: proof.envelope.networkKey });
     byId('v4-proof-wallet').hidden = false;
-    byId('v4-proof-wallet').innerHTML = `<p><b>Wallet boundary:</b> ${esc(walletUi.description)}</p>`;
-    byId('v4-proof-inspect-wallet').textContent = walletUi.label;
+    const walletDisplay = byId('v4-proof-wallet');
+    walletDisplay.innerHTML = wallet.connected && wallet.account
+      ? `<div class="v4-wallet-connection${walletUi.state === 'wrong-network' ? ' is-warning' : ''}"><div class="v4-wallet-connection-heading"><span class="v4-wallet-connection-symbol" aria-hidden="true">${walletUi.state === 'wrong-network' ? '!' : '✓'}</span><b>Wallet connected</b></div><code>${esc(shortAddress(wallet.account))}</code>${walletUi.state === 'wrong-network' ? `<span class="v4-wallet-network-warning">⚠ Wrong network</span><small>Switch to ${esc(proofNetworkDisplayName(proof.envelope.networkKey))} (${esc(proof.envelope.chainId)}) in your wallet.</small>` : `<span class="v4-wallet-network-name">${esc(proofNetworkDisplayName(proof.envelope.networkKey))}</span>`}</div>`
+      : `<p><b>Wallet boundary:</b> ${esc(walletUi.description)}</p>`;
+    const choosingWallet = proof.walletChoices.length > 1;
+    if (choosingWallet && !walletDialog.open) {
+      byId('v4-proof-wallet-choices').innerHTML = walletChoicesTemplate(proof.walletChoices);
+      for (const icon of byId('v4-proof-wallet-choices').querySelectorAll('[data-v4-wallet-icon]')) icon.addEventListener('error', () => icon.remove(), { once: true });
+      walletDialog.showModal();
+      byId('v4-proof-wallet-choices').querySelector('[data-v4-wallet-choice]')?.focus();
+    } else if (!choosingWallet && walletDialog.open) walletDialog.close();
+    if (choosingWallet) {
+      for (const card of byId('v4-proof-wallet-choices').querySelectorAll('[data-v4-wallet-choice]')) {
+        const selected = proof.walletConnecting && Number(card.dataset.v4WalletChoice) === proof.walletSelectedIndex;
+        card.disabled = Boolean(selected);
+        card.classList.toggle('is-connecting', Boolean(selected));
+        card.querySelector('[data-v4-wallet-state]').textContent = selected ? 'Waiting for wallet…' : 'Ready to connect';
+      }
+      byId('v4-wallet-dialog-close').disabled = proof.walletConnecting;
+      byId('v4-wallet-dialog-cancel').disabled = proof.walletConnecting;
+      const modalStatus = byId('v4-wallet-dialog-status');
+      modalStatus.hidden = !proof.walletConnecting && !proof.walletNotice;
+      modalStatus.textContent = proof.walletConnecting ? 'Finish or reject the current wallet request before choosing another.' : proof.walletNotice ?? '';
+      if (proof.walletConnecting && proof.walletSelectedIndex !== null && !walletDialog.contains(document.activeElement)) modalStatus.focus();
+    }
+    byId('v4-proof-inspect-wallet').textContent = choosingWallet ? 'Choose wallet' : walletUi.label;
     byId('v4-proof-inspect-wallet').title = walletUi.description;
     byId('v4-proof-inspect-wallet').dataset.state = walletUi.state;
-    byId('v4-proof-inspect-wallet').disabled = walletUi.disabled;
+    byId('v4-proof-inspect-wallet').disabled = choosingWallet || walletUi.disabled;
     const acknowledged = proof.envelope.complete || byId('v4-proof-ack').checked;
-    byId('v4-proof-preflight').disabled = !(wallet.connected && acknowledged);
+    byId('v4-proof-preflight').disabled = walletUi.state === 'network-unavailable' || !(wallet.connected && acknowledged);
+    const proofNetwork = resolveWebNetworkConfig(proof.envelope.networkKey);
     const statusMessages = {
       'already-published': 'An identical publisher-scoped proof already exists; no new transaction was prepared.',
       'ready-to-publish': 'Preflight passed. Review the transaction and use the separate Publish Proof action.',
       confirmed: 'The receipt and Registry V2 publication event were verified.',
       reverted: 'The registry transaction reverted; the proof was not confirmed.',
       'receipt-invalid': 'The receipt failed verification; the proof was not confirmed.',
-      'wrong-network': 'The connected wallet is not on the trusted Arc Testnet chain.',
-      'wallet-not-connected': 'No previously authorized wallet account is available.',
+      'wrong-network': `The connected wallet is not on the trusted ${proofNetworkDisplayName(proofNetwork)} chain.`,
+      'wallet-not-connected': 'No wallet account is connected. Use Connect Wallet or Retry wallet connection.',
+      'wallet-choose': 'Choose one discovered wallet in the dialog. No account request has been made.',
       'preflight-checking': 'Running deterministic proof preflight checks…',
       'preflight-failed': 'Proof preflight failed closed; no transaction request was released.',
       reconciling: 'Verifying the existing transaction, receipt, event and live duplicate registry state…',
       'user-rejected': 'The wallet request was rejected; the proof was not published.',
       cancelled: 'Publication was cancelled.',
       timeout: 'The transaction remains pending beyond the bounded verification window.',
+      'wallet-request-pending': 'A wallet request was prepared but the provider call has not started. A stale pre-provider attempt can be recovered safely.',
+      'reconciliation-required': 'A wallet send attempt may still be pending. Do not retry; reconcile the wallet or transaction hash first.',
       pending: 'The transaction is pending bounded receipt verification.',
       'report-hash-mismatch': 'The transaction is valid, but it publishes a different report hash. The current proof remains unpublished.',
     };
     const fallback = proof.envelope.complete ? 'Verified proof envelope ready for read-only wallet inspection.' : 'Verified incomplete report. Disclosure acknowledgement is required before preflight.';
     const published = ['existing-proof-verified', 'new-transaction-reconciled'].includes(proof.completionState) && proof.identityVerified === true && ['confirmed', 'already-published'].includes(proof.status) && proof.receipt?.status === 'confirmed';
     const existingProofVerified = published && proof.completionState === 'existing-proof-verified';
-    const receiptCard = published ? `<div class="v4-proof-confirmed"><div class="v4-proof-confirmed-title"><span aria-hidden="true">✓</span><div><b>${existingProofVerified ? 'Existing Arc Testnet proof verified' : 'Verified on Arc Testnet'}</b><small>${existingProofVerified ? 'No new transaction required' : 'Receipt and Registry V2 event verified'}</small></div></div><dl class="v4-proof-grid"><div><dt>Transaction</dt><dd><code>${esc(shortAddress(proof.receipt.transactionHash))}</code></dd></div><div><dt>Block</dt><dd>${esc(proof.receipt.blockNumber)}</dd></div><div><dt>Publisher</dt><dd><code>${esc(shortAddress(proof.receipt.publisher))}</code> · verified</dd></div><div><dt>Report hash</dt><dd><code>${esc(shortAddress(proof.receipt.reportHash))}</code> · matched</dd></div><div><dt>Duplicate protection</dt><dd>active</dd></div></dl>${renderProofExplorerLink(proof.receipt)}</div>` : '';
+    const networkConfirmation = `Verified on ${proofNetworkDisplayName(proofNetwork)}`;
+    const receiptCard = published ? `<div class="v4-proof-confirmed"><div class="v4-proof-confirmed-title"><span aria-hidden="true">✓</span><div><b>${existingProofVerified ? `Existing ${esc(proofNetwork.chainName)} proof verified` : esc(networkConfirmation)}</b><small>${existingProofVerified ? 'No new transaction required' : 'Receipt and Registry V2 event verified'}</small></div></div><dl class="v4-proof-grid"><div><dt>Transaction</dt><dd><code>${esc(shortAddress(proof.receipt.transactionHash))}</code></dd></div><div><dt>Block</dt><dd>${esc(proof.receipt.blockNumber)}</dd></div><div><dt>Publisher</dt><dd><code>${esc(shortAddress(proof.receipt.publisher))}</code> · verified</dd></div><div><dt>Report hash</dt><dd><code>${esc(shortAddress(proof.receipt.reportHash))}</code> · matched</dd></div><div><dt>Duplicate protection</dt><dd>active</dd></div></dl>${renderProofExplorerLink(proof.receipt)}</div>` : '';
     byId('v4-proof-status').innerHTML = `<p>${esc(statusMessages[proof.status] ?? fallback)}</p>${receiptCard || renderProofExplorerLink(proof.receipt ?? proof.preflight?.transactionIdentity)}`;
     byId('v4-proof-state').classList.toggle('confirmed', published);
     byId('v4-proof-workflow').hidden = false; if (published) byId('v4-proof-workflow').open = true;
@@ -417,18 +678,18 @@ export async function initV4Ui(options = {}) {
     byId('v4-proof-checks').hidden = !combinedChecks; byId('v4-proof-checks').innerHTML = combinedChecks ? renderPreflightChecks(combinedChecks) : '';
     const baseSummary = proof.preflight?.transactionSummary;
     const calldata = proof.preflight?.transactionRequest?.data;
-    const summary = baseSummary ? { ...baseSummary, networkName: proof.networkPreflight?.networkName, registryContractVersion: proof.envelope.registryContractVersion, gasEstimateStatus: proof.networkPreflight?.gasEstimateStatus ?? baseSummary.gasEstimateStatus, gasEstimate: proof.networkPreflight?.gasEstimate, calldataPreview: calldata ? `${calldata.slice(0, 18)}…${calldata.slice(-10)}` : null, calldataDigest: proof.networkPreflight?.calldataDigest, duplicate: proof.networkPreflight?.duplicate, explorerExpectation: proof.networkPreflight?.explorerExpectation, envelopeVersion: proof.envelope.envelopeVersion, schemaVersion: proof.envelope.reportSchemaVersion, hashPayloadVersion: proof.envelope.reportHashPayloadVersion, complete: proof.envelope.complete, incompleteReasonCodes: proof.envelope.incompleteReasonCodes } : null;
+    const summary = baseSummary ? { ...baseSummary, networkName: proof.networkPreflight?.networkName, registryContractVersion: proof.envelope.registryContractVersion, gasEstimateStatus: proof.networkPreflight?.gasEstimateStatus ?? baseSummary.gasEstimateStatus, gasEstimate: proof.networkPreflight?.gasEstimate, gasPrice: proof.networkPreflight?.gasPrice, estimatedFeeBaseUnits: proof.networkPreflight?.estimatedFeeBaseUnits, estimatedFee: proof.networkPreflight?.estimatedFee, calldataPreview: calldata ? `${calldata.slice(0, 18)}…${calldata.slice(-10)}` : null, calldataDigest: proof.networkPreflight?.calldataDigest, duplicate: proof.networkPreflight?.duplicate, explorerExpectation: proof.networkPreflight?.explorerExpectation, envelopeVersion: proof.envelope.envelopeVersion, schemaVersion: proof.envelope.reportSchemaVersion, hashPayloadVersion: proof.envelope.reportHashPayloadVersion, complete: proof.envelope.complete, incompleteReasonCodes: proof.envelope.incompleteReasonCodes } : null;
     byId('v4-proof-transaction').hidden = !summary || existingProofVerified; byId('v4-proof-transaction').open = Boolean(summary && proof.status === 'ready-to-publish'); byId('v4-proof-transaction-summary').innerHTML = renderTransactionSummary(summary);
     byId('v4-proof-review-acknowledgement').hidden = published || proof.networkPreflight?.passed !== true;
     byId('v4-proof-send').textContent = existingProofVerified ? 'Already published' : 'Publish Proof';
-    byId('v4-proof-send').disabled = !(WEB_PROOF_USER_APPROVED_SEND_ENABLED && proof.review?.reviewReady === true && proof.networkPreflight?.duplicate !== true && proof.status === 'ready-to-publish');
+    byId('v4-proof-send').disabled = Boolean(proof.sendAttempt) || !(proof.review?.sendEnabled === true && proof.networkPreflight?.duplicate !== true && proof.status === 'ready-to-publish');
     const existingVerification = proof.existingVerification ?? { status: 'idle', message: '', identity: null };
     const reconcileLabels = { idle: 'Verify existing transaction', verifying: 'Verifying…', verified: 'Existing transaction verified', 'report-hash-mismatch': 'Transaction report mismatch', error: 'Retry verification', 'invalid-input': 'Verify existing transaction' };
     byId('v4-proof-reconcile').textContent = reconcileLabels[existingVerification.status] ?? reconcileLabels.idle;
-    byId('v4-proof-reconcile').disabled = ['verifying', 'verified'].includes(existingVerification.status) || proof.status === 'pending';
+    byId('v4-proof-reconcile').disabled = ['verifying', 'verified'].includes(existingVerification.status);
     const reconcileStatus = byId('v4-proof-reconcile-status');
     reconcileStatus.hidden = existingVerification.status === 'idle';
-    reconcileStatus.innerHTML = renderExistingTransactionVerification(existingVerification);
+    reconcileStatus.innerHTML = renderExistingTransactionVerification(existingVerification, proof.envelope.networkKey);
     if (proof.receipt?.transactionHash) byId('v4-proof-reconcile-hash').value = proof.receipt.transactionHash;
     renderWorkflow();
   };
@@ -439,42 +700,127 @@ export async function initV4Ui(options = {}) {
     state.proof.preflight = null; state.proof.review = null; state.proof.receipt = null; state.proof.identityVerified = false; state.proof.completionState = null; state.proof.status = reason === 'chain-changed' ? 'wrong-network' : 'preflight-failed';
     byId('v4-proof-review-ack').checked = false; renderProof();
   };
+  const recoverPersistedSendAttempt = async (attempt) => {
+    if (!attempt) return null;
+    const coordinator = options.proofSendCoordinator ?? createBrowserProofSendCoordinator({ storage });
+    const recovery = await coordinator.recoverAfterReload(attempt.intentId);
+    if (recovery.action === 'retryable') {
+      await saveWebProofState(storage, { envelope: state.proof.envelope, status: 'ready' });
+      return null;
+    }
+    if (!recovery.record) return attempt;
+    const status = recovery.action === 'reconcile-known-transaction' ? 'pending'
+      : recovery.action === 'reconciliation-required' ? 'reconciliation-required'
+        : attempt.status;
+    const normalized = {
+      ...attempt,
+      publicationState: recovery.record.state,
+      status,
+      transactionHash: recovery.record.transactionHash,
+      explorerUrl: recovery.record.transactionHash ? `${resolveWebNetworkConfig(state.proof.envelope.networkKey).explorerBaseUrl}/tx/${recovery.record.transactionHash}` : null,
+    };
+    if (status === 'pending' || status === 'reconciliation-required') {
+      await saveWebProofState(storage, {
+        envelope: state.proof.envelope,
+        preflight: attempt.preflight,
+        status,
+        intentId: attempt.intentId,
+        publicationState: recovery.record.state,
+        transactionHash: recovery.record.transactionHash,
+        transactionSource: 'wallet-submission',
+      });
+    }
+    return normalized;
+  };
   const initializeProof = async (expectedRunId = null) => {
     if (expectedRunId != null && expectedRunId !== state.runId) return;
     try {
-      const envelope = await createWebProofEnvelope(state.verification);
+      const createProofEnvelope = options.createProofEnvelope ?? createWebProofEnvelope;
+      const envelope = await createProofEnvelope(state.verification, { networkKey: proofNetworkKey });
       if (expectedRunId != null && expectedRunId !== state.runId) return;
       state.proof.envelope = envelope;
+      state.proof.walletChoices = [];
       state.proof.verificationRequestId += 1; state.proof.existingVerification = { status: 'idle', message: '', identity: null };
-      state.proof.preflight = null; state.proof.networkPreflight = null; state.proof.review = null; state.proof.receipt = null; state.proof.identityVerified = false; state.proof.completionState = null;
+      state.proof.preflight = null; state.proof.networkPreflight = null; state.proof.review = null; state.proof.receipt = null; state.proof.sendAttempt = null; state.proof.identityVerified = false; state.proof.completionState = null;
       state.proof.status = state.proof.envelope.complete ? 'ready' : 'incomplete-warning';
-    } catch { state.proof = { ...state.proof, envelope: null, preflight: null, receipt: null, identityVerified: false, status: 'report-unverified' }; }
-    renderProof();
-    await inspectProofWallet(null, expectedRunId);
+      transitionV4Lifecycle(state, 'proof-ready');
+      renderProof();
+      return Object.freeze({ ok: true, failure: null });
+    } catch (error) {
+      if (expectedRunId != null && expectedRunId !== state.runId) return;
+      const failure = safeV4LifecycleFailure(error, 'proof-initialization', 'WEB_V4_PROOF_UNAVAILABLE');
+      transitionV4Lifecycle(state, 'proof-failed', { failure });
+      renderProof();
+      return Object.freeze({ ok: false, failure });
+    }
   };
-  const inspectProofWallet = async (event = null, expectedRunId = null) => {
+  const inspectProofWallet = async (event = null, expectedRunId = null, selectedChoiceIndex = null) => {
     if (expectedRunId != null && expectedRunId !== state.runId) return state.proof.wallet;
-    const provider = options.proofProvider ?? globalThis.ethereum;
+    if (!state.proof.envelope) return state.proof.wallet;
     if (event && state.proof.wallet.connected && state.proof.wallet.chainId === state.proof.envelope.chainId) return state.proof.wallet;
+    let provider = state.proof.provider ?? (Object.hasOwn(options, 'proofProvider') ? options.proofProvider : null);
     if (event) {
-      state.proof.walletConnecting = true; state.proof.walletError = null; renderProof();
-      try { await connectWalletOnUserGesture(provider, { userGesture: event.type === 'click' && event.isTrusted === true }); }
-      catch (error) { state.proof.walletConnecting = false; state.proof.walletError = v4ErrorMessage(error); state.proof.status = 'wallet-not-connected'; renderProof(); return state.proof.wallet; }
+      const envelope = state.proof.envelope;
+      const previousChoices = state.proof.walletChoices;
+      if (state.proof.walletConnecting) return state.proof.wallet;
+      state.proof.walletConnecting = true; state.proof.walletSelectedIndex = selectedChoiceIndex; state.proof.walletNotice = null; state.proof.walletError = null; renderProof();
+      try {
+        if (event.type !== 'click' || event.isTrusted !== true) throw webV4Error('WEB_V4_USER_GESTURE_REQUIRED', 'Wallet connection requires a trusted user click.');
+        let choice;
+        if (selectedChoiceIndex === null) {
+          const choices = await discoverProofWalletChoices({
+            scope: options.walletScope ?? globalThis,
+            waitMs: options.walletDiscoveryWaitMs ?? 80,
+            fallbackProvider: Object.hasOwn(options, 'proofProvider') ? options.proofProvider : null,
+          });
+          if (state.proof.envelope !== envelope || (expectedRunId != null && expectedRunId !== state.runId)) return state.proof.wallet;
+          if (choices.length > 1) {
+            state.proof.walletChoices = choices; state.proof.walletConnecting = false; state.proof.walletSelectedIndex = null; state.proof.status = 'wallet-choose'; renderProof();
+            return state.proof.wallet;
+          }
+          choice = choices[0] ?? null;
+        } else {
+          if (!Number.isSafeInteger(selectedChoiceIndex) || selectedChoiceIndex < 0 || selectedChoiceIndex >= previousChoices.length) throw webV4Error('WEB_V4_PROVIDER_UNAVAILABLE', 'The selected wallet is no longer available.');
+          choice = previousChoices[selectedChoiceIndex];
+        }
+        const result = await connectProofWalletChoiceFromUserClick(event, choice, { onProvider(discovered) { state.proof.provider = discovered; } });
+        if (state.proof.envelope !== envelope || (expectedRunId != null && expectedRunId !== state.runId)) return state.proof.wallet;
+        provider = result.provider;
+        state.proof.walletChoices = []; state.proof.walletSelectedIndex = null;
+      }
+      catch (error) {
+        if (state.proof.envelope !== envelope) return state.proof.wallet;
+        const cancelledInChooser = selectedChoiceIndex !== null && error?.code === 'WEB_V4_USER_REJECTED';
+        state.proof.walletChoices = cancelledInChooser ? previousChoices : [];
+        state.proof.walletSelectedIndex = null; state.proof.walletConnecting = false;
+        state.proof.walletNotice = cancelledInChooser ? 'Connection cancelled. Choose a wallet to retry.' : null;
+        state.proof.walletError = cancelledInChooser ? null : uiErrorMessage(error);
+        state.proof.status = cancelledInChooser ? 'wallet-choose' : 'wallet-not-connected';
+        renderProof(); return state.proof.wallet;
+      }
     }
     if (expectedRunId != null && expectedRunId !== state.runId) return state.proof.wallet;
     const wallet = await inspectProvider(provider);
     if (expectedRunId != null && expectedRunId !== state.runId) return state.proof.wallet;
     state.proof.provider = provider ?? null;
-    state.proof.wallet = wallet; state.proof.walletConnecting = false; state.proof.walletError = wallet.errorCode ? 'The wallet state could not be read safely.' : null;
+    state.proof.wallet = wallet; state.proof.walletConnecting = false; state.proof.walletSelectedIndex = null; state.proof.walletError = wallet.errorCode ? 'The wallet state could not be read safely.' : null;
     state.proof.status = !state.proof.wallet.providerAvailable ? 'wallet-not-connected' : !state.proof.wallet.connected ? 'wallet-not-connected' : state.proof.wallet.chainId !== state.proof.envelope.chainId ? 'wrong-network' : state.proof.envelope.complete ? 'ready' : 'incomplete-warning';
     if (state.proof.wallet.connected && state.proof.wallet.chainId === state.proof.envelope.chainId) {
       try {
+        let attempt = await loadWebProofSendAttempt(storage, state.proof.envelope);
+        attempt = await recoverPersistedSendAttempt(attempt);
+        if (attempt) {
+          state.proof.sendAttempt = { intentId: attempt.intentId, state: attempt.publicationState, status: attempt.status, transactionHash: attempt.transactionHash };
+          state.proof.status = attempt.status;
+          if (attempt.transactionHash) state.proof.receipt = { transactionHash: attempt.transactionHash, networkKey: state.proof.envelope.networkKey, explorerUrl: attempt.explorerUrl };
+        }
         const stored = await loadVerifiedWebProofPublication(storage, state.proof.envelope, state.proof.wallet.account);
         if (expectedRunId != null && expectedRunId !== state.runId) return state.proof.wallet;
         if (stored) {
           const result = await reconcileVerifiedProofPublication({ provider, transactionHash: stored.transactionHash, envelope: state.proof.envelope, verification: state.verification, walletState: state.proof.wallet, disclosureAcknowledged: byId('v4-proof-ack').checked, receiptTimeoutMs: options.proofReceiptTimeoutMs ?? 120_000, pollIntervalMs: options.proofReceiptPollMs ?? 1_000, rpcTimeoutMs: options.proofRpcTimeoutMs ?? 5_000 });
           if (expectedRunId != null && expectedRunId !== state.runId) return state.proof.wallet;
           state.proof.receipt = result.receipt; state.proof.preflight = result.preflight; state.proof.networkPreflight = result.networkPreflight; state.proof.identityVerified = true; state.proof.completionState = 'existing-proof-verified'; state.proof.status = 'already-published'; state.proof.existingVerification = { status: 'verified', message: 'Existing transaction verified.', identity: result.receipt };
+          state.proof.sendAttempt = null;
         }
       } catch { /* Legacy, mock, corrupt or stale identities are never restored as confirmed. */ }
     }
@@ -489,13 +835,16 @@ export async function initV4Ui(options = {}) {
   const runProofPreflight = async () => {
     state.proof.status = 'preflight-checking'; renderProof();
     try {
+      let unresolvedAttempt = await loadWebProofSendAttempt(storage, state.proof.envelope);
+      unresolvedAttempt = await recoverPersistedSendAttempt(unresolvedAttempt);
+      if (unresolvedAttempt) throw Object.assign(new Error('reconciliation required'), { code: unresolvedAttempt.publicationState === PROOF_SEND_STATES.WALLET_REQUEST_PENDING ? 'WEB_V4_SEND_IN_FLIGHT' : 'WEB_V4_RECONCILIATION_REQUIRED' });
       const lookup = typeof options.proofRecordLookup === 'function' ? await options.proofRecordLookup(state.proof.envelope, state.proof.wallet) : null;
       let stored = null;
       try { stored = await loadVerifiedWebProofPublication(storage, state.proof.envelope, state.proof.wallet.account); } catch { /* stale identity is ignored, never trusted */ }
       state.proof.preflight = await prepareWebRegistryPublish({ verification: state.verification, envelope: state.proof.envelope, walletState: state.proof.wallet, disclosureAcknowledged: byId('v4-proof-ack').checked });
       state.proof.networkPreflight = null; state.proof.review = null; state.proof.receipt = null; state.proof.identityVerified = false; state.proof.completionState = null;
       if (state.proof.preflight.status === 'ready-to-publish') {
-        state.proof.networkPreflight = await preflightArcTestnetProvider({ provider: state.proof.provider, envelope: state.proof.envelope, transactionRequest: state.proof.preflight.transactionRequest, payload: state.proof.preflight.payload, timeoutMs: options.proofRpcTimeoutMs ?? 5_000 });
+        state.proof.networkPreflight = await preflightProofNetworkProvider({ provider: state.proof.provider, envelope: state.proof.envelope, transactionRequest: state.proof.preflight.transactionRequest, payload: state.proof.preflight.payload, timeoutMs: options.proofRpcTimeoutMs ?? 5_000 });
       }
       if (state.proof.networkPreflight?.duplicate === true) {
         const identity = stored?.receiptSummary ?? lookup?.transactionIdentity ?? null;
@@ -507,7 +856,7 @@ export async function initV4Ui(options = {}) {
         state.proof.status = state.proof.networkPreflight && !state.proof.networkPreflight.passed ? state.proof.networkPreflight.status : state.proof.preflight.status;
         await saveWebProofState(storage, { envelope: state.proof.envelope, preflight: state.proof.preflight, status: state.proof.status });
       }
-    } catch (error) { state.proof.identityVerified = false; state.proof.completionState = null; state.proof.status = 'preflight-failed'; state.proof.preflight = { status: 'preflight-failed', checks: [], blockingReasons: [error?.code ?? 'WEB_V4_PROOF_PREFLIGHT_FAILED'], warnings: [], transactionRequest: null }; }
+    } catch (error) { state.proof.identityVerified = false; state.proof.completionState = null; state.proof.status = error?.code === 'WEB_V4_RECONCILIATION_REQUIRED' ? 'reconciliation-required' : error?.code === 'WEB_V4_SEND_IN_FLIGHT' ? 'wallet-request-pending' : 'preflight-failed'; state.proof.preflight = { status: 'preflight-failed', checks: [], blockingReasons: [error?.code ?? 'WEB_V4_PROOF_PREFLIGHT_FAILED'], warnings: [], transactionRequest: null }; }
     renderProof(); return state.proof.preflight;
   };
   const reviewProofPublication = async () => {
@@ -529,7 +878,7 @@ export async function initV4Ui(options = {}) {
       if (requestId !== state.proof.verificationRequestId) return null;
       if (!inspection.match) {
         state.proof.status = 'report-hash-mismatch';
-        state.proof.existingVerification = { status: 'report-hash-mismatch', message: 'This valid Arc Testnet transaction publishes a different report. The current proof is not complete.', identity: inspection.identity };
+        state.proof.existingVerification = { status: 'report-hash-mismatch', message: `This valid ${proofNetworkDisplayName(state.proof.envelope)} transaction publishes a different report. The current proof is not complete.`, identity: inspection.identity };
         renderProof(); return inspection;
       }
       const result = await reconcileVerifiedProofPublication({ provider: state.proof.provider, transactionHash, envelope: state.proof.envelope, verification: state.verification, walletState: state.proof.wallet, disclosureAcknowledged: byId('v4-proof-ack').checked, receiptTimeoutMs: options.proofReceiptTimeoutMs ?? 120_000, pollIntervalMs: options.proofReceiptPollMs ?? 1_000, rpcTimeoutMs: options.proofRpcTimeoutMs ?? 5_000 });
@@ -543,7 +892,7 @@ export async function initV4Ui(options = {}) {
       if (requestId !== state.proof.verificationRequestId) return null;
       state.proof.identityVerified = false; state.proof.completionState = null; state.proof.receipt = null;
       state.proof.status = error?.code === 'WEB_V4_WRONG_NETWORK' ? 'wrong-network' : error?.code === 'WEB_V4_RECEIPT_REVERTED' ? 'reverted' : 'receipt-invalid';
-      state.proof.existingVerification = { status: 'error', message: v4ErrorMessage(error), identity: null };
+      state.proof.existingVerification = { status: 'error', message: uiErrorMessage(error), identity: null };
       renderProof(); return null;
     }
   };
@@ -551,20 +900,44 @@ export async function initV4Ui(options = {}) {
     state.proof.status = 'reconciling'; state.proof.review = null; state.proof.completionState = null; renderProof();
     try {
       const result = await reconcileVerifiedProofPublication({ provider: state.proof.provider, transactionHash, envelope: state.proof.envelope, verification: state.verification, walletState: state.proof.wallet, disclosureAcknowledged: byId('v4-proof-ack').checked, receiptTimeoutMs: options.proofReceiptTimeoutMs ?? 120_000, pollIntervalMs: options.proofReceiptPollMs ?? 1_000, rpcTimeoutMs: options.proofRpcTimeoutMs ?? 5_000 });
+      const coordinatedAttempt = state.proof.sendAttempt;
       state.proof.receipt = result.receipt; state.proof.preflight = result.preflight; state.proof.networkPreflight = result.networkPreflight; state.proof.identityVerified = true; state.proof.completionState = completionState; state.proof.status = 'already-published';
+      if (coordinatedAttempt?.intentId) {
+        try { await (options.proofSendCoordinator ?? createBrowserProofSendCoordinator({ storage })).confirm(coordinatedAttempt.intentId, result.receipt.transactionHash); } catch { /* verified persistence remains authoritative and the send lock stays fail-closed */ }
+      }
+      state.proof.sendAttempt = null;
       await saveWebProofState(storage, { envelope: state.proof.envelope, preflight: result.preflight, status: 'already-published', transactionHash: result.receipt.transactionHash, transactionSource: 'provider-verified', receiptSummary: result.receipt });
     } catch (error) { state.proof.identityVerified = false; state.proof.completionState = null; state.proof.status = error?.code === 'WEB_V4_RECEIPT_REVERTED' ? 'reverted' : error?.code === 'WEB_V4_WRONG_NETWORK' ? 'wrong-network' : 'receipt-invalid'; }
     renderProof(); return state.proof.receipt;
   };
   const publishProof = async (event) => {
     try {
-      const pending = await submitUserApprovedProofTransaction({ provider: state.proof.provider, event, envelope: state.proof.envelope, verification: state.verification, preflight: state.proof.preflight, networkPreflight: state.proof.networkPreflight, review: state.proof.review, currentStateBindingDigest: state.proof.networkPreflight?.stateBindingDigest, timeoutMs: options.proofSendTimeoutMs ?? 30_000, revalidationTimeoutMs: options.proofRpcTimeoutMs ?? 5_000 });
+      const onAttemptState = async (attempt) => {
+        if (state.proof.identityVerified) return;
+        state.proof.sendAttempt = attempt.status === 'released' ? null : attempt;
+        if (attempt.status === 'released') {
+          state.proof.status = 'ready-to-publish';
+          await saveWebProofState(storage, { envelope: state.proof.envelope, preflight: state.proof.preflight, status: 'ready-to-publish' });
+        } else if (attempt.status === 'pending') {
+          state.proof.status = 'pending';
+          state.proof.receipt = { transactionHash: attempt.transactionHash, networkKey: state.proof.envelope.networkKey, explorerUrl: `${resolveWebNetworkConfig(state.proof.envelope.networkKey).explorerBaseUrl}/tx/${attempt.transactionHash}` };
+          await saveWebProofState(storage, { envelope: state.proof.envelope, preflight: state.proof.preflight, status: 'pending', intentId: attempt.intentId, publicationState: attempt.state, transactionHash: attempt.transactionHash, transactionSource: 'wallet-submission' });
+        } else if (attempt.status === 'wallet-request-pending') {
+          state.proof.status = 'wallet-request-pending';
+          await saveWebProofState(storage, { envelope: state.proof.envelope, preflight: state.proof.preflight, status: 'wallet-request-pending', intentId: attempt.intentId, publicationState: attempt.state, transactionSource: 'wallet-submission' });
+        } else if (attempt.status === 'reconciliation-required') {
+          state.proof.status = 'reconciliation-required';
+          await saveWebProofState(storage, { envelope: state.proof.envelope, preflight: state.proof.preflight, status: 'reconciliation-required', intentId: attempt.intentId, publicationState: attempt.state, transactionHash: attempt.transactionHash, transactionSource: 'wallet-submission' });
+        }
+        renderProof();
+      };
+      const pending = await submitUserApprovedProofTransaction({ provider: state.proof.provider, event, envelope: state.proof.envelope, verification: state.verification, preflight: state.proof.preflight, networkPreflight: state.proof.networkPreflight, review: state.proof.review, currentStateBindingDigest: state.proof.networkPreflight?.stateBindingDigest, priorAttempt: state.proof.sendAttempt, sendCoordinator: options.proofSendCoordinator, onAttemptState, timeoutMs: options.proofSendTimeoutMs ?? 30_000, revalidationTimeoutMs: options.proofRpcTimeoutMs ?? 5_000 });
       state.proof.status = 'pending'; state.proof.receipt = pending; state.proof.identityVerified = false; state.proof.completionState = null;
-      await saveWebProofState(storage, { envelope: state.proof.envelope, preflight: state.proof.preflight, status: 'pending', transactionHash: pending.transactionHash, transactionSource: 'wallet-submission' });
+      await saveWebProofState(storage, { envelope: state.proof.envelope, preflight: state.proof.preflight, status: 'pending', intentId: pending.intentId, transactionHash: pending.transactionHash, transactionSource: 'wallet-submission' });
       renderProof();
       return await reconcileProofTransaction(pending.transactionHash, 'new-transaction-reconciled');
     } catch (error) {
-      state.proof.identityVerified = false; state.proof.completionState = null; state.proof.status = error?.code === 'WEB_V4_USER_REJECTED' ? 'user-rejected' : error?.code === 'WEB_V4_TIMEOUT' ? 'timeout' : error?.code === 'WEB_V4_RECEIPT_REVERTED' ? 'reverted' : error?.code === 'WEB_V4_ABORTED' ? 'cancelled' : 'receipt-invalid';
+      state.proof.identityVerified = false; state.proof.completionState = null; state.proof.status = error?.code === 'WEB_V4_USER_REJECTED' ? 'user-rejected' : ['WEB_V4_SEND_IN_FLIGHT', 'WEB_V4_RECONCILIATION_REQUIRED'].includes(error?.code) ? 'reconciliation-required' : error?.code === 'WEB_V4_TIMEOUT' ? 'timeout' : error?.code === 'WEB_V4_RECEIPT_REVERTED' ? 'reverted' : error?.code === 'WEB_V4_ABORTED' ? 'cancelled' : 'receipt-invalid';
     }
     renderProof(); return state.proof.receipt;
   };
@@ -597,20 +970,43 @@ export async function initV4Ui(options = {}) {
     const legacy = readV3Storage(storage);
     byId('v3-history').innerHTML = Array.isArray(legacy) && legacy.length ? `<p>${legacy.length} read-only V3 entr${legacy.length === 1 ? 'y' : 'ies'} retained. They are not converted to V4.</p>` : '<p>No V3 history found.</p>';
   };
-  const acceptFiles = (files) => {
-    state.restoredReport = false; state.sessionReset = false;
-    state.files = selectSupportedBrowserFiles(files);
-    state.bytes = state.files.reduce((total, file) => total + file.size, 0);
-    const paths = state.files.map((file) => file.webkitRelativePath || file.relativePath || file.name);
-    const folded = new Set(); const collision = paths.some((path) => { const key = path.toLowerCase(); if (folded.has(key)) return true; folded.add(key); return false; });
-    state.inputError = collision ? 'Duplicate or case-folding-colliding source paths are not accepted.' : state.files.length > WEB_V4_LIMITS.maxFileCount || state.bytes > WEB_V4_LIMITS.maxProjectBytes || state.files.some((file) => file.size > WEB_V4_LIMITS.maxPerFileBytes) ? 'The selected files exceed the browser safety limit.' : null;
-    renderFiles();
-    if (state.inputError) setStatus('Input rejected', state.inputError, 'error');
-  };
   const clearRenderedReport = () => {
     byId('v4-summary').hidden = true; byId('v4-summary').replaceChildren();
     byId('v4-controls').hidden = true; byId('v4-findings').replaceChildren();
     byId('v4-export').hidden = true;
+  };
+  const invalidateCurrentReportForFileChange = () => {
+    state.runId += 1;
+    const client = state.client;
+    if (client) { client.abort(); if (!client.disposed) client.dispose(); }
+    state.client = null;
+    if (state.proof.provider) disposeProviderListeners(state.proof.provider);
+    transitionV4Lifecycle(state, 'files-changed', { analysis: { state: 'ready', phase: null, message: 'Project files changed. Run a new local scan.' } });
+    clearRenderedReport();
+    if (byId('v4-detail').open) byId('v4-detail').close();
+    byId('v4-progress').value = 0;
+    byId('v4-progress-label').textContent = 'Project files changed. Run a new scan.';
+    renderProof(); updateWorkflow(); setBusy(false);
+  };
+  const acceptFiles = (files, { merge = true } = {}) => {
+    const incoming = [...(files ?? [])];
+    const folderDrop = incoming.some((file) => file?.webkitRelativePath || file?.relativePath);
+    const selected = merge && !folderDrop ? mergeSupportedBrowserFiles(state.files, incoming) : selectSupportedBrowserFiles(incoming);
+    const bytes = selected.reduce((total, file) => total + Number(file?.size ?? 0), 0);
+    const paths = selected.map((file) => canonicalSourcePath(file.webkitRelativePath || file.relativePath || file.name));
+    const folderPaths = selected.filter((file) => file.webkitRelativePath || file.relativePath);
+    const invalidFolderSet = folderPaths.length > 0 && (folderPaths.length !== selected.length || new Set(folderPaths.map((file) => canonicalSourcePath(file.webkitRelativePath || file.relativePath).split('/')[0].toLowerCase())).size !== 1 || paths.some((path) => !path.includes('/')));
+    const folded = new Set();
+    const collision = paths.some((path) => { const key = String(path).toLowerCase(); if (folded.has(key)) return true; folded.add(key); return false; });
+    const inputError = !selected.length ? 'Choose at least one supported Solidity source.' : invalidFolderSet ? 'Folder sources must have one consistent project root.' : collision ? 'Duplicate or case-folding-colliding source paths are not accepted.' : selected.length > WEB_V4_LIMITS.maxFileCount || bytes > WEB_V4_LIMITS.maxProjectBytes || selected.some((file) => file.size > WEB_V4_LIMITS.maxPerFileBytes) ? 'The selected files exceed the browser safety limit.' : null;
+    if (inputError) { setStatus('Input rejected', inputError, 'error'); return false; }
+    state.files = selected;
+    state.bytes = bytes;
+    state.inputError = null;
+    invalidateCurrentReportForFileChange();
+    renderFiles();
+    setStatus('Project files updated', `${state.files.length} safe project file${state.files.length === 1 ? '' : 's'} selected. Run a new scan to verify this source set.`);
+    return true;
   };
   const runScan = async () => {
     if (!state.files.length) { setStatus('Solidity sources required', 'Choose one or more .sol files before scanning.', 'error'); return; }
@@ -629,27 +1025,75 @@ export async function initV4Ui(options = {}) {
     clearRenderedReport();
     state.analysis = { state: 'scanning', phase: 'Compiler', message: 'Initializing the isolated compiler…' };
     updateWorkflow();
-    const client = createWorkerClient();
-    state.client = client;
+    let client = null;
     try {
-      const projectId = slug(projectName);
-      const input = await browserFilesToScanInput(state.files, { projectId, projectName, domains, compilerVersion: '0.8.24', ...(policy === undefined ? {} : { policy }) });
-      if (runId !== state.runId) return;
-      const result = await client.scan(input, { onProgress(progress) { if (runId !== state.runId) return; const value = Number(progress?.percent ?? progress?.progress ?? 0); byId('v4-progress').value = Math.max(4, Math.min(96, Number.isFinite(value) ? value : 20)); const stage = progress?.stage ?? 'scan'; const phase = v4AnalysisPhase(stage); byId('v4-progress-label').textContent = `V4 analysis: ${stage}…`; state.analysis = { state: 'scanning', phase, message: `${phase} · running locally` }; renderAnalysis(); } });
-      if (runId !== state.runId) return;
-      const verification = await verifyV4Report(result?.report ?? result);
-      if (runId !== state.runId) return;
-      const viewModel = createV4ViewModel(verification, { gate: result?.gate });
-      state.verification = verification; state.viewModel = viewModel; state.exportBundle = null; state.scanStatus = 'verified';
-      state.analysis = { state: 'verified', phase: 'Report', message: `${shortAddress(viewModel.reportHash)} · ${viewModel.findings.length} finding${viewModel.findings.length === 1 ? '' : 's'}${viewModel.analysis.complete ? '' : ' · incomplete'}` };
-      let persistenceWarning = null;
-      try { await saveV4Report(storage, verification, { viewModel }); } catch (error) { if (error?.code !== 'WEB_V4_STORAGE_QUOTA' && error?.code !== 'WEB_V4_PERSISTENCE_LIMIT') throw error; persistenceWarning = v4ErrorMessage(error); }
-      if (runId !== state.runId) return;
+      let verification;
+      let viewModel;
+      try {
+        client = createWorkerClient();
+        state.client = client;
+        const projectId = slug(projectName);
+        const input = await browserFilesToScanInput(state.files, { projectId, projectName, domains, compilerVersion: '0.8.24', ...(policy === undefined ? {} : { policy }) });
+        if (runId !== state.runId) return;
+        const result = await client.scan(input, { onProgress(progress) { if (runId !== state.runId) return; const value = Number(progress?.percent ?? progress?.progress ?? 0); byId('v4-progress').value = Math.max(4, Math.min(96, Number.isFinite(value) ? value : 20)); const stage = progress?.stage ?? 'scan'; const phase = v4AnalysisPhase(stage); byId('v4-progress-label').textContent = `V4 analysis: ${stage}…`; state.analysis = { state: 'scanning', phase, message: `${phase} · running locally` }; renderAnalysis(); } });
+        if (runId !== state.runId) return;
+        verification = await verifyV4Report(result?.report ?? result);
+        if (runId !== state.runId) return;
+        viewModel = createV4ViewModel(verification, { gate: result?.gate });
+      } catch (error) {
+        if (runId !== state.runId) return;
+        const cancelled = error?.code === 'WEB_V4_ABORTED';
+        transitionV4Lifecycle(state, 'scan-failed', {
+          cancelled,
+          analysis: { state: cancelled ? 'cancelled' : 'error', phase: null, message: cancelled ? 'No partial result was saved.' : uiErrorMessage(error) },
+        });
+        renderProof(); renderAnalysis(); byId('v4-progress').value = 0; byId('v4-progress-label').textContent = 'Scan did not produce a verified report.';
+        setStatus(cancelled ? 'Scan cancelled' : 'V4 scan blocked', uiErrorMessage(error), cancelled ? '' : 'error');
+        return;
+      }
+
+      transitionV4Lifecycle(state, 'report-verified', {
+        verification,
+        viewModel,
+        analysis: { state: 'verified', phase: 'Report', message: `${shortAddress(viewModel.reportHash)} · ${viewModel.findings.length} finding${viewModel.findings.length === 1 ? '' : 's'}${viewModel.analysis.complete ? '' : ' · incomplete'}` },
+      });
+      renderReport();
       byId('v4-progress').value = 100; byId('v4-progress-label').textContent = 'Verified V4 report ready.';
-      setStatus('Verified result ready', `${viewModel.findings.length} canonical finding${viewModel.findings.length === 1 ? '' : 's'} · ${viewModel.reportHash}${persistenceWarning ? ` · History not saved: ${persistenceWarning}` : ''}`, persistenceWarning ? 'warning' : 'success');
-      renderReport(); await initializeProof(runId); if (runId !== state.runId) return; await renderHistory(); if (runId !== state.runId) return; updateWorkflow();
-    } catch (error) { if (runId !== state.runId) return; const cancelled = error?.code === 'WEB_V4_ABORTED'; state.scanStatus = cancelled ? 'cancelled' : 'error'; state.reviewReady = false; state.verifyReady = false; state.analysis = { state: cancelled ? 'cancelled' : 'error', phase: null, message: cancelled ? 'No partial result was saved.' : v4ErrorMessage(error) }; state.proof.status = 'report-unverified'; state.proof.envelope = null; state.proof.identityVerified = false; renderProof(); renderAnalysis(); byId('v4-progress').value = 0; byId('v4-progress-label').textContent = 'Scan did not produce a verified report.'; setStatus(cancelled ? 'Scan cancelled' : 'V4 scan blocked', v4ErrorMessage(error), cancelled ? '' : 'error'); }
-    finally { client.dispose(); if (state.client === client) state.client = null; if (runId === state.runId) { setBusy(false); updateWorkflow(); } }
+      setStatus('Verified result ready', `${viewModel.findings.length} canonical finding${viewModel.findings.length === 1 ? '' : 's'} · ${viewModel.reportHash}`, 'success');
+
+      let persistenceWarning = null;
+      try { await saveV4Report(storage, verification, { viewModel }); }
+      catch (error) {
+        const failure = safeV4LifecycleFailure(error, 'report-persistence', 'WEB_V4_PERSISTENCE_INVALID');
+        transitionV4Lifecycle(state, 'history-failed', { failure });
+        persistenceWarning = ['WEB_V4_STORAGE_QUOTA', 'WEB_V4_PERSISTENCE_LIMIT'].includes(error?.code) ? uiErrorMessage(error) : `Diagnostic: ${failure.code} · stage: ${failure.stage}`;
+      }
+      if (runId !== state.runId) return;
+
+      let proofResult;
+      try { proofResult = await initializeProof(runId); }
+      catch (error) {
+        const failure = safeV4LifecycleFailure(error, 'proof-initialization', 'WEB_V4_PROOF_UNAVAILABLE');
+        transitionV4Lifecycle(state, 'proof-failed', { failure });
+        proofResult = Object.freeze({ ok: false, failure });
+        try { renderProof(); } catch { /* The verified report remains authoritative even if the isolated proof panel cannot render. */ }
+      }
+      if (runId !== state.runId) return;
+
+      let historyWarning = null;
+      try { await renderHistory(); }
+      catch (error) {
+        const failure = safeV4LifecycleFailure(error, 'history-rendering', 'WEB_V4_PERSISTENCE_INVALID');
+        transitionV4Lifecycle(state, 'history-failed', { failure });
+        historyWarning = `Diagnostic: ${failure.code} · stage: ${failure.stage}`;
+      }
+      if (runId !== state.runId) return;
+      updateWorkflow();
+      const proofWarning = proofResult?.ok === false ? `Proof unavailable: ${proofResult.failure.code} · stage: ${proofResult.failure.stage}` : null;
+      const warnings = [persistenceWarning ? `History not saved: ${persistenceWarning}` : null, historyWarning ? `History unavailable: ${historyWarning}` : null, proofWarning].filter(Boolean);
+      setStatus('Verified result ready', `${viewModel.findings.length} canonical finding${viewModel.findings.length === 1 ? '' : 's'} · ${viewModel.reportHash}${warnings.length ? ` · ${warnings.join(' · ')}` : ''}`, warnings.length ? 'warning' : 'success');
+    }
+    finally { client?.dispose(); if (state.client === client) state.client = null; if (runId === state.runId) { setBusy(false); updateWorkflow(); } }
   };
 
   const resetCurrentSession = ({ clearFiles = false, cancelled = false } = {}) => {
@@ -660,7 +1104,7 @@ export async function initV4Ui(options = {}) {
     if (state.proof.provider) disposeProviderListeners(state.proof.provider);
     state.verification = null; state.viewModel = null; state.exportBundle = null;
     state.scanStatus = cancelled ? 'cancelled' : 'idle'; state.sessionReset = true; state.restoredReport = false;
-    state.reviewReady = false; state.verifyReady = false; state.reviewedFinding = false; state.exported = false;
+    state.reviewReady = false; state.verifyReady = false; state.reviewedFinding = false; state.exported = false; state.historyFailure = null;
     state.proof = createEmptyProofState(); state.filters = { ...DEFAULT_FILTERS };
     state.analysis = cancelled ? { state: 'cancelled', phase: null, message: 'No partial result was saved. Ready to run again.' } : { state: 'ready', phase: null, message: clearFiles ? 'Select Solidity files to begin.' : 'Current session cleared. Ready to run again.' };
     if (clearFiles) { state.files = []; state.bytes = 0; state.inputError = null; byId('v4-project-name').value = 'VeilForge Web Project'; byId('v4-file-input').value = ''; byId('v4-folder-input').value = ''; }
@@ -674,14 +1118,15 @@ export async function initV4Ui(options = {}) {
     setStatus(cancelled ? 'Scan cancelled' : 'Ready for local analysis', cancelled ? 'The active scan was stopped and no partial result was applied.' : clearFiles ? 'Choose Solidity files to start a new local session.' : 'The current result was cleared. Selected Solidity files were preserved.');
   };
 
-  byId('v4-file-input').addEventListener('change', (event) => acceptFiles(event.target.files));
-  byId('v4-folder-input').addEventListener('change', (event) => acceptFiles(event.target.files));
+  const acceptPickerFiles = (event) => { acceptFiles(event.target.files, { merge: false }); event.target.value = ''; };
+  byId('v4-file-input').addEventListener('change', acceptPickerFiles);
+  byId('v4-folder-input').addEventListener('change', acceptPickerFiles);
   byId('v4-clear').addEventListener('click', () => resetCurrentSession({ clearFiles: true }));
   byId('v4-drop-zone').addEventListener('click', (event) => { if (!event.target.closest('label')) byId('v4-file-input').click(); });
   byId('v4-drop-zone').addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); byId('v4-file-input').click(); } });
   bindV4DropZone(byId('v4-drop-zone'), {
     onFiles: acceptFiles,
-    onError(error) { setStatus('Folder drop blocked', v4ErrorMessage(error), 'error'); },
+    onError(error) { setStatus('File drop blocked', v4ErrorMessage(error), 'error'); },
   });
   const configurationChanged = () => { state.restoredReport = false; state.sessionReset = false; renderWorkflow(); };
   byId('v4-project-name').addEventListener('input', configurationChanged);
@@ -691,6 +1136,43 @@ export async function initV4Ui(options = {}) {
   byId('v4-scan').addEventListener('click', runScan);
   byId('v4-cancel').addEventListener('click', () => resetCurrentSession({ cancelled: state.scanStatus === 'scanning' }));
   byId('v4-proof-inspect-wallet').addEventListener('click', inspectProofWallet);
+  const dismissWalletChooser = () => {
+    if (!walletDialog.open || state.proof.walletConnecting) return;
+    state.proof.walletChoices = [];
+    state.proof.walletSelectedIndex = null;
+    state.proof.walletNotice = null;
+    if (state.proof.status === 'wallet-choose') state.proof.status = 'wallet-not-connected';
+    walletDialog.close();
+    renderProof();
+    byId('v4-proof-inspect-wallet').focus();
+  };
+  byId('v4-wallet-dialog-close').addEventListener('click', dismissWalletChooser);
+  byId('v4-wallet-dialog-cancel').addEventListener('click', dismissWalletChooser);
+  walletDialog.addEventListener('cancel', (event) => { event.preventDefault(); dismissWalletChooser(); });
+  walletDialog.addEventListener('close', () => {
+    const trigger = byId('v4-proof-inspect-wallet');
+    if (!trigger.disabled) trigger.focus();
+    else byId('v4-proof-wallet').focus();
+  });
+  walletDialog.addEventListener('click', (event) => {
+    if (event.target !== walletDialog) return;
+    const bounds = walletDialog.getBoundingClientRect();
+    if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) dismissWalletChooser();
+  });
+  walletDialog.addEventListener('keydown', (event) => {
+    if (event.key !== 'Tab') return;
+    const focusable = [...walletDialog.querySelectorAll('button:not([disabled])')];
+    if (!focusable.length) return;
+    const first = focusable[0], last = focusable.at(-1);
+    if (!focusable.includes(document.activeElement)) { event.preventDefault(); (event.shiftKey ? last : first).focus(); return; }
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  });
+  byId('v4-proof-wallet-choices').addEventListener('click', (event) => {
+    const button = event.target.closest('[data-v4-wallet-choice]');
+    if (!button || state.proof.walletConnecting) return;
+    void inspectProofWallet(event, null, Number(button.dataset.v4WalletChoice));
+  });
   byId('v4-proof-preflight').addEventListener('click', runProofPreflight);
   byId('v4-proof-ack').addEventListener('change', renderProof);
   byId('v4-proof-review-ack').addEventListener('change', reviewProofPublication);
@@ -702,13 +1184,13 @@ export async function initV4Ui(options = {}) {
   byId('v4-detail').addEventListener('click', (event) => { if (event.target === byId('v4-detail')) byId('v4-detail').close(); });
   byId('v4-detail').addEventListener('close', () => { detailTrigger?.focus(); detailTrigger = null; });
   byId('v4-detail').addEventListener('keydown', (event) => { if (event.key !== 'Tab') return; const focusable = [...byId('v4-detail').querySelectorAll('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])')]; if (!focusable.length) return; const first = focusable[0], last = focusable.at(-1); if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); } });
-  byId('v4-export').addEventListener('click', async (event) => { const button = event.target.closest('[data-v4-export]'); if (!button || !state.verification) return; try { const bundle = state.exportBundle ?? await createV4WebExport(state.verification, state.viewModel); await verifyV4WebExport(bundle); state.exportBundle = bundle; const file = bundle.files.find((item) => item.filename === button.dataset.v4Export); if (!file) throw new Error('missing'); download(file.filename, file.bytes, file.mediaType); state.exported = true; renderWorkflow(); setStatus('Verified export ready', `${file.filename} passed digest verification before download.`, 'success'); } catch (error) { setStatus('Export blocked', v4ErrorMessage(error), 'error'); } });
+  byId('v4-export').addEventListener('click', async (event) => { const button = event.target.closest('[data-v4-export]'); if (!button || !state.verification) return; try { const bundle = state.exportBundle ?? await createV4WebExport(state.verification, state.viewModel); await verifyV4WebExport(bundle); state.exportBundle = bundle; const file = bundle.files.find((item) => item.filename === button.dataset.v4Export); if (!file) throw new Error('missing'); download(file.filename, file.bytes, file.mediaType); state.exported = true; renderWorkflow(); setStatus('Verified export ready', `${file.filename} passed digest verification before download.`, 'success'); } catch (error) { setStatus('Export blocked', uiErrorMessage(error), 'error'); } });
   byId('v4-refresh-history').addEventListener('click', renderHistory);
-  byId('v4-clear-history').addEventListener('click', async () => { try { const count = clearV4Reports(storage); await renderHistory(); setStatus('V4 history cleared', `${count} V4 entr${count === 1 ? 'y' : 'ies'} removed. Legacy V3 history was preserved.`, 'success'); } catch (error) { setStatus('History recovery blocked', `${v4ErrorMessage(error)} Diagnostic: ${error?.code ?? 'WEB_V4_STORAGE_QUOTA'}`, 'error'); } });
-  byId('v4-history').addEventListener('click', async (event) => { const button = event.target.closest('[data-v4-history]'); if (!button) return; try { const history = await listV4Reports(storage); const item = history.entries.find((entry) => entry.projectId === button.dataset.v4History); if (!item) throw Object.assign(new Error('history'), { code: 'WEB_V4_PERSISTENCE_INVALID' }); state.verification = item.verification; state.viewModel = createV4ViewModel(item.verification); state.exportBundle = null; state.sessionReset = false; state.restoredReport = true; state.scanStatus = 'verified'; state.reviewedFinding = false; state.exported = false; state.analysis = { state: 'verified', phase: 'Report', message: `${shortAddress(item.reportHash)} · ${state.viewModel.findings.length} finding${state.viewModel.findings.length === 1 ? '' : 's'}${state.viewModel.analysis.complete ? '' : ' · incomplete'}` }; renderReport(); await initializeProof(); updateWorkflow(); setBusy(false); setStatus('Verified history opened', item.reportHash, 'success'); } catch (error) { setStatus('History entry rejected', v4ErrorMessage(error), 'error'); } });
-  byId('v4-history').addEventListener('click', async (event) => { const button = event.target.closest('[data-v4-history-export]'); if (!button) return; try { const history = await listV4Reports(storage); const item = history.entries.find((entry) => entry.projectId === button.dataset.v4HistoryExport); if (!item) throw Object.assign(new Error('history'), { code: 'WEB_V4_PERSISTENCE_INVALID' }); const view = createV4ViewModel(item.verification); const bundle = await createV4WebExport(item.verification, view); await verifyV4WebExport(bundle); const file = bundle.files.find((entry) => entry.filename === 'veilforge-report-v4.json'); download(`${slug(item.projectId)}-v4.json`, file.bytes, file.mediaType); state.exported = true; renderWorkflow(); setStatus('Verified history export ready', `${item.projectId} passed digest verification before download.`, 'success'); } catch (error) { setStatus('History export blocked', v4ErrorMessage(error), 'error'); } });
-  byId('v4-history').addEventListener('click', async (event) => { const button = event.target.closest('[data-v4-delete]'); if (!button) return; try { removeV4Report(storage, button.dataset.v4Delete); await renderHistory(); setStatus('V4 history entry deleted', 'Only the selected V4 report was removed.', 'success'); } catch (error) { setStatus('History recovery blocked', `${v4ErrorMessage(error)} Diagnostic: ${error?.code ?? 'WEB_V4_STORAGE_QUOTA'}`, 'error'); } });
-  byId('v4-history').addEventListener('click', async (event) => { if (!event.target.closest('#v4-clear-rejected')) return; try { const count = clearV4Reports(storage); await renderHistory(); setStatus('Rejected V4 history cleared', `${count} V4 entr${count === 1 ? 'y' : 'ies'} removed. Legacy V3 history was preserved.`, 'success'); } catch (error) { setStatus('History recovery blocked', `${v4ErrorMessage(error)} Diagnostic: ${error?.code ?? 'WEB_V4_STORAGE_QUOTA'}`, 'error'); } });
+  byId('v4-clear-history').addEventListener('click', async () => { try { const count = clearV4Reports(storage); await renderHistory(); setStatus('V4 history cleared', `${count} V4 entr${count === 1 ? 'y' : 'ies'} removed. Legacy V3 history was preserved.`, 'success'); } catch (error) { setStatus('History recovery blocked', `${uiErrorMessage(error)} Diagnostic: ${error?.code ?? 'WEB_V4_STORAGE_QUOTA'}`, 'error'); } });
+  byId('v4-history').addEventListener('click', async (event) => { const button = event.target.closest('[data-v4-history]'); if (!button) return; try { const history = await listV4Reports(storage); const item = history.entries.find((entry) => entry.projectId === button.dataset.v4History); if (!item) throw Object.assign(new Error('history'), { code: 'WEB_V4_PERSISTENCE_INVALID' }); state.verification = item.verification; state.viewModel = createV4ViewModel(item.verification); state.exportBundle = null; state.sessionReset = false; state.restoredReport = true; state.scanStatus = 'verified'; state.reviewedFinding = false; state.exported = false; state.analysis = { state: 'verified', phase: 'Report', message: `${shortAddress(item.reportHash)} · ${state.viewModel.findings.length} finding${state.viewModel.findings.length === 1 ? '' : 's'}${state.viewModel.analysis.complete ? '' : ' · incomplete'}` }; renderReport(); await initializeProof(); updateWorkflow(); setBusy(false); setStatus('Verified history opened', item.reportHash, 'success'); } catch (error) { setStatus('History entry rejected', uiErrorMessage(error), 'error'); } });
+  byId('v4-history').addEventListener('click', async (event) => { const button = event.target.closest('[data-v4-history-export]'); if (!button) return; try { const history = await listV4Reports(storage); const item = history.entries.find((entry) => entry.projectId === button.dataset.v4HistoryExport); if (!item) throw Object.assign(new Error('history'), { code: 'WEB_V4_PERSISTENCE_INVALID' }); const view = createV4ViewModel(item.verification); const bundle = await createV4WebExport(item.verification, view); await verifyV4WebExport(bundle); const file = bundle.files.find((entry) => entry.filename === 'veilforge-report-v4.json'); download(`${slug(item.projectId)}-v4.json`, file.bytes, file.mediaType); state.exported = true; renderWorkflow(); setStatus('Verified history export ready', `${item.projectId} passed digest verification before download.`, 'success'); } catch (error) { setStatus('History export blocked', uiErrorMessage(error), 'error'); } });
+  byId('v4-history').addEventListener('click', async (event) => { const button = event.target.closest('[data-v4-delete]'); if (!button) return; try { removeV4Report(storage, button.dataset.v4Delete); await renderHistory(); setStatus('V4 history entry deleted', 'Only the selected V4 report was removed.', 'success'); } catch (error) { setStatus('History recovery blocked', `${uiErrorMessage(error)} Diagnostic: ${error?.code ?? 'WEB_V4_STORAGE_QUOTA'}`, 'error'); } });
+  byId('v4-history').addEventListener('click', async (event) => { if (!event.target.closest('#v4-clear-rejected')) return; try { const count = clearV4Reports(storage); await renderHistory(); setStatus('Rejected V4 history cleared', `${count} V4 entr${count === 1 ? 'y' : 'ies'} removed. Legacy V3 history was preserved.`, 'success'); } catch (error) { setStatus('History recovery blocked', `${uiErrorMessage(error)} Diagnostic: ${error?.code ?? 'WEB_V4_STORAGE_QUOTA'}`, 'error'); } });
   root.querySelector('.v4-journey').addEventListener('click', (event) => {
     const button = event.target.closest('[data-v4-step]');
     if (!button || button.getAttribute('aria-disabled') === 'true') return;

@@ -1,5 +1,12 @@
-import { encodePublishReport } from '../../../packages/proof/src/registry.js';
-import { checksumAddress, DEFAULT_PROOF_NETWORK, resolveProofNetwork } from '../../../packages/proof/v4/network.js';
+import { decodeCanonicalPublishReportCalldata, encodePublishReport } from '../../../packages/proof/src/registry.js';
+import {
+  ARC_MAINNET_SMOKE_PROJECT_ID,
+  ARC_MAINNET_SMOKE_REPORT_HASH,
+  assertProofNetworkCapability,
+  checksumAddress,
+  DEFAULT_PROOF_NETWORK,
+  resolveProofNetwork,
+} from '../../../packages/proof/v4/network.js';
 import { canonicalJson, cloneValue, deepFreeze, sha256Digest } from './canonical.js';
 import { webV4Error } from './errors.js';
 import { verifyV4Report } from './report-adapter.js';
@@ -98,7 +105,7 @@ export async function verifyWebProofEnvelope(envelope, { verification } = {}) {
     && envelope.reportIntegrityStatus === 'verified'
     && envelope.compilerVersion === '0.8.24'
     && envelope.chainId === network.chainId
-    && String(envelope.registryAddress).toLowerCase() === network.registryAddress.toLowerCase()
+    && (envelope.registryAddress === null ? network.registryAddress === null : String(envelope.registryAddress).toLowerCase() === String(network.registryAddress).toLowerCase())
     && envelope.registryContractVersion === network.registryContractVersion
     && DIGEST.test(envelope.reportHash)
     && DIGEST.test(envelope.sourceManifestDigest)
@@ -132,20 +139,24 @@ export async function createWebRegistryPayload(envelope, reportURI = '') {
   return deepFreeze(await registryPayload(envelope, reportURI));
 }
 
-function matchingRecord(record, payload, account) {
+export function matchingRecord(record, payload, account) {
   if (!record) return false;
   return String(record.sourceHash).toLowerCase() === payload.sourceHash
     && String(record.reportHash).toLowerCase() === payload.reportHash
     && Number(record.score) === 0
     && record.scannerVersion === payload.scannerVersion
-    && String(record.publisher).toLowerCase() === account.toLowerCase();
+    && record.reportURI === payload.reportURI
+    && String(record.publisher).toLowerCase() === account.toLowerCase()
+    && Number.isSafeInteger(Number(record.publishedAt))
+    && Number(record.publishedAt) > 0;
 }
 
-function safeExistingTransactionIdentity(identity, envelope, network, account) {
+async function safeExistingTransactionIdentity(identity, envelope, network, account) {
   if (identity === null) return null;
   if (!identity || typeof identity !== 'object' || Array.isArray(identity)) fail('WEB_V4_PROOF_PREFLIGHT_FAILED', 'The existing transaction identity is invalid.');
-  const allowed = new Set(['chainId', 'networkKey', 'registryAddress', 'registryContractVersion', 'transactionHash', 'blockNumber', 'publisher', 'reportHash', 'status', 'explorerUrl']);
+  const allowed = new Set(['chainId', 'networkKey', 'registryAddress', 'registryContractVersion', 'transactionHash', 'blockNumber', 'publisher', 'projectId', 'sourceHash', 'reportHash', 'reportURI', 'status', 'evidenceStatus', 'explorerUrl']);
   const transactionHash = String(identity.transactionHash ?? '').toLowerCase();
+  const expectedPayload = await registryPayload(envelope, identity.reportURI);
   const valid = Object.keys(identity).every((key) => allowed.has(key))
     && identity.chainId === network.chainId
     && identity.networkKey === network.networkKey
@@ -154,8 +165,11 @@ function safeExistingTransactionIdentity(identity, envelope, network, account) {
     && TX_HASH.test(transactionHash)
     && Number.isSafeInteger(identity.blockNumber) && identity.blockNumber >= 0
     && String(identity.publisher ?? '').toLowerCase() === account.toLowerCase()
+    && identity.projectId === expectedPayload.projectId
+    && identity.sourceHash === expectedPayload.sourceHash
     && identity.reportHash === envelope.reportHash
     && identity.status === 'confirmed'
+    && identity.evidenceStatus === 'current-state-verified'
     && identity.explorerUrl === `${network.explorerBaseUrl}/tx/${transactionHash}`;
   if (!valid) fail('WEB_V4_PROOF_PREFLIGHT_FAILED', 'The existing transaction identity conflicts with this proof.');
   return cloneValue({ ...identity, transactionHash });
@@ -177,9 +191,12 @@ export async function prepareWebRegistryPublish({ verification, envelope, wallet
   check('provider-available', providerAvailable, providerAvailable ? 'Injected EVM provider is available.' : 'Wallet provider is unavailable.');
   check('account-available', accountAvailable, accountAvailable ? 'A wallet account is available.' : 'No wallet account is available.');
   const network = resolveProofNetwork(envelope?.networkKey ?? DEFAULT_PROOF_NETWORK);
+  let networkPublishEnabled = false;
+  try { assertProofNetworkCapability(network.networkKey, 'publish'); networkPublishEnabled = true; } catch { /* represented as a blocking check */ }
+  check('network-publish-enabled', networkPublishEnabled, networkPublishEnabled ? `${network.chainName} proof publishing is enabled.` : `${network.chainName} proof publishing is disabled or unresolved.`);
   const chainMatches = walletState?.chainId === network.chainId;
-  check('chain-matches', chainMatches, chainMatches ? 'Wallet chain matches Arc Testnet.' : 'Wallet is on the wrong network.');
-  const registryMatches = String(envelope?.registryAddress ?? '').toLowerCase() === network.registryAddress.toLowerCase();
+  check('chain-matches', chainMatches, chainMatches ? `Wallet chain matches ${network.chainName}.` : 'Wallet is on the wrong network.');
+  const registryMatches = network.registryAddress !== null && String(envelope?.registryAddress ?? '').toLowerCase() === network.registryAddress.toLowerCase();
   check('registry-matches', registryMatches, registryMatches ? 'Trusted Registry V2 is selected.' : 'Registry does not match trusted configuration.');
   const blockingReasons = checks.filter((item) => !item.passed && item.severity === 'blocking').map((item) => item.id);
   const warnings = envelopeVerified && !envelope.complete ? ['incomplete-analysis', ...envelope.incompleteReasonCodes] : [];
@@ -189,7 +206,7 @@ export async function prepareWebRegistryPublish({ verification, envelope, wallet
   const payload = await registryPayload(envelope, reportURI);
   if (existingRecord) {
     if (!matchingRecord(existingRecord, payload, account)) fail('WEB_V4_PROOF_PREFLIGHT_FAILED', 'The existing registry record conflicts with this proof.');
-    const transactionIdentity = safeExistingTransactionIdentity(existingTransactionIdentity, envelope, network, account);
+    const transactionIdentity = await safeExistingTransactionIdentity(existingTransactionIdentity, envelope, network, account);
     check('duplicate-record', true, 'An identical publisher-scoped record already exists.', 'warning');
     return deepFreeze({ status: 'already-published', checks, blockingReasons: [], warnings: ['duplicate-publication', ...warnings], payload, transactionRequest: null, transactionIdentity });
   }
@@ -208,7 +225,7 @@ export async function prepareWebRegistryPublish({ verification, envelope, wallet
     transactionRequest,
     transactionSummary: {
       from: account, to: network.registryAddress, chainId: network.chainId,
-      value: '0x0', reportHash: envelope.reportHash, registryMethod: REGISTRY_METHOD,
+      value: '0x0', projectId: payload.projectId, reportHash: envelope.reportHash, registryMethod: REGISTRY_METHOD,
       calldataBytes: (data.length - 2) / 2, gasEstimateStatus: 'not-requested', duplicatePolicy: 'publisher-scoped-idempotent',
     },
     transactionIdentity: null,
@@ -216,11 +233,21 @@ export async function prepareWebRegistryPublish({ verification, envelope, wallet
 }
 
 export function safeTransactionRequest(request, networkKey = DEFAULT_PROOF_NETWORK) {
-  const network = resolveProofNetwork(networkKey);
+  let network;
+  try { network = assertProofNetworkCapability(networkKey, 'publish'); }
+  catch { fail('WEB_V4_SEND_DISABLED', 'Proof publishing is disabled or unresolved for the selected network.'); }
   if (!request || String(request.to).toLowerCase() !== network.registryAddress.toLowerCase()
-    || request.chainId.toLowerCase() !== network.chainIdHex
-    || request.value !== '0x0' || !/^0x[0-9a-f]+$/u.test(request.data)
+    || String(request.chainId).toLowerCase() !== network.chainIdHex
+    || request.value !== '0x0' || !/^0x[0-9a-f]+$/u.test(String(request.data ?? ''))
     || !/^0x[0-9a-fA-F]{40}$/u.test(request.from)) fail('WEB_V4_TX_INVALID', 'The transaction request is unsafe.');
+  let payload;
+  try { payload = decodeCanonicalPublishReportCalldata(request.data); }
+  catch { fail('WEB_V4_TX_INVALID', 'The transaction calldata is not a canonical Registry V2 publication.'); }
+  if (network.networkKey === 'arc-mainnet'
+    && payload.projectId === ARC_MAINNET_SMOKE_PROJECT_ID
+    && payload.reportHash === ARC_MAINNET_SMOKE_REPORT_HASH) {
+    fail('WEB_V4_PROOF_DUPLICATE', 'The verified Arc Mainnet smoke fixture is permanently blocked from a second publication.');
+  }
   const value = cloneValue(request);
   canonicalJson(value);
   return deepFreeze(value);

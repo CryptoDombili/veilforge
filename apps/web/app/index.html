@@ -25,8 +25,8 @@
 
   <div id="wallet-backdrop" class="wallet-backdrop" hidden></div>
   <section id="wallet-menu" class="wallet-menu" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="wallet-menu-title" hidden>
-    <header><div><small>CONNECTED WALLET</small><b id="wallet-menu-title">Arc Testnet session</b></div><button id="wallet-menu-close" class="wallet-menu-close" type="button" aria-label="Close wallet session">×</button></header>
-    <div class="wallet-identity"><span class="wallet-identity-dot"></span><div><b id="wallet-menu-address">—</b><small id="wallet-menu-network">Arc Network Testnet</small></div></div>
+    <header><div><small>CONNECTED WALLET</small><b id="wallet-menu-title"><span data-active-network-name>Arc network</span> session</b></div><button id="wallet-menu-close" class="wallet-menu-close" type="button" aria-label="Close wallet session">×</button></header>
+    <div class="wallet-identity"><span class="wallet-identity-dot"></span><div><b id="wallet-menu-address">—</b><small id="wallet-menu-network">Arc network</small></div></div>
     <div class="wallet-menu-actions"><button id="wallet-copy-address" type="button">Copy address</button><a id="wallet-view-explorer" href="#" target="_blank" rel="noreferrer">View on ArcScan ↗</a><button id="wallet-disconnect" class="danger" type="button">Disconnect wallet</button></div>
     <p>Disconnecting clears VeilForge’s local wallet session. To revoke site permissions completely, remove VeilForge from your wallet’s connected sites.</p>
   </section>
@@ -123,7 +123,7 @@
       <p class="disclaimer">Local deterministic privacy engineering based on source evidence. Independent community tool; not an official Circle product, compiler, EVM emulator or formal audit.</p>
     </section>
   </main>
-  <footer class="app-footer"><div class="brand"><span class="logo">◈</span><span><b>VeilForge</b><small class="arcPowered">BUILT FOR ARC</small></span></div><p>Prepare today for private Solidity tomorrow.</p><span>Arc Testnet · Chain 5042002</span></footer>
+  <footer class="app-footer"><div class="brand"><span class="logo">◈</span><span><b>VeilForge</b><small class="arcPowered">BUILT FOR ARC</small></span></div><p>Prepare today for private Solidity tomorrow.</p><span><span data-active-network-name>Arc network</span> · Chain <span data-active-chain-id>—</span></span></footer>
   <script src="./landing-rain.js?v=32.28" defer></script>
   <script type="module" src="./app.js?v=32.31"></script>
 </body>

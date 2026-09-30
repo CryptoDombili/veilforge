@@ -39,6 +39,8 @@ const provider = {
 };
 const networkPreflight = await preflightArcTestnetProvider({ provider, envelope, transactionRequest: preflight.transactionRequest, payload: preflight.payload });
 const review = await createUserGatedProofReview({ envelope, preflight, networkPreflight, disclosureAcknowledged: true, userGesture: true, reviewAcknowledged: true, currentStateBindingDigest: networkPreflight.stateBindingDigest });
-if (!networkPreflight.passed || !review.reviewReady || review.sendEnabled || WEB_PROOF_SEND_ENABLED || calls.some((method) => !['eth_chainId', 'eth_getCode', 'eth_blockNumber', 'eth_call', 'eth_estimateGas'].includes(method))) throw new Error('V4 preview Arc proof preflight smoke failed.');
+if (!networkPreflight.passed || !review.reviewReady || !review.sendEnabled || !WEB_PROOF_SEND_ENABLED || calls.some((method) => !['eth_chainId', 'eth_getCode', 'eth_blockNumber', 'eth_call', 'eth_estimateGas', 'eth_gasPrice'].includes(method))) {
+  throw new Error(`V4 preview Arc proof preflight smoke failed: ${JSON.stringify({ networkPassed: networkPreflight.passed, reviewReady: review.reviewReady, reviewSendEnabled: review.sendEnabled, capabilityEnabled: WEB_PROOF_SEND_ENABLED, methods: [...new Set(calls)] })}`);
+}
 
 console.log(JSON.stringify({ passed: true, preview: true, readOnlyMethods: [...new Set(calls)], preflightStatus: networkPreflight.status, reviewStatus: review.status, sendEnabled: review.sendEnabled, transactionSent: false }));
