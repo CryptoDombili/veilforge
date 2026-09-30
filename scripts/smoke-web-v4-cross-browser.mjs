@@ -3,6 +3,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { chromium, firefox, webkit } from 'playwright';
 import { startStaticServer } from './lib/web-acceptance-browser.mjs';
+import { probeForbiddenCspResources } from './lib/csp-negative-probe.mjs';
 
 const options = Object.fromEntries(process.argv.slice(2).map((item) => {
   const [key, ...value] = item.replace(/^--/u, '').split('=');
@@ -351,26 +352,11 @@ try {
     result.responsive390 = true;
   });
 
-  const cspProbe = await bounded('CSP_UNAUTHORIZED_RESOURCES_BLOCKED', stageLimits.app, () => page.evaluate(async () => {
-    const before = globalThis.__VEILFORGE_CSP_VIOLATIONS__.length;
-    const script = document.createElement('script');
-    script.src = 'https://unauthorized.invalid/veilforge-probe.js';
-    document.head.append(script);
-    let workerBlocked = false;
-    try { const worker = new Worker('data:text/javascript,postMessage(1)'); worker.terminate(); } catch { workerBlocked = true; }
-    await new Promise((resolve) => setTimeout(resolve, 150));
-    script.remove();
-    const violations = globalThis.__VEILFORGE_CSP_VIOLATIONS__.slice(before);
-    return {
-      violations,
-      scriptBlocked: violations.some((item) => item.effectiveDirective?.startsWith('script-src') && item.blockedURI === 'https://unauthorized.invalid'),
-      workerBlocked: workerBlocked || violations.some((item) => item.effectiveDirective === 'worker-src' && item.blockedURI === 'data:'),
-    };
-  }));
-  if (!cspProbe.scriptBlocked || !cspProbe.workerBlocked) throw Object.assign(new Error('production CSP did not block unauthorized script and worker probes'), { code: 'CSP_NEGATIVE_PROBE_FAILED' });
+  const cspProbe = await bounded('CSP_UNAUTHORIZED_RESOURCES_BLOCKED', stageLimits.app, () => page.evaluate(probeForbiddenCspResources));
   result.cspViolations = cspProbe.violations;
   result.unauthorizedScriptBlocked = cspProbe.scriptBlocked;
   result.unauthorizedWorkerBlocked = cspProbe.workerBlocked;
+  if (!cspProbe.scriptBlocked || !cspProbe.workerBlocked) throw Object.assign(new Error('production CSP did not block unauthorized script and worker probes'), { code: 'CSP_NEGATIVE_PROBE_FAILED' });
 
   result.orphanWorkers = activeWorkers.size;
   result.pendingRequests = await page.evaluate(() => document.querySelector('#v4-scan')?.disabled ? 1 : 0);
