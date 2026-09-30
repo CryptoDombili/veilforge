@@ -29,8 +29,8 @@
     "docs/grant/final/submission-faq.md": "sha256:22a0abbf0e71dc89177a00347e019f139132a2b98385fafaf6900e1eb83db20a",
     "docs/grant/final/demo-script-foundation.md": "sha256:2be0517df3f33ed0ff0850b0b42bd9c15013dcea5e7bafcb73263522ce27b107",
     "docs/grant/final/grant-submission-checklist.md": "sha256:97f54b04d7adfd1de9ea6db079e6f86558529381d27eda95f9f08fbae0e2acf7",
-    "docs/whitepaper/veilforge-v4-whitepaper.md": "sha256:41f499e2efcb06698ade227501941f09414ee1cc15b2c5799290e41fac6e650e",
-    "docs/whitepaper/veilforge-v4-whitepaper-executive-brief.md": "sha256:625a5583c516bc669a700b893039bcea22c39608fc5ab18d6285d2bbd7bd2e43"
+    "docs/whitepaper/veilforge-v4-whitepaper.md": "sha256:154a652a26400c764ddae2233895434b4b11cc1e1d7fe4348bf035b3171e9e4f",
+    "docs/whitepaper/veilforge-v4-whitepaper-executive-brief.md": "sha256:c5afb3482a7fe3f8d899b045f4e3dbfc2448485a0505f1e4b482f92721fab543"
   },
   "claims": [
     {
@@ -268,5 +268,5 @@
     ]
   },
   "generatedAtOperational": "2026-08-05T21:30:40.7269324+03:00",
-  "integrityDigest": "sha256:67a895d307f8586d970b267e5ac590d3150f3076f0a31afa6ba5624b7675fc15"
+  "integrityDigest": "sha256:903fb1363828ee812a46a4cde6775a9b857202f07ead12da6d3580537bfe5d60"
 }

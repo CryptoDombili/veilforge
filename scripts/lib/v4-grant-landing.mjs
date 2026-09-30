@@ -4,7 +4,7 @@ const grantSections = (selectedNetwork) => `
     <section class="grant-proof-strip" aria-label="Verified release evidence">
       <article><strong>60/60</strong><span>maintained oracle cases passed</span></article>
       <article><strong>56 TP / 0 FP / 0 FN</strong><span>bounded benchmark baseline</span></article>
-      <article><strong>Arc Testnet</strong><span>real proof publication verified</span></article>
+      <article><strong>Arc Mainnet</strong><span>real proof publication verified</span></article>
       <article><strong>Local-first</strong><span>analysis runs without source upload</span></article>
     </section>
 
@@ -27,14 +27,14 @@ const grantSections = (selectedNetwork) => `
           <li><b>Exact compiler boundary</b><span>solc 0.8.24 with bounded browser inputs.</span></li>
           <li><b>Verified report identity</b><span>Schema 4.1.0 and veilforge.report.hash.v2.</span></li>
           <li><b>Developer workflow</b><span>CLI, SDK, SARIF, GitHub Action, and policy gate.</span></li>
-          <li><b>Real Testnet evidence</b><span>Receipt/event reconciliation and duplicate prevention.</span></li>
+          <li><b>Historical Testnet evidence</b><span>Receipt/event reconciliation and duplicate prevention.</span></li>
           <li><b>${selectedNetwork.chainName} production profile</b><span>Chain ${selectedNetwork.chainId}; verified Registry ${selectedNetwork.registryAddress}; reads and publishing enabled.</span></li>
         </ul>
       </div>
     </section>
 
     <section class="grant-section whitepaper-section" id="whitepaper">
-      <div class="whitepaper-copy"><p>VEILFORGE V4 WHITEPAPER</p><h2>Read the architecture, evidence model, and measurable roadmap.</h2><span>The full paper connects the product boundary to reproducible technical evidence, real Arc Testnet proof, sustainability hypotheses, and explicit limitations.</span><div class="grant-actions"><a class="launch" href="./whitepaper/">Read Whitepaper</a><a class="secondary" href="./whitepaper/VeilForge_V4_Whitepaper.pdf" download>Download PDF</a><a class="secondary" href="./whitepaper/executive-brief.html">Executive Brief</a></div></div>
+      <div class="whitepaper-copy"><p>VEILFORGE V4 WHITEPAPER</p><h2>Read the architecture, evidence model, and measurable roadmap.</h2><span>The full paper connects the product boundary to reproducible technical evidence, verified Arc Mainnet proof, sustainability hypotheses, and explicit limitations.</span><div class="grant-actions"><a class="launch" href="./whitepaper/">Read Whitepaper</a><a class="secondary" href="./whitepaper/VeilForge_V4_Whitepaper.pdf" download>Download PDF</a><a class="secondary" href="./whitepaper/executive-brief.html">Executive Brief</a></div></div>
       <div class="paper-stack" aria-hidden="true"><span>VEILFORGE V4</span><strong>Deterministic privacy-readiness analysis and verifiable evidence for Solidity on Arc.</strong><small>GRANT CANDIDATE / SEPTEMBER 2026</small></div>
     </section>
 

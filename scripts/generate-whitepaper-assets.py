@@ -70,7 +70,7 @@ class FigureFlowable(Flowable):
         c = self.canv
         c.saveState()
         c.setFillColor(colors.HexColor("#0b1422")); c.roundRect(0, 0, self.width, self.height, 8, fill=1, stroke=0)
-        c.setFillColor(MINT); c.setFont("Manrope-Bold", 7.5); c.drawString(9 * mm, self.height - 11 * mm, self.filename.replace(".svg", "").replace("-", " ").upper())
+        c.setFillColor(MINT); c.setFont("Manrope-Bold", 7.5); c.drawString(9 * mm, self.height - 11 * mm, self.filename.replace("arc-testnet-proof-lifecycle", "arc-mainnet-proof-lifecycle").replace(".svg", "").replace("-", " ").upper())
         labels = self.LABELS.get(self.filename, ["Evidence", "Verify", "Publish"])
         gap = (self.width - 18 * mm) / len(labels)
         y = 25 * mm

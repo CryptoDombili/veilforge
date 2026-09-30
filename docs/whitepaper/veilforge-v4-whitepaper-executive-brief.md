@@ -6,7 +6,7 @@
 **Product version:** 4.0.0-gc.1  
 **Technical candidate:** V4 RC1  
 **Grant status:** V4 Grant Candidate  
-**Implementation boundary:** Verified Arc Mainnet production profile with historical Arc Testnet evidence
+**Implementation boundary:** Verified Arc Mainnet production profile with verified Arc Mainnet publication evidence
 
 VeilForge is an independent open-source project. This brief does not claim Circle or Arc endorsement, a grant award, customers, revenue, audit assurance, universal correctness, or confidentiality.
 
@@ -30,7 +30,7 @@ The maintained benchmark has 60 oracle cases: 20 each for Arc Payments, Arc Trea
 
 The browser runtime uses exact solc 0.8.24, limits projects to 100 files, 512 KiB per file, and 1 MiB total, and supports one active scan per client. Abort, timeout, crash, cleanup, and restart behavior are explicit. Chromium and WebKit have documented local acceptance evidence; Edge and Firefox clean-CI acceptance remains a bounded limitation. Source defaults remain fail-closed, while the provenance-bound `arc-mainnet-production` build explicitly activates the V4 runtime.
 
-VeilForge also has a real Arc Testnet proof-publication identity. Transaction `0xdb674c986195ed9b3950f34d058637fbb2b887f58ca724400225ba177884192c`, block 55469453, published report hash `sha256:fce5ffa529c79d185a6013a362e25658020d1691550557d59173c9acc6a417ea` from publisher `0x60B6333a0722bBEA39d4026b284Ae1E142bEb914` to Registry V2 at `0x88B4055eaB061CEa9BdfeFF524f65ff461B5401d`. The method was `publishReport`, value was 0 USDC, and the observed Testnet fee was 0.001175966 USDC. Receipt, event, publisher, registry, and report hash were verified. Duplicate reconciliation returns already-published and blocks a second transaction. The fee is not a mainnet estimate.
+VeilForge also has a real Arc Mainnet proof-publication identity. Transaction `0x312501dcf496583aedc043bcc5b8b1eb4df60548c56ed5046afb44cbf14b971e`, block 23531676, published a verified report identity from publisher `0x60B6333a0722bBEA39d4026b284Ae1E142bEb914` to Registry V2 at `0x43D76BfCa31eAd660C5d804FEe20d14C0c577337`. The method was `publishReport`, value was 0 USDC, status was Success, and the observed Mainnet transaction fee was 0.0036560965 USDC. Receipt, event, publisher, registry, and report identity were verified. Duplicate reconciliation returns already-published and blocks a second transaction. The observed fee is from the verified Arc Mainnet publication transaction and is not a guaranteed future transaction cost.
 
 The current Arc Mainnet production profile uses chain `5042` and the separately deployed Registry V2 at `0x43D76BfCa31eAd660C5d804FEe20d14C0c577337`. Deployment status is `verified`; `enabled=true`, `proofReadEnabled=true`, and `publishEnabled=true`. Runtime bytecode/getters, the deployment receipt, the first controlled publication receipt/event/readback, and the duplicate second-send guard were independently verified. The historical Testnet transaction remains a separate milestone.
 
@@ -63,7 +63,7 @@ Registry V2 is immutable, public, non-payable, publisher-scoped, and has latest-
 3. **Team Foundation:** workspaces, roles, tenant isolation, shared policies, and audit trails with cross-tenant denial evidence.
 4. **Arc Expansion:** detector and corpus growth, onboarding, ecosystem integration, and independent review.
 
-VeilForge merits consideration because the request builds on a working compiler-backed system, reproducible evidence, shipped developer tooling, a local privacy boundary, and a real Arc Testnet publication—not only a roadmap. The grant would unlock a defined next stage while the project continues to state its technical, operational, browser, mainnet, and commercial boundaries clearly.
+VeilForge merits consideration because the request builds on a working compiler-backed system, reproducible evidence, shipped developer tooling, a local privacy boundary, and a real Arc Mainnet publication—not only a roadmap. The grant would unlock a defined next stage while the project continues to state its technical, operational, browser, mainnet, and commercial boundaries clearly.
 
 **Full whitepaper:** `docs/whitepaper/veilforge-v4-whitepaper.md`  
 **Final evidence package:** `docs/grant/final/`  
